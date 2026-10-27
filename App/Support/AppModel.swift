@@ -4,7 +4,7 @@ import OpenRizeKit
 import SwiftData
 
 enum Page: String, CaseIterable, Identifiable {
-    case today, reports, review, categories, rules, settings
+    case today, reports, review, categories, rules
 
     var id: String { rawValue }
 
@@ -15,7 +15,6 @@ enum Page: String, CaseIterable, Identifiable {
         case .review: "Review"
         case .categories: "Categories"
         case .rules: "Rules"
-        case .settings: "Settings"
         }
     }
 
@@ -26,7 +25,6 @@ enum Page: String, CaseIterable, Identifiable {
         case .review: "questionmark.bubble"
         case .categories: "square.grid.2x2"
         case .rules: "list.bullet.rectangle"
-        case .settings: "gearshape"
         }
     }
 }

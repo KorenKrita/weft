@@ -32,6 +32,7 @@ struct DayMetricsTests {
         ]
         let metrics = DayMetrics.compute(samples, categories: categories)
         #expect(metrics.deepWorkTime == 30 * 60)
+        #expect(metrics.longestFocusStretch == 30 * 60)
         #expect(metrics.contextSwitches == 2)
     }
 
@@ -43,6 +44,7 @@ struct DayMetricsTests {
         ]
         let metrics = DayMetrics.compute(samples, categories: categories)
         #expect(metrics.deepWorkTime == 0)
+        #expect(metrics.longestFocusStretch == 20 * 60)
         #expect(metrics.distractingTime == 300)
         #expect(metrics.focusTime == 40 * 60)
     }

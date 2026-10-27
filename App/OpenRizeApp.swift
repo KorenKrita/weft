@@ -23,6 +23,12 @@ struct OpenRizeApp: App {
         }
         .defaultSize(width: 1080, height: 760)
         .defaultLaunchBehavior(model.preferences.hasCompletedOnboarding ? .suppressed : .presented)
+
+        Settings {
+            SettingsView()
+                .environment(model)
+                .modelContainer(model.container)
+        }
     }
 }
 
@@ -33,7 +39,7 @@ private struct MenuBarLabel: View {
     var body: some View {
         Group {
             if let session = model.sessions.active {
-                Image(systemName: symbol(for: session.kind))
+                Image(systemName: session.kind.symbol)
                 Text(Format.countdown(session.remaining(at: model.sessions.now)))
                     .monospacedDigit()
             } else {
@@ -46,14 +52,6 @@ private struct MenuBarLabel: View {
                 openWindow(id: MainView.windowID)
                 NSApp.activate()
             }
-        }
-    }
-
-    private func symbol(for kind: SessionKind) -> String {
-        switch kind {
-        case .focus: "scope"
-        case .meeting: "person.2"
-        case .breakTime: "cup.and.saucer"
         }
     }
 }

@@ -87,6 +87,17 @@ struct ReviewView: View {
             }
         }
         .navigationTitle("Review")
+        .toolbar {
+            let confident = items.filter { $0.source == .ai && $0.confidence == .high }
+            Button {
+                for item in confident { assign(item, to: item.categoryKey) }
+            } label: {
+                Label("Confirm \(confident.count) High-Confidence", systemImage: "checkmark.circle")
+                    .labelStyle(.titleAndIcon)
+            }
+            .disabled(confident.isEmpty)
+            .help("Keep the model's category for every app and site it was sure about")
+        }
     }
 
     private var statusBar: some View {

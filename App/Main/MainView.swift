@@ -1,4 +1,5 @@
 import OpenRizeKit
+import SwiftData
 import SwiftUI
 
 struct MainView: View {
@@ -6,6 +7,19 @@ struct MainView: View {
 
     @Environment(AppModel.self) private var model
     @State private var showOnboarding = false
+    @Query private var unconfirmed: [ActivitySegment]
+
+    init() {
+        let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
+        let pending = ClassificationSource.pending.rawValue
+        let ai = ClassificationSource.ai.rawValue
+        _unconfirmed = Query(filter: #Predicate<ActivitySegment> {
+            $0.end > since && ($0.classificationSourceRaw == pending || $0.classificationSourceRaw == ai)
+        })
+    }
+
+    /// Apps and sites waiting in Review.
+    private var reviewCount: Int { Set(unconfirmed.map(\.classificationKey)).count }
 
     var body: some View {
         NavigationSplitView {
@@ -14,6 +28,7 @@ struct MainView: View {
                 set: { if let page = $0 { model.page = page } }
             )) { page in
                 Label(page.title, systemImage: page.symbol)
+                    .badge(page == .review ? reviewCount : 0)
             }
             .navigationSplitViewColumnWidth(min: 170, ideal: 190)
         } detail: {
@@ -23,7 +38,6 @@ struct MainView: View {
             case .review: ReviewView()
             case .categories: CategoriesView()
             case .rules: RulesView()
-            case .settings: SettingsView()
             }
         }
         .sheet(isPresented: $showOnboarding) {

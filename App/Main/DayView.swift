@@ -14,11 +14,14 @@ struct DayView: View {
                 ToolbarItemGroup {
                     Button { shift(-1) } label: { Image(systemName: "chevron.left") }
                         .help("Previous day")
+                        .keyboardShortcut(.leftArrow, modifiers: .command)
                     Button("Today") { day = Calendar.current.startOfDay(for: .now) }
                         .disabled(Calendar.current.isDateInToday(day))
+                        .keyboardShortcut("t", modifiers: .command)
                     Button { shift(1) } label: { Image(systemName: "chevron.right") }
                         .help("Next day")
                         .disabled(Calendar.current.isDateInToday(day))
+                        .keyboardShortcut(.rightArrow, modifiers: .command)
                 }
             }
     }
@@ -51,20 +54,20 @@ private struct DayContent: View {
         let metrics = DayMetrics.compute(samples, categories: model.classifier.categoryLookup)
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
                 if segments.isEmpty {
                     ContentUnavailableView("No activity", systemImage: "clock",
                                            description: Text("Nothing was tracked on this day."))
                         .frame(maxWidth: .infinity, minHeight: 300)
                 } else {
-                    StatTiles(metrics: metrics, target: model.preferences.workHoursTarget * 3600)
-                    Card("Timeline") { TimelineChart(samples: samples) }
-                    Card("By hour") { HourlyChart(samples: samples) }
+                    Overview(metrics: metrics, target: model.preferences.workHoursTarget * 3600)
+                    DailyReview(day: day, metrics: metrics)
+                    TimelineCard(samples: samples)
                     HStack(alignment: .top, spacing: 16) {
                         Card("Categories") { CategoryBreakdown(metrics: metrics) }
-                        Card("Apps & sites") { TopList(metrics: metrics) }
+                        Card("Apps & sites") { AppBreakdown(samples: samples, total: metrics.activeTime) }
                     }
-                    Card("Daily review") { DailySummary(day: day, metrics: metrics) }
+                    Card("By hour") { HourlyChart(samples: samples) }
                     Card("Activity") { ActivityList(segments: segments) }
                 }
             }
@@ -83,49 +86,103 @@ struct Card<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title).font(.headline)
             content
         }
-        .padding(14)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 10).fill(.background.secondary))
+        .background(RoundedRectangle(cornerRadius: 12).fill(.background.secondary))
     }
 }
 
-private struct StatTiles: View {
+// MARK: - Overview
+
+/// The answer to "how did today go?": score, progress towards the target, and three
+/// plain-language facts.
+private struct Overview: View {
     let metrics: DayMetrics
     let target: TimeInterval
     @State private var showScoreDetails = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            tile("Tracked", Format.duration(metrics.activeTime), detail: "of \(Format.duration(target))")
-            tile("Focus", Format.duration(metrics.focusTime), detail: "\(Format.duration(metrics.deepWorkTime)) deep work")
-            tile("Meetings", Format.duration(metrics.meetingTime))
-            tile("Distracted", Format.duration(metrics.distractingTime))
-            if metrics.activeTime >= 15 * 60 {
-                tile("Switches", String(format: "%.0f/h", metrics.switchesPerHour), detail: "\(metrics.contextSwitches) total")
-            } else {
-                tile("Switches", "\(metrics.contextSwitches)", detail: "total")
-            }
+        HStack(alignment: .center, spacing: 28) {
             Button { showScoreDetails = true } label: {
-                tile("Focus Score", metrics.score.map { "\($0.value)" } ?? "–", detail: metrics.score?.label ?? "Not enough data")
+                ScoreRing(score: metrics.score, activeTime: metrics.activeTime, size: 112)
             }
             .buttonStyle(.plain)
+            .help("How the Focus Score works")
             .popover(isPresented: $showScoreDetails) { ScoreExplanation(score: metrics.score).padding() }
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(Format.duration(metrics.activeTime))
+                        .font(.system(size: 40, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                    Text("tracked of \(Format.duration(target))").foregroundStyle(.secondary)
+                }
+                GoalBar(metrics: metrics, target: target)
+                HStack(spacing: 16) {
+                    legend(GoalBar.focusColor, "Focus", metrics.focusTime)
+                    legend(GoalBar.meetingColor, "Meetings", metrics.meetingTime)
+                    legend(GoalBar.otherColor, "Other", max(0, metrics.activeTime - metrics.focusTime - metrics.meetingTime - metrics.distractingTime))
+                    legend(GoalBar.distractedColor, "Distracted", metrics.distractingTime)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider().frame(height: 100)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Fact(symbol: "brain.head.profile", title: "Deep work",
+                     value: Format.duration(metrics.deepWorkTime), detail: "in stretches of 25 min or more")
+                Fact(symbol: "timer", title: "Longest focus",
+                     value: Format.duration(metrics.longestFocusStretch), detail: "without a real break")
+                Fact(symbol: "arrow.left.arrow.right", title: "Switching",
+                     value: switching.0, detail: switching.1)
+            }
+            .frame(width: 230, alignment: .leading)
         }
+        .padding(20)
+        .background(RoundedRectangle(cornerRadius: 12).fill(.background.secondary))
     }
 
-    private func tile(_ title: String, _ value: String, detail: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 22, weight: .semibold, design: .rounded)).monospacedDigit()
-            Text(detail ?? " ").font(.caption2).foregroundStyle(.secondary)
+    private var switching: (String, String) {
+        guard metrics.activeTime >= 15 * 60 else { return ("\(metrics.contextSwitches) switches", "between apps and sites") }
+        let perHour = metrics.switchesPerHour
+        let label = perHour <= 12 ? "Steady" : perHour <= 25 ? "Some switching" : "Fragmented"
+        return (label, "\(Int(perHour.rounded())) switches per hour")
+    }
+
+    private func legend(_ color: Color, _ title: String, _ value: TimeInterval) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(title).foregroundStyle(.secondary)
+            Text(Format.duration(value)).monospacedDigit()
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 10).fill(.background.secondary))
+        .font(.callout)
+    }
+}
+
+private struct Fact: View {
+    let symbol: String
+    let title: String
+    let value: String
+    let detail: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol).foregroundStyle(.secondary).frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title).foregroundStyle(.secondary)
+                    Spacer()
+                    Text(value).fontWeight(.medium).monospacedDigit()
+                }
+                Text(detail).font(.caption).foregroundStyle(.tertiary)
+            }
+        }
+        .font(.callout)
     }
 }
 
@@ -152,138 +209,9 @@ private struct ScoreExplanation: View {
     }
 }
 
-private struct TimelineChart: View {
-    @Environment(AppModel.self) private var model
-    let samples: [SegmentSample]
+// MARK: - Daily review
 
-    var body: some View {
-        let start = samples.map(\.start).min() ?? .now
-        let end = samples.map(\.end).max() ?? .now
-        let lower = Calendar.current.dateInterval(of: .hour, for: start)?.start ?? start
-        let upper = Calendar.current.dateInterval(of: .hour, for: end)?.end ?? end
-
-        Chart(Array(samples.enumerated()), id: \.offset) { _, sample in
-            RectangleMark(
-                xStart: .value("Start", sample.start),
-                xEnd: .value("End", sample.end),
-                yStart: .value("Lane", 0),
-                yEnd: .value("Lane", 1)
-            )
-            .foregroundStyle(model.classifier.category(sample.categoryKey).color)
-        }
-        .chartXScale(domain: lower...upper)
-        .chartYScale(domain: 0...1)
-        .chartYAxis(.hidden)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .hour)) { _ in
-                AxisGridLine()
-                AxisValueLabel(format: .dateTime.hour())
-            }
-        }
-        .frame(height: 70)
-    }
-}
-
-private struct HourSlice: Identifiable {
-    var hour: Int
-    var category: String
-    var minutes: Double
-    var id: String { "\(hour)-\(category)" }
-}
-
-private struct HourlyChart: View {
-    @Environment(AppModel.self) private var model
-    let samples: [SegmentSample]
-
-    var body: some View {
-        let slices = Self.slices(samples)
-        let categories = Array(Set(slices.map(\.category))).sorted()
-        let names = categories.map { model.classifier.category($0).name }
-        let colors = categories.map { model.classifier.category($0).color }
-
-        Chart(slices) { slice in
-            BarMark(x: .value("Hour", slice.hour), y: .value("Minutes", slice.minutes))
-                .foregroundStyle(by: .value("Category", model.classifier.category(slice.category).name))
-        }
-        .chartForegroundStyleScale(domain: names, range: colors)
-        .chartXScale(domain: 0...24)
-        .chartXAxis { AxisMarks(values: Array(stride(from: 0, through: 24, by: 3))) }
-        .chartYScale(domain: 0...60)
-        .chartYAxisLabel("min")
-        .frame(height: 180)
-    }
-
-    static func slices(_ samples: [SegmentSample]) -> [HourSlice] {
-        let calendar = Calendar.current
-        var totals: [String: HourSlice] = [:]
-        for sample in samples {
-            var cursor = sample.start
-            while cursor < sample.end {
-                let hourEnd = calendar.dateInterval(of: .hour, for: cursor)?.end ?? sample.end
-                let sliceEnd = min(hourEnd, sample.end)
-                let hour = calendar.component(.hour, from: cursor)
-                let key = "\(hour)-\(sample.categoryKey)"
-                totals[key, default: HourSlice(hour: hour, category: sample.categoryKey, minutes: 0)].minutes
-                    += sliceEnd.timeIntervalSince(cursor) / 60
-                cursor = sliceEnd
-            }
-        }
-        return Array(totals.values)
-    }
-}
-
-private struct CategoryBreakdown: View {
-    @Environment(AppModel.self) private var model
-    let metrics: DayMetrics
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(metrics.byCategory.sorted { $0.value > $1.value }, id: \.key) { key, value in
-                let category = model.classifier.category(key)
-                BarRow(label: category.name, value: value, total: metrics.activeTime, color: category.color)
-            }
-        }
-    }
-}
-
-private struct TopList: View {
-    let metrics: DayMetrics
-
-    var body: some View {
-        let apps = metrics.byApp.map { (name: $0.key, value: $0.value) }
-        let sites = metrics.byDomain.map { (name: $0.key, value: $0.value) }
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach((apps + sites).sorted { $0.value > $1.value }.prefix(12), id: \.name) { item in
-                BarRow(label: item.name, value: item.value, total: metrics.activeTime, color: .accentColor)
-            }
-        }
-    }
-}
-
-struct BarRow: View {
-    let label: String
-    let value: TimeInterval
-    let total: TimeInterval
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text(label).lineLimit(1)
-                Spacer()
-                Text(Format.duration(value)).monospacedDigit().foregroundStyle(.secondary)
-            }
-            .font(.callout)
-            GeometryReader { proxy in
-                Capsule().fill(color)
-                    .frame(width: max(2, proxy.size.width * value / max(total, 1)))
-            }
-            .frame(height: 5)
-        }
-    }
-}
-
-private struct DailySummary: View {
+private struct DailyReview: View {
     @Environment(AppModel.self) private var model
     let day: Date
     let metrics: DayMetrics
@@ -292,23 +220,32 @@ private struct DailySummary: View {
     @State private var isGenerating = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let text {
-                Text(text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "sparkles").font(.title3).foregroundStyle(.purple)
+            VStack(alignment: .leading, spacing: 8) {
+                if let text {
+                    Text(text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                } else if case .unavailable(let reason) = model.classifier.aiAvailability {
+                    Text("Daily reviews need Apple Intelligence. \(reason)").foregroundStyle(.secondary)
+                } else {
+                    Text("Get a short review of this day and a suggestion for tomorrow, written on device.")
+                        .foregroundStyle(.secondary)
+                }
+                if let error {
+                    Text(error).foregroundStyle(.red).font(.callout)
+                }
             }
-            if let error {
-                Text(error).foregroundStyle(.red).font(.callout)
-            }
-            switch model.classifier.aiAvailability {
-            case .available:
-                Button(text == nil ? "Summarize this day" : "Regenerate") { generate() }
-                    .disabled(isGenerating)
-                if isGenerating { ProgressView().controlSize(.small) }
-            case .unavailable(let reason):
-                Text("On-device summaries need Apple Intelligence. \(reason)")
-                    .font(.callout).foregroundStyle(.secondary)
+            Spacer()
+            if model.classifier.aiAvailability == .available {
+                if isGenerating {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button(text == nil ? "Review My Day" : "Regenerate", action: generate)
+                }
             }
         }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 12).fill(.purple.opacity(0.08)))
     }
 
     private func generate() {
@@ -319,7 +256,7 @@ private struct DailySummary: View {
             do {
                 text = try await model.ai.summarize(facts)
             } catch {
-                self.error = "Could not generate a summary: \(error.localizedDescription)"
+                self.error = "Could not generate a review: \(error.localizedDescription)"
             }
             isGenerating = false
         }
@@ -337,7 +274,7 @@ private struct DailySummary: View {
             Respond in \(language).
             Day: \(day.formatted(date: .complete, time: .omitted))
             Tracked time: \(Format.duration(metrics.activeTime)) (target \(Format.duration(model.preferences.workHoursTarget * 3600)))
-            Focus time: \(Format.duration(metrics.focusTime)); deep work (25+ minute stretches): \(Format.duration(metrics.deepWorkTime))
+            Focus time: \(Format.duration(metrics.focusTime)); deep work (25+ minute stretches): \(Format.duration(metrics.deepWorkTime)); longest focus stretch: \(Format.duration(metrics.longestFocusStretch))
             Meetings: \(Format.duration(metrics.meetingTime)); distracting: \(Format.duration(metrics.distractingTime))
             Context switches: \(metrics.contextSwitches) (\(String(format: "%.0f", metrics.switchesPerHour)) per hour)
             Focus Score: \(metrics.score.map { "\($0.value)/100 (\($0.label))" } ?? "n/a")
@@ -346,5 +283,241 @@ private struct DailySummary: View {
             Top sites: \(sites.joined(separator: ", "))
             Busiest hours: \(busiest.joined(separator: ", "))
             """
+    }
+}
+
+// MARK: - Timeline
+
+/// The hours the user was active, from the first to the last hour with data.
+private func activeHours(_ samples: [SegmentSample], minimumSpan: Int) -> ClosedRange<Date> {
+    let calendar = Calendar.current
+    let first = samples.map(\.start).min() ?? .now
+    let last = samples.map(\.end).max() ?? .now
+    let lower = calendar.dateInterval(of: .hour, for: first)?.start ?? first
+    var upper = calendar.dateInterval(of: .hour, for: last)?.end ?? last
+    let minimumUpper = lower.addingTimeInterval(TimeInterval(minimumSpan * 3600))
+    if upper < minimumUpper { upper = minimumUpper }
+    return lower...upper
+}
+
+private struct TimelineCard: View {
+    @Environment(AppModel.self) private var model
+    let samples: [SegmentSample]
+    @State private var hovered: Date?
+
+    var body: some View {
+        let domain = activeHours(samples, minimumSpan: 2)
+        let hoveredSample = hovered.flatMap { time in samples.first { $0.start <= time && time < $0.end } }
+
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Timeline").font(.headline)
+                Spacer()
+                if let sample = hoveredSample {
+                    let category = model.classifier.category(sample.categoryKey)
+                    HStack(spacing: 6) {
+                        Image(nsImage: AppIcons.icon(for: sample.bundleID)).resizable().frame(width: 14, height: 14)
+                        Text(sample.domain ?? sample.appName).fontWeight(.medium)
+                        Text("\(sample.start.formatted(date: .omitted, time: .shortened))–\(sample.end.formatted(date: .omitted, time: .shortened))")
+                            .foregroundStyle(.secondary)
+                        CategoryChip(category: category)
+                    }
+                    .font(.callout)
+                } else {
+                    Text("Hover to see what you were doing").font(.callout).foregroundStyle(.tertiary)
+                }
+            }
+
+            Chart(Array(samples.enumerated()), id: \.offset) { _, sample in
+                RectangleMark(
+                    xStart: .value("Start", sample.start),
+                    xEnd: .value("End", sample.end),
+                    yStart: .value("Lane", 0),
+                    yEnd: .value("Lane", 1)
+                )
+                .foregroundStyle(model.classifier.category(sample.categoryKey).color)
+                .opacity(hoveredSample == nil || hoveredSample == sample ? 1 : 0.45)
+            }
+            .chartXScale(domain: domain)
+            .chartYScale(domain: 0...1)
+            .chartYAxis(.hidden)
+            .chartXAxis {
+                AxisMarks(values: .stride(by: .hour)) { _ in
+                    AxisGridLine()
+                    AxisValueLabel(format: .dateTime.hour())
+                }
+            }
+            .chartXSelection(value: $hovered)
+            .frame(height: 64)
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 12).fill(.background.secondary))
+    }
+}
+
+// MARK: - Breakdowns
+
+private struct CategoryBreakdown: View {
+    @Environment(AppModel.self) private var model
+    let metrics: DayMetrics
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(metrics.byCategory.sorted { $0.value > $1.value }, id: \.key) { key, value in
+                let category = model.classifier.category(key)
+                BarRow(label: category.name, value: value, total: metrics.activeTime, color: category.color,
+                       detail: Format.percent(value / max(metrics.activeTime, 1)))
+            }
+        }
+    }
+}
+
+/// Time per app, with each browser's sites nested under it so nothing is counted twice.
+private struct AppBreakdown: View {
+    let samples: [SegmentSample]
+    let total: TimeInterval
+    @State private var expanded: Set<String> = []
+
+    private struct Usage {
+        var bundleID: String
+        var name: String
+        var time: TimeInterval = 0
+        var sites: [String: TimeInterval] = [:]
+    }
+
+    var body: some View {
+        let apps = usage()
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(apps.prefix(10), id: \.bundleID) { app in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(nsImage: AppIcons.icon(for: app.bundleID)).resizable().frame(width: 18, height: 18)
+                        BarRow(label: app.name, value: app.time, total: total, color: .accentColor,
+                               detail: Format.percent(app.time / max(total, 1)))
+                        // Every row reserves the same slot so the bars line up.
+                        Group {
+                            if !app.sites.isEmpty {
+                                Button {
+                                    if expanded.contains(app.bundleID) { expanded.remove(app.bundleID) } else { expanded.insert(app.bundleID) }
+                                } label: {
+                                    Image(systemName: expanded.contains(app.bundleID) ? "chevron.up" : "chevron.down")
+                                }
+                                .buttonStyle(.borderless)
+                                .help("\(app.sites.count) site\(app.sites.count == 1 ? "" : "s")")
+                            }
+                        }
+                        .frame(width: 16)
+                    }
+                    if expanded.contains(app.bundleID) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(app.sites.sorted { $0.value > $1.value }.prefix(10), id: \.key) { site, time in
+                                HStack {
+                                    Image(systemName: "globe").foregroundStyle(.tertiary)
+                                    Text(site)
+                                    Spacer()
+                                    Text(Format.duration(time)).monospacedDigit().foregroundStyle(.secondary)
+                                }
+                                .font(.callout)
+                            }
+                        }
+                        .padding(.leading, 26)
+                    }
+                }
+            }
+        }
+    }
+
+    private func usage() -> [Usage] {
+        var apps: [String: Usage] = [:]
+        for sample in samples {
+            var app = apps[sample.bundleID] ?? Usage(bundleID: sample.bundleID, name: sample.appName.isEmpty ? sample.bundleID : sample.appName)
+            app.time += sample.duration
+            if let domain = sample.domain { app.sites[domain, default: 0] += sample.duration }
+            apps[sample.bundleID] = app
+        }
+        return apps.values.sorted { $0.time > $1.time }
+    }
+}
+
+struct BarRow: View {
+    let label: String
+    let value: TimeInterval
+    let total: TimeInterval
+    let color: Color
+    var detail: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label).lineLimit(1)
+                Spacer()
+                if let detail {
+                    Text(detail).monospacedDigit().foregroundStyle(.tertiary)
+                }
+                Text(Format.duration(value)).monospacedDigit().foregroundStyle(.secondary)
+                    .frame(minWidth: 44, alignment: .trailing)
+            }
+            .font(.callout)
+            GeometryReader { proxy in
+                Capsule().fill(color.gradient)
+                    .frame(width: max(3, proxy.size.width * value / max(total, 1)))
+            }
+            .frame(height: 5)
+        }
+    }
+}
+
+// MARK: - By hour
+
+private struct HourSlice: Identifiable {
+    var hour: Date
+    var category: String
+    var minutes: Double
+    var id: String { "\(hour.timeIntervalSince1970)-\(category)" }
+}
+
+private struct HourlyChart: View {
+    @Environment(AppModel.self) private var model
+    let samples: [SegmentSample]
+
+    var body: some View {
+        let slices = Self.slices(samples)
+        let categories = Array(Set(slices.map(\.category))).sorted()
+        let domain = activeHours(samples, minimumSpan: 6)
+
+        Chart(slices) { slice in
+            BarMark(x: .value("Hour", slice.hour, unit: .hour), y: .value("Minutes", slice.minutes))
+                .foregroundStyle(by: .value("Category", model.classifier.category(slice.category).name))
+        }
+        .chartForegroundStyleScale(domain: categories.map { model.classifier.category($0).name },
+                                   range: categories.map { model.classifier.category($0).color })
+        .chartXScale(domain: domain)
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .hour)) { _ in
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.hour())
+            }
+        }
+        .chartYScale(domain: 0...60)
+        .chartYAxis { AxisMarks(values: [0, 30, 60]) }
+        .chartYAxisLabel("min")
+        .frame(height: 180)
+    }
+
+    static func slices(_ samples: [SegmentSample]) -> [HourSlice] {
+        let calendar = Calendar.current
+        var totals: [String: HourSlice] = [:]
+        for sample in samples {
+            var cursor = sample.start
+            while cursor < sample.end {
+                let hour = calendar.dateInterval(of: .hour, for: cursor) ?? DateInterval(start: cursor, duration: 3600)
+                let sliceEnd = min(hour.end, sample.end)
+                let key = "\(hour.start.timeIntervalSince1970)-\(sample.categoryKey)"
+                totals[key, default: HourSlice(hour: hour.start, category: sample.categoryKey, minutes: 0)].minutes
+                    += sliceEnd.timeIntervalSince(cursor) / 60
+                cursor = sliceEnd
+            }
+        }
+        return Array(totals.values)
     }
 }

@@ -48,6 +48,8 @@ public struct DayMetrics: Sendable {
     public var activeTime: TimeInterval = 0
     public var focusTime: TimeInterval = 0
     public var deepWorkTime: TimeInterval = 0
+    /// The longest focus stretch of the day (short interruptions tolerated).
+    public var longestFocusStretch: TimeInterval = 0
     public var meetingTime: TimeInterval = 0
     public var distractingTime: TimeInterval = 0
     public var contextSwitches = 0
@@ -88,7 +90,7 @@ public struct DayMetrics: Sendable {
         }
 
         metrics.contextSwitches = countSwitches(samples, noiseFloor: config.switchNoiseFloor)
-        metrics.deepWorkTime = deepWork(samples, isFocus: isFocus, config: config)
+        (metrics.deepWorkTime, metrics.longestFocusStretch) = focusStretches(samples, isFocus: isFocus, config: config)
         metrics.score = FocusScore.compute(metrics, config: config)
         return metrics
     }
@@ -118,16 +120,20 @@ public struct DayMetrics: Sendable {
         return switches
     }
 
-    /// Sum of focus stretches that last at least `deepWorkMinimum`. Short non-focus
-    /// interruptions are tolerated but don't count towards the stretch; idle gaps end it.
-    static func deepWork(_ samples: [SegmentSample], isFocus: (String) -> Bool, config: FocusScoreConfig) -> TimeInterval {
+    /// Sum of focus stretches that last at least `deepWorkMinimum`, and the longest stretch.
+    /// Short non-focus interruptions are tolerated but don't count towards a stretch; idle
+    /// gaps end it.
+    static func focusStretches(_ samples: [SegmentSample], isFocus: (String) -> Bool,
+                               config: FocusScoreConfig) -> (deepWork: TimeInterval, longest: TimeInterval) {
         var total: TimeInterval = 0
+        var longest: TimeInterval = 0
         var stretch: TimeInterval = 0
         var interruption: TimeInterval = 0
         var lastEnd: Date?
 
         func flush() {
             if stretch >= config.deepWorkMinimum { total += stretch }
+            longest = max(longest, stretch)
             stretch = 0
             interruption = 0
         }
@@ -146,7 +152,7 @@ public struct DayMetrics: Sendable {
             lastEnd = sample.end
         }
         flush()
-        return total
+        return (total, longest)
     }
 }
 
