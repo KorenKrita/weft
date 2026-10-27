@@ -81,9 +81,15 @@ public enum ActivityBlocks {
     ///     around them when the user returns to the same app/site.
     ///   - maxInterruptionShare: folded-in time may not exceed this share of the block's own
     ///     time, so many short detours in a row can't hide a large amount of other activity.
+    ///   - maxFoldedTime: nor this much in total, however long the block. Past it, the next
+    ///     return starts a new row and the detours show up in the list.
+    ///   - maxFoldedCount: nor this many detour segments; a block that busy is fragmented
+    ///     work, not one thing with a few glances away.
     public static func build(_ segments: [ActivitySegment], mergeGap: TimeInterval = 60,
                              maxInterruption: TimeInterval = 120,
-                             maxInterruptionShare: Double = 1.0 / 3) -> [ActivityBlock] {
+                             maxInterruptionShare: Double = 1.0 / 3,
+                             maxFoldedTime: TimeInterval = 5 * 60,
+                             maxFoldedCount: Int = 15) -> [ActivityBlock] {
         var blocks: [ActivityBlock] = []
         for segment in segments.sorted(by: { $0.start < $1.start }) {
             let key = ActivityBlock.key(segment)
@@ -104,10 +110,15 @@ public enum ActivityBlocks {
                 if detour > maxInterruption { break }
             }
             if let target, detour <= maxInterruption,
-               segment.start.timeIntervalSince(blocks[target].end) <= maxInterruption + mergeGap,
-               blocks[target].interruptions.reduce(0, { $0 + $1.duration }) + detour
-                   <= (blocks[target].duration + segment.duration) * maxInterruptionShare {
+               segment.start.timeIntervalSince(blocks[target].end) <= maxInterruption + mergeGap {
                 let absorbed = blocks[(target + 1)...].flatMap { $0.segments + $0.interruptions }
+                let folded = blocks[target].interruptions.reduce(0, { $0 + $1.duration }) + detour
+                guard folded <= (blocks[target].duration + segment.duration) * maxInterruptionShare,
+                      folded <= maxFoldedTime,
+                      blocks[target].interruptions.count + absorbed.count <= maxFoldedCount else {
+                    blocks.append(ActivityBlock(segments: [segment]))
+                    continue
+                }
                 blocks.removeSubrange((target + 1)...)
                 blocks[target].interruptions += absorbed
                 blocks[target].segments.append(segment)

@@ -64,7 +64,7 @@ private struct ActivityRow: View {
     var body: some View {
         let category = model.classifier.category(group.first.categoryKey)
         HStack(alignment: .top, spacing: 10) {
-            Text("\(group.start.formatted(date: .omitted, time: .shortened))–\(group.end.formatted(date: .omitted, time: .shortened))")
+            Text(timeRange)
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(width: 120, alignment: .leading)
@@ -92,6 +92,13 @@ private struct ActivityRow: View {
                 .frame(width: 150, alignment: .trailing)
         }
         .padding(.vertical, 6)
+    }
+
+    /// "15:36–15:37", or just "16:30" when it starts and ends in the same minute.
+    private var timeRange: String {
+        let start = group.start.formatted(date: .omitted, time: .shortened)
+        let end = group.end.formatted(date: .omitted, time: .shortened)
+        return start == end ? start : "\(start)–\(end)"
     }
 }
 

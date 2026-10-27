@@ -50,6 +50,35 @@ struct ActivityBlocksTests {
         #expect(blocks.contains { $0.first.bundleID == "tv" })
     }
 
+    @Test func foldedTimeIsCappedInLongBlocks() {
+        // An hour in the terminal with a 50 s detour every 5 minutes: each detour is fine,
+        // and the share stays small, but 10 minutes away shouldn't vanish into one row.
+        var segments: [ActivitySegment] = []
+        for i in 0..<12 {
+            let base = Double(i) * 300
+            segments.append(seg(base, 250, "term"))
+            segments.append(seg(base + 250, 50, "chat", category: "messaging"))
+        }
+        let blocks = ActivityBlocks.build(segments)
+        for block in blocks {
+            #expect(block.interruptions.reduce(0) { $0 + $1.duration } <= 5 * 60)
+        }
+        #expect(blocks.filter { $0.first.bundleID == "term" }.count > 1)
+    }
+
+    @Test func busyBlocksStopFolding() {
+        // Lots of tiny switches: within the time caps, but too many to call it one thing.
+        var segments: [ActivitySegment] = []
+        for i in 0..<30 {
+            let base = Double(i) * 70
+            segments.append(seg(base, 65, "term"))
+            segments.append(seg(base + 65, 5, "chrome", domain: "news.com", category: "browsing"))
+        }
+        let blocks = ActivityBlocks.build(segments)
+        #expect(blocks.allSatisfy { $0.interruptions.count <= 15 })
+        #expect(blocks.contains { $0.first.bundleID == "chrome" })
+    }
+
     @Test func longDetourStaysSeparate() {
         let blocks = ActivityBlocks.build([
             seg(0, 300, "term"), seg(300, 200, "tv", category: "entertainment"), seg(500, 300, "term"),
