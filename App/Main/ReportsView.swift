@@ -4,28 +4,43 @@ import SwiftData
 import SwiftUI
 
 struct ReportsView: View {
-    /// Last day shown; the report covers the seven days ending here.
-    @State private var endDay = Calendar.current.startOfDay(for: .now)
+    /// First day of the calendar week shown.
+    @State private var weekStart = ReportsView.week(containing: .now).start
 
     var body: some View {
-        WeekReport(endDay: endDay)
-            .id(endDay)
+        let week = ReportsView.week(containing: weekStart)
+        let isCurrent = week.contains(.now)
+        WeekReport(start: week.start)
+            .id(week.start)
             .navigationTitle("Reports")
+            .navigationSubtitle(rangeLabel(week))
             .toolbar {
                 ToolbarItemGroup {
-                    Button { shift(-7) } label: { Image(systemName: "chevron.left") }
-                    Button("This Week") { endDay = Calendar.current.startOfDay(for: .now) }
-                        .disabled(Calendar.current.isDateInToday(endDay))
-                    Button { shift(7) } label: { Image(systemName: "chevron.right") }
-                        .disabled(Calendar.current.isDateInToday(endDay))
+                    Button { shift(-1) } label: { Image(systemName: "chevron.left") }
+                        .help("Previous week")
+                        .keyboardShortcut(.leftArrow, modifiers: .command)
+                    Button("This Week") { weekStart = ReportsView.week(containing: .now).start }
+                        .disabled(isCurrent)
+                    Button { shift(1) } label: { Image(systemName: "chevron.right") }
+                        .help("Next week")
+                        .disabled(isCurrent)
+                        .keyboardShortcut(.rightArrow, modifiers: .command)
                 }
             }
     }
 
-    private func shift(_ days: Int) {
-        let today = Calendar.current.startOfDay(for: .now)
-        let next = Calendar.current.date(byAdding: .day, value: days, to: endDay) ?? endDay
-        endDay = min(next, today)
+    static func week(containing date: Date) -> DateInterval {
+        Calendar.current.dateInterval(of: .weekOfYear, for: date)
+            ?? DateInterval(start: Calendar.current.startOfDay(for: date), duration: 7 * 86400)
+    }
+
+    private func rangeLabel(_ week: DateInterval) -> String {
+        let last = week.end.addingTimeInterval(-1)
+        return "\(week.start.formatted(.dateTime.month().day())) – \(last.formatted(.dateTime.month().day().year()))"
+    }
+
+    private func shift(_ weeks: Int) {
+        weekStart = Calendar.current.date(byAdding: .weekOfYear, value: weeks, to: weekStart) ?? weekStart
     }
 }
 
@@ -47,11 +62,14 @@ private struct WeekReport: View {
     @Query private var segments: [ActivitySegment]
     private let days: [Date]
 
-    init(endDay: Date) {
+    /// Categories beyond this many share one grey "Other" in the chart.
+    private let chartCategories = 5
+    private static let otherKey = "__other"
+
+    init(start: Date) {
         let calendar = Calendar.current
-        days = (0..<7).reversed().compactMap { calendar.date(byAdding: .day, value: -$0, to: endDay) }
-        let start = days.first ?? endDay
-        let end = calendar.date(byAdding: .day, value: 1, to: endDay) ?? endDay
+        days = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
+        let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
         _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > start && $0.start < end }, sort: \.start)
     }
 
@@ -69,30 +87,32 @@ private struct WeekReport: View {
         }
         let scores = stats.compactMap { $0.metrics.score?.value }
         let tracked = stats.filter { $0.metrics.activeTime > 0 }.count
+        let average = scores.isEmpty ? nil : scores.reduce(0, +) / scores.count
+        // Matches the score ring: short days aren't graded yet.
+        let isEarly = stats.allSatisfy { $0.metrics.score == nil || $0.metrics.activeTime < 2 * 3600 }
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(spacing: 12) {
-                    summaryTile("Tracked", Format.duration(total.activeTime),
-                                "\(Format.duration(total.activeTime / Double(max(tracked, 1)))) per active day")
-                    summaryTile("Focus", Format.duration(total.focusTime), "\(Format.duration(total.deepWorkTime)) deep work")
-                    summaryTile("Meetings", Format.duration(total.meetingTime), " ")
-                    summaryTile("Distracted", Format.duration(total.distractingTime), " ")
-                    summaryTile("Avg. Focus Score", scores.isEmpty ? "–" : "\(scores.reduce(0, +) / scores.count)",
-                                scores.isEmpty ? "No Score" : FocusScore.label(for: scores.reduce(0, +) / scores.count))
-                }
-                Card("Time by category") { categoryChart(stats) }
-                Card("Focus Score") { scoreChart(stats) }
-                Card("Categories this week") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(total.byCategory.sorted { $0.value > $1.value }, id: \.key) { key, value in
-                            let category = model.classifier.category(key)
-                            BarRow(label: category.name, value: value, total: total.activeTime, color: category.color)
-                        }
+            if total.activeTime == 0 {
+                ContentUnavailableView("No activity this week", systemImage: "chart.bar",
+                                       description: Text("Nothing was tracked between these dates."))
+                    .frame(maxWidth: .infinity, minHeight: 400)
+            } else {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack(spacing: 12) {
+                        summaryTile("Tracked", total.activeTime,
+                                    "\(Format.duration(total.activeTime / Double(max(tracked, 1)))) a day over \(tracked) day\(tracked == 1 ? "" : "s")")
+                        summaryTile("Focus", total.focusTime, "\(Format.duration(total.deepWorkTime)) deep work")
+                        summaryTile("Meetings", total.meetingTime, share(total.meetingTime, of: total.activeTime))
+                        summaryTile("Distracted", total.distractingTime, share(total.distractingTime, of: total.activeTime))
+                        tile("Avg. Focus Score", average.map(String.init) ?? "–", isEmpty: average == nil,
+                             average.map { isEarly ? "Early estimate" : FocusScore.label(for: $0) } ?? "No score yet")
                     }
+                    Card("Time by category") { categoryChart(stats, total: total) }
+                    Card("Focus Score") { scoreChart(stats) }
+                    Card("Categories this week") { CategoryBreakdown(metrics: total) }
                 }
+                .padding(20)
             }
-            .padding(20)
         }
     }
 
@@ -111,37 +131,73 @@ private struct WeekReport: View {
         }
     }
 
-    private func categoryChart(_ stats: [DayStat]) -> some View {
+    private func categoryChart(_ stats: [DayStat], total: DayMetrics) -> some View {
+        // Biggest first, so the bars stack the same way every day and the legend reads in order.
+        let ranked = total.byCategory.sorted { $0.value > $1.value }.map(\.key)
+        let shown = Array(ranked.prefix(ranked.count > chartCategories + 1 ? chartCategories : ranked.count))
+        let keys = shown + (ranked.count > shown.count ? [Self.otherKey] : [])
         let rows = stats.flatMap { stat in
-            stat.metrics.byCategory.map { DayCategory(day: stat.day, category: $0.key, hours: $0.value / 3600) }
+            var hours: [String: Double] = [:]
+            for (key, value) in stat.metrics.byCategory {
+                hours[shown.contains(key) ? key : Self.otherKey, default: 0] += value / 3600
+            }
+            return keys.compactMap { key in hours[key].map { DayCategory(day: stat.day, category: key, hours: $0) } }
         }
-        let keys = Array(Set(rows.map(\.category))).sorted()
-        return Chart(rows) { row in
-            BarMark(x: .value("Day", row.day, unit: .day), y: .value("Hours", row.hours))
-                .foregroundStyle(by: .value("Category", model.classifier.category(row.category).name))
+        let target = model.preferences.workHoursTarget
+        return Chart {
+            ForEach(rows) { row in
+                BarMark(x: .value("Day", row.day, unit: .day), y: .value("Hours", row.hours))
+                    .foregroundStyle(by: .value("Category", name(row.category)))
+            }
+            if target > 0 {
+                RuleMark(y: .value("Target", target))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .foregroundStyle(Color.secondary)
+                    .annotation(position: .top, alignment: .trailing) {
+                        Text("Target \(Format.duration(target * 3600))").font(.caption2).foregroundStyle(.secondary)
+                    }
+            }
         }
-        .chartForegroundStyleScale(domain: keys.map { model.classifier.category($0).name },
-                                   range: keys.map { model.classifier.category($0).color })
+        .chartForegroundStyleScale(domain: keys.map(name), range: keys.map(color))
         .chartXScale(domain: weekDomain)
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.abbreviated).day()) }
+            AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.abbreviated).day(), centered: true) }
         }
         .chartYAxisLabel("hours")
         .frame(height: 240)
     }
 
+    private func name(_ key: String) -> String {
+        key == Self.otherKey ? "Other" : model.classifier.category(key).name
+    }
+
+    private func color(_ key: String) -> Color {
+        key == Self.otherKey ? .gray.opacity(0.5) : model.classifier.category(key).color
+    }
+
     private func scoreChart(_ stats: [DayStat]) -> some View {
-        Chart(stats.filter { $0.metrics.score != nil }) { stat in
-            LineMark(x: .value("Day", stat.day, unit: .day), y: .value("Score", stat.metrics.score?.value ?? 0))
-            PointMark(x: .value("Day", stat.day, unit: .day), y: .value("Score", stat.metrics.score?.value ?? 0))
-                .annotation(position: .top) { Text("\(stat.metrics.score?.value ?? 0)").font(.caption2) }
+        // Only consecutive days are joined, so a gap doesn't read as a trend.
+        var run = 0
+        var points: [(stat: DayStat, run: Int)] = []
+        for stat in stats {
+            if stat.metrics.score == nil { run += 1 } else { points.append((stat, run)) }
         }
+        return Chart(points, id: \.stat.id) { point in
+            let value = point.stat.metrics.score?.value ?? 0
+            LineMark(x: .value("Day", point.stat.day, unit: .day), y: .value("Score", value))
+                .foregroundStyle(by: .value("Run", point.run))
+            PointMark(x: .value("Day", point.stat.day, unit: .day), y: .value("Score", value))
+                .foregroundStyle(by: .value("Run", point.run))
+                .annotation(position: .top) { Text("\(value)").font(.caption2) }
+        }
+        .chartForegroundStyleScale(range: [Color.accentColor])
+        .chartLegend(.hidden)
         .chartXScale(domain: weekDomain)
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.abbreviated).day()) }
+            AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.abbreviated).day(), centered: true) }
         }
         .chartYScale(domain: 0...100)
-        .frame(height: 160)
+        .frame(height: 140)
     }
 
     /// Always show all seven days, even when only one has data.
@@ -151,11 +207,20 @@ private struct WeekReport: View {
         return start...end
     }
 
-    private func summaryTile(_ title: String, _ value: String, _ detail: String) -> some View {
+    private func share(_ value: TimeInterval, of total: TimeInterval) -> String {
+        value == 0 ? "None" : "\(Format.percent(value / max(total, 1))) of tracked time"
+    }
+
+    private func summaryTile(_ title: String, _ value: TimeInterval, _ detail: String) -> some View {
+        tile(title, Format.duration(value), isEmpty: value == 0, detail)
+    }
+
+    private func tile(_ title: String, _ value: String, isEmpty: Bool, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             Text(value).font(.system(size: 22, weight: .semibold, design: .rounded)).monospacedDigit()
-            Text(detail).font(.caption2).foregroundStyle(.secondary)
+                .foregroundStyle(isEmpty ? .tertiary : .primary)
+            Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)

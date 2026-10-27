@@ -334,7 +334,7 @@ private struct DailyReview: View {
 
 // MARK: - Breakdowns
 
-private struct CategoryBreakdown: View {
+struct CategoryBreakdown: View {
     @Environment(AppModel.self) private var model
     let metrics: DayMetrics
 
