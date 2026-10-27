@@ -9,6 +9,7 @@ private struct NoAI: AIClassifying {
         throw ClassificationError.unknownCategory("")
     }
     func summarize(_ facts: String) async throws -> String { "" }
+    func describeActivity(_ facts: String, language: String) async throws -> String { "" }
 }
 
 @MainActor

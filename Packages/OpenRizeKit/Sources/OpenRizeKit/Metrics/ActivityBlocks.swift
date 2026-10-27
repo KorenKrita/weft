@@ -47,11 +47,30 @@ public struct ActivityBlock: Identifiable {
         if let range = title.range(of: " - \(appName)", options: .backwards) {
             title = String(title[..<range.lowerBound])
         }
-        title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        title = stripStatusPrefix(title.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !title.isEmpty, title != appName else { return nil }
         let longestWord = title.split(whereSeparator: \.isWhitespace).map(\.count).max() ?? 0
         if longestWord > 40 { return nil }
         return title
+    }
+}
+
+extension ActivityBlock {
+    /// Terminals prefix titles with a tab number and an animated status glyph
+    /// ("1. ✳ project", "1. ◐ project"); drop them so one window isn't many titles.
+    static func stripStatusPrefix(_ title: String) -> String {
+        var rest = Substring(title)
+        if let dot = rest.firstIndex(of: "."), dot > rest.startIndex, rest[..<dot].allSatisfy(\.isNumber),
+           rest.index(after: dot) < rest.endIndex, rest[rest.index(after: dot)] == " " {
+            rest = rest[rest.index(after: dot)...]
+        }
+        while let first = rest.unicodeScalars.first,
+              first.properties.isWhitespace
+                || [.otherSymbol, .mathSymbol].contains(first.properties.generalCategory)
+                || (0x2800...0x28FF).contains(first.value) {  // braille spinners
+            rest = rest.dropFirst()
+        }
+        return rest.isEmpty ? title : String(rest)
     }
 }
 

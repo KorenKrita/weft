@@ -40,6 +40,7 @@ final class AppModel {
     let tracker: ActivityTracker
     let sessions: SessionEngine
     let distractionGuard: DistractionGuard
+    let timeEntries: TimeEntryService
 
     var page: Page = .today
     /// Set by a view that has access to `openWindow`.
@@ -63,6 +64,7 @@ final class AppModel {
         tracker = ActivityTracker(modelContext: context, classifier: classifier, preferences: preferences)
         sessions = SessionEngine(modelContext: context, classifier: classifier)
         distractionGuard = DistractionGuard(preferences: preferences, sessions: sessions, notifier: notifier)
+        timeEntries = TimeEntryService(modelContext: context, ai: ai)
         breakReminder = BreakReminder(preferences: preferences, sessions: sessions, notifier: notifier)
         workHours = WorkHoursMonitor(preferences: preferences, notifier: notifier, modelContext: context)
 
@@ -70,6 +72,18 @@ final class AppModel {
         notifier.requestAuthorization()
         tracker.start()
         classifier.retryPending()
+        describeTimeEntriesPeriodically()
+    }
+
+    /// Describes finished time entries in the background so the timeline is ready when opened.
+    private func describeTimeEntriesPeriodically() {
+        Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                self?.timeEntries.describeToday()
+                try? await Task.sleep(for: .seconds(270))
+            }
+        }
     }
 
     private func wire() {

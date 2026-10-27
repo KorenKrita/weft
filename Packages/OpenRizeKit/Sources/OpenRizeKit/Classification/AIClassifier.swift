@@ -26,6 +26,8 @@ public protocol AIClassifying: Sendable {
     func availability() -> AIAvailability
     func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification
     func summarize(_ facts: String) async throws -> String
+    /// One sentence describing a stretch of activity, in `language`.
+    func describeActivity(_ facts: String, language: String) async throws -> String
 }
 
 /// Classifies activity with Apple's on-device Foundation Models. The category list is
@@ -97,6 +99,23 @@ public struct FoundationModelsClassifier: AIClassifying {
         let confidence = try response.content.value(String.self, forProperty: "confidence")
         guard keys.contains(key) else { throw ClassificationError.unknownCategory(key) }
         return AIClassification(categoryKey: key, confidence: AIConfidence(rawValue: confidence) ?? .low)
+    }
+
+    public func describeActivity(_ facts: String, language: String) async throws -> String {
+        // A native example per language keeps the output from reading like a translation.
+        let example = language.localizedCaseInsensitiveContains("Chinese")
+            ? "在终端里开发 openrize 应用，在 GitHub 上查看 ActivityWatch 仓库，并调研了时间追踪工具的替代方案。"
+            : "Worked on the openrize app in the terminal, reviewed the ActivityWatch repo on GitHub and researched time-tracking alternatives."
+        let session = LanguageModelSession(instructions: """
+            You write entries for a personal timesheet. Given the apps, websites and window \
+            titles from a stretch of computer use, write ONE sentence (at most 30 words) that \
+            says what the person did. Cover the two or three main things, naming the concrete \
+            projects, topics or pages from the titles, and how (e.g. in the terminal, on GitHub). \
+            Never mention durations, percentages or yourself.
+            Write the sentence in \(language), as naturally as a native speaker would. Example:
+            \(example)
+            """)
+        return try await session.respond(to: facts).content
     }
 
     /// `public.app-category.developer-tools` → `developer tools`, from the app's Info.plist.

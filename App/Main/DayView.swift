@@ -31,9 +31,25 @@ struct DayView: View {
     }
 }
 
+enum DayTab: String, CaseIterable, Identifiable {
+    case timeline, breakdown, log
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .timeline: "Timeline"
+        case .breakdown: "Categories & Apps"
+        case .log: "Log"
+        }
+    }
+}
+
 private struct DayContent: View {
     @Environment(AppModel.self) private var model
     @Query private var segments: [ActivitySegment]
+    @Query private var sessions: [SessionRecord]
+    @AppStorage("todayTab") private var tab: DayTab = .timeline
     private let day: Date
     private let dayEnd: Date
 
@@ -42,6 +58,7 @@ private struct DayContent: View {
         let end = Calendar.current.date(byAdding: .day, value: 1, to: day) ?? day
         dayEnd = end
         _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > day && $0.start < end }, sort: \.start)
+        _sessions = Query(filter: #Predicate<SessionRecord> { $0.end > day && $0.start < end }, sort: \.start)
     }
 
     var body: some View {
@@ -52,6 +69,7 @@ private struct DayContent: View {
             return sample
         }
         let metrics = DayMetrics.compute(samples, categories: model.classifier.categoryLookup)
+        let entries = TimeEntries.significant(TimeEntries.build(segments))
 
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -62,16 +80,34 @@ private struct DayContent: View {
                 } else {
                     Overview(metrics: metrics, target: model.preferences.workHoursTarget * 3600)
                     DailyReview(day: day, metrics: metrics)
-                    TimelineCard(samples: samples)
-                    HStack(alignment: .top, spacing: 16) {
-                        Card("Categories") { CategoryBreakdown(metrics: metrics) }
-                        Card("Apps & sites") { AppBreakdown(samples: samples, total: metrics.activeTime) }
+                    VStack(alignment: .leading, spacing: 14) {
+                        Picker("View", selection: $tab) {
+                            ForEach(DayTab.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
+                        switch tab {
+                        case .timeline:
+                            DayTimeline(day: day, segments: segments, sessions: sessions)
+                        case .breakdown:
+                            HStack(alignment: .top, spacing: 16) {
+                                Card("Categories") { CategoryBreakdown(metrics: metrics) }
+                                Card("Apps & sites") { AppBreakdown(samples: samples, total: metrics.activeTime) }
+                            }
+                        case .log:
+                            ActivityList(segments: segments)
+                        }
                     }
-                    Card("By hour") { HourlyChart(samples: samples) }
-                    Card("Activity") { ActivityList(segments: segments) }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(.background.secondary))
                 }
             }
             .padding(20)
+        }
+        // Describe finished entries of the day being viewed, including past days.
+        .task(id: "\(entries.count)-\(entries.last?.key ?? "")") {
+            model.timeEntries.describe(entries)
         }
     }
 }
@@ -286,75 +322,6 @@ private struct DailyReview: View {
     }
 }
 
-// MARK: - Timeline
-
-/// The hours the user was active, from the first to the last hour with data.
-private func activeHours(_ samples: [SegmentSample], minimumSpan: Int) -> ClosedRange<Date> {
-    let calendar = Calendar.current
-    let first = samples.map(\.start).min() ?? .now
-    let last = samples.map(\.end).max() ?? .now
-    let lower = calendar.dateInterval(of: .hour, for: first)?.start ?? first
-    var upper = calendar.dateInterval(of: .hour, for: last)?.end ?? last
-    let minimumUpper = lower.addingTimeInterval(TimeInterval(minimumSpan * 3600))
-    if upper < minimumUpper { upper = minimumUpper }
-    return lower...upper
-}
-
-private struct TimelineCard: View {
-    @Environment(AppModel.self) private var model
-    let samples: [SegmentSample]
-    @State private var hovered: Date?
-
-    var body: some View {
-        let domain = activeHours(samples, minimumSpan: 2)
-        let hoveredSample = hovered.flatMap { time in samples.first { $0.start <= time && time < $0.end } }
-
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Timeline").font(.headline)
-                Spacer()
-                if let sample = hoveredSample {
-                    let category = model.classifier.category(sample.categoryKey)
-                    HStack(spacing: 6) {
-                        Image(nsImage: AppIcons.icon(for: sample.bundleID)).resizable().frame(width: 14, height: 14)
-                        Text(sample.domain ?? sample.appName).fontWeight(.medium)
-                        Text("\(sample.start.formatted(date: .omitted, time: .shortened))–\(sample.end.formatted(date: .omitted, time: .shortened))")
-                            .foregroundStyle(.secondary)
-                        CategoryChip(category: category)
-                    }
-                    .font(.callout)
-                } else {
-                    Text("Hover to see what you were doing").font(.callout).foregroundStyle(.tertiary)
-                }
-            }
-
-            Chart(Array(samples.enumerated()), id: \.offset) { _, sample in
-                RectangleMark(
-                    xStart: .value("Start", sample.start),
-                    xEnd: .value("End", sample.end),
-                    yStart: .value("Lane", 0),
-                    yEnd: .value("Lane", 1)
-                )
-                .foregroundStyle(model.classifier.category(sample.categoryKey).color)
-                .opacity(hoveredSample == nil || hoveredSample == sample ? 1 : 0.45)
-            }
-            .chartXScale(domain: domain)
-            .chartYScale(domain: 0...1)
-            .chartYAxis(.hidden)
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .hour)) { _ in
-                    AxisGridLine()
-                    AxisValueLabel(format: .dateTime.hour())
-                }
-            }
-            .chartXSelection(value: $hovered)
-            .frame(height: 64)
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12).fill(.background.secondary))
-    }
-}
-
 // MARK: - Breakdowns
 
 private struct CategoryBreakdown: View {
@@ -464,60 +431,5 @@ struct BarRow: View {
             }
             .frame(height: 5)
         }
-    }
-}
-
-// MARK: - By hour
-
-private struct HourSlice: Identifiable {
-    var hour: Date
-    var category: String
-    var minutes: Double
-    var id: String { "\(hour.timeIntervalSince1970)-\(category)" }
-}
-
-private struct HourlyChart: View {
-    @Environment(AppModel.self) private var model
-    let samples: [SegmentSample]
-
-    var body: some View {
-        let slices = Self.slices(samples)
-        let categories = Array(Set(slices.map(\.category))).sorted()
-        let domain = activeHours(samples, minimumSpan: 6)
-
-        Chart(slices) { slice in
-            BarMark(x: .value("Hour", slice.hour, unit: .hour), y: .value("Minutes", slice.minutes))
-                .foregroundStyle(by: .value("Category", model.classifier.category(slice.category).name))
-        }
-        .chartForegroundStyleScale(domain: categories.map { model.classifier.category($0).name },
-                                   range: categories.map { model.classifier.category($0).color })
-        .chartXScale(domain: domain)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .hour)) { _ in
-                AxisGridLine()
-                AxisValueLabel(format: .dateTime.hour())
-            }
-        }
-        .chartYScale(domain: 0...60)
-        .chartYAxis { AxisMarks(values: [0, 30, 60]) }
-        .chartYAxisLabel("min")
-        .frame(height: 180)
-    }
-
-    static func slices(_ samples: [SegmentSample]) -> [HourSlice] {
-        let calendar = Calendar.current
-        var totals: [String: HourSlice] = [:]
-        for sample in samples {
-            var cursor = sample.start
-            while cursor < sample.end {
-                let hour = calendar.dateInterval(of: .hour, for: cursor) ?? DateInterval(start: cursor, duration: 3600)
-                let sliceEnd = min(hour.end, sample.end)
-                let key = "\(hour.start.timeIntervalSince1970)-\(sample.categoryKey)"
-                totals[key, default: HourSlice(hour: hour.start, category: sample.categoryKey, minutes: 0)].minutes
-                    += sliceEnd.timeIntervalSince(cursor) / 60
-                cursor = sliceEnd
-            }
-        }
-        return Array(totals.values)
     }
 }

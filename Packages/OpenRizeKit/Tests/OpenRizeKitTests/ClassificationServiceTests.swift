@@ -19,6 +19,7 @@ private final class FakeAI: AIClassifying, @unchecked Sendable {
     }
 
     func summarize(_ facts: String) async throws -> String { "" }
+    func describeActivity(_ facts: String, language: String) async throws -> String { "" }
 }
 
 @MainActor

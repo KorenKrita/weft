@@ -77,4 +77,12 @@ struct ActivityBlocksTests {
         ])
         #expect(blocks[0].titles == ["Long read", "Short"])
     }
+
+    @Test func terminalStatusPrefixesAreStripped() {
+        #expect(ActivityBlock.stripStatusPrefix("1. ✳ openrize-macos-swiftui-app") == "openrize-macos-swiftui-app")
+        #expect(ActivityBlock.stripStatusPrefix("1. ◐ openrize-macos-swiftui-app") == "openrize-macos-swiftui-app")
+        #expect(ActivityBlock.stripStatusPrefix("⠋ building") == "building")
+        #expect(ActivityBlock.stripStatusPrefix("3.14 release notes") == "3.14 release notes")
+        #expect(ActivityBlock.stripStatusPrefix("Pull request #12") == "Pull request #12")
+    }
 }

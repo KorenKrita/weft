@@ -50,4 +50,22 @@ struct FoundationModelsHarness {
         print("[harness] Xcode → \(result.categoryKey) (\(result.confidence.rawValue))")
         #expect(result.categoryKey == "code")
     }
+
+    @Test func describesAStretchOfWork() async throws {
+        let facts = """
+            Time: 12:16–12:54, 36 minutes active
+            Apps and websites: iTerm2 22m, github.com 6m, localhost 4m, claude.ai 2m, Xcode 2m
+            Window titles, most time first:
+            - 1. ✳ openrize-macos-swiftui-app
+            - ActivityWatch/activitywatch: The best free and open-source automated time tracker
+            - ssh build-server
+            - OpenRize – DayView.swift
+            - Rize alternatives for macOS
+            """
+        for language in ["English", "Chinese"] {
+            let text = try await classifier.describeActivity(facts, language: language)
+            print("[harness] \(language): \(text)")
+            #expect(!text.isEmpty && text.count < 300)
+        }
+    }
 }

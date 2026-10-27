@@ -164,9 +164,24 @@ public final class SessionRecord {
     public var kind: SessionKind { SessionKind(rawValue: kindRaw) ?? .focus }
 }
 
+/// A generated description of a time entry, keyed by `TimeEntry.key`.
+@Model
+public final class TimeEntrySummary {
+    @Attribute(.unique) public var key: String
+    public var text: String
+    public var createdAt: Date
+
+    public init(key: String, text: String) {
+        self.key = key
+        self.text = text
+        createdAt = .now
+    }
+}
+
 public enum OpenRizeSchema {
     public static let models: [any PersistentModel.Type] = [
         ActivitySegment.self, CategoryRecord.self, UserRule.self, AIClassificationRecord.self, SessionRecord.self,
+        TimeEntrySummary.self,
     ]
 
     /// Store under `~/Library/Application Support/OpenRize/`.
