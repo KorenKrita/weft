@@ -1,0 +1,116 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.16863,0.19608,0.43922,1.00000",
+          "srgb:0.04314,0.05098,0.12157,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.10196,0.11765,0.27059,1.00000",
+          "srgb:0.01961,0.02353,0.05882,1.00000"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "Focus",
+      "layers": [
+        {
+          "name": "Dot",
+          "image-name": "dot.svg",
+          "glass": true,
+          "fill-specializations": [
+            {
+              "value": {
+                "linear-gradient": [
+                  "srgb:1.00000,1.00000,1.00000,1.00000",
+                  "srgb:0.83922,0.87843,1.00000,1.00000"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.6
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.2
+      },
+      "lighting": "combined"
+    },
+    {
+      "name": "Ring",
+      "layers": [
+        {
+          "name": "Segment 1",
+          "image-name": "segment-1.svg",
+          "glass": true
+        },
+        {
+          "name": "Segment 2",
+          "image-name": "segment-2.svg",
+          "glass": true
+        },
+        {
+          "name": "Segment 3",
+          "image-name": "segment-3.svg",
+          "glass": true
+        },
+        {
+          "name": "Segment 4",
+          "image-name": "segment-4.svg",
+          "glass": true
+        },
+        {
+          "name": "Segment 5",
+          "image-name": "segment-5.svg",
+          "glass": true
+        }
+      ],
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.35
+      },
+      "lighting": "individual"
+    },
+    {
+      "name": "Track",
+      "layers": [
+        {
+          "name": "Track",
+          "image-name": "track.svg",
+          "glass": false,
+          "opacity": 0.08
+        }
+      ],
+      "shadow": {
+        "kind": "none",
+        "opacity": 0
+      },
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}
