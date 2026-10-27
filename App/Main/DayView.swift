@@ -256,13 +256,23 @@ private struct DailyReview: View {
     @State private var isGenerating = false
 
     var body: some View {
+        if text == nil, case .unavailable(let reason) = model.classifier.aiAvailability {
+            // Nothing to act on here, so keep it out of the way.
+            Label("Daily reviews need Apple Intelligence. \(reason)", systemImage: "sparkles")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+        } else {
+            card
+        }
+    }
+
+    private var card: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "sparkles").font(.title3).foregroundStyle(.purple)
             VStack(alignment: .leading, spacing: 8) {
                 if let text {
                     Text(text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                } else if case .unavailable(let reason) = model.classifier.aiAvailability {
-                    Text("Daily reviews need Apple Intelligence. \(reason)").foregroundStyle(.secondary)
                 } else {
                     Text("Get a short review of this day and a suggestion for tomorrow, written on device.")
                         .foregroundStyle(.secondary)
@@ -328,12 +338,37 @@ private struct CategoryBreakdown: View {
     @Environment(AppModel.self) private var model
     let metrics: DayMetrics
 
+    @State private var showAll = false
+
     var body: some View {
+        let sorted = metrics.byCategory.sorted { $0.value > $1.value }
+        // The top few, plus anything with a real share of the day; the rest is one row.
+        let main = sorted.enumerated().filter { $0.offset < 4 || $0.element.value >= metrics.activeTime * 0.05 }.map(\.element)
+        let rest = sorted.dropFirst(main.count)
+        let restTime = rest.reduce(0) { $0 + $1.value }
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(metrics.byCategory.sorted { $0.value > $1.value }, id: \.key) { key, value in
+            ForEach(showAll ? sorted : main, id: \.key) { key, value in
                 let category = model.classifier.category(key)
                 BarRow(label: category.name, value: value, total: metrics.activeTime, color: category.color,
                        detail: Format.percent(value / max(metrics.activeTime, 1)))
+            }
+            if !rest.isEmpty {
+                Button {
+                    withAnimation(.snappy) { showAll.toggle() }
+                } label: {
+                    HStack {
+                        Text(showAll ? "Show less" : "\(rest.count) more · \(rest.map { model.classifier.category($0.key).name }.prefix(3).joined(separator: ", "))\(rest.count > 3 ? "…" : "")")
+                            .lineLimit(1)
+                        Spacer()
+                        if !showAll {
+                            Text(Format.duration(restTime)).monospacedDigit()
+                        }
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -341,6 +376,7 @@ private struct CategoryBreakdown: View {
 
 /// Time per app, with each browser's sites nested under it so nothing is counted twice.
 private struct AppBreakdown: View {
+    @Environment(AppModel.self) private var model
     let samples: [SegmentSample]
     let total: TimeInterval
     @State private var expanded: Set<String> = []
@@ -350,6 +386,9 @@ private struct AppBreakdown: View {
         var name: String
         var time: TimeInterval = 0
         var sites: [String: TimeInterval] = [:]
+        var categories: [String: TimeInterval] = [:]
+        /// Where most of the app's time went, to color its bar.
+        var mainCategory: String? { categories.max { $0.value < $1.value }?.key }
     }
 
     var body: some View {
@@ -359,7 +398,8 @@ private struct AppBreakdown: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Image(nsImage: AppIcons.icon(for: app.bundleID)).resizable().frame(width: 18, height: 18)
-                        BarRow(label: app.name, value: app.time, total: total, color: .accentColor,
+                        BarRow(label: app.name, value: app.time, total: total,
+                               color: app.mainCategory.map { model.classifier.category($0).color } ?? .accentColor,
                                detail: Format.percent(app.time / max(total, 1)))
                         // Every row reserves the same slot so the bars line up.
                         ZStack {
@@ -400,6 +440,7 @@ private struct AppBreakdown: View {
         for sample in samples {
             var app = apps[sample.bundleID] ?? Usage(bundleID: sample.bundleID, name: sample.appName.isEmpty ? sample.bundleID : sample.appName)
             app.time += sample.duration
+            app.categories[sample.categoryKey, default: 0] += sample.duration
             if let domain = sample.domain { app.sites[domain, default: 0] += sample.duration }
             apps[sample.bundleID] = app
         }

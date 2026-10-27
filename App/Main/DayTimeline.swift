@@ -57,14 +57,16 @@ struct DayTimeline: View {
                             }
                         }
                         .frame(height: height)
-                        ZStack(alignment: .topLeading) {
-                            ForEach(sessions) { session in
-                                SessionBlockView(session: session)
-                                    .frame(width: sessionColumn, height: max(4, y(session.end, range) - y(session.start, range) - 2))
-                                    .offset(y: y(session.start, range))
+                        if !sessions.isEmpty {
+                            ZStack(alignment: .topLeading) {
+                                ForEach(sessions) { session in
+                                    SessionBlockView(session: session)
+                                        .frame(width: sessionColumn, height: max(4, y(session.end, range) - y(session.start, range) - 2))
+                                        .offset(y: y(session.start, range))
+                                }
                             }
+                            .frame(width: sessionColumn, height: height, alignment: .topLeading)
                         }
-                        .frame(width: sessionColumn, height: height, alignment: .topLeading)
                     }
                 }
                 .frame(height: height, alignment: .topLeading)
@@ -99,8 +101,8 @@ struct DayTimeline: View {
         return entries.last { $0.categoryKey == key && now.timeIntervalSince($0.end) < 3 * 60 }
     }
 
-    /// Whole hours covering the streams and sessions (and now, for today), with an hour of
-    /// breathing room before and at least half an hour after, kept within the day.
+    /// Whole hours covering the streams and sessions (and now, for today), with at least a
+    /// quarter of an hour of breathing room before and half an hour after, kept within the day.
     private func visibleRange(_ entries: [TimeEntry], now: Date) -> ClosedRange<Date> {
         let calendar = Calendar.current
         var first = entries.map(\.start).min() ?? now
@@ -112,7 +114,7 @@ struct DayTimeline: View {
         if calendar.isDateInToday(day) { last = max(last, now) }
         let dayStart = calendar.startOfDay(for: day)
         let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
-        let lower = max(dayStart, (calendar.dateInterval(of: .hour, for: first)?.start ?? first).addingTimeInterval(-3600))
+        let lower = max(dayStart, calendar.dateInterval(of: .hour, for: first.addingTimeInterval(-15 * 60))?.start ?? first)
         let padded = last.addingTimeInterval(30 * 60)
         let upper = min(dayEnd, calendar.dateInterval(of: .hour, for: padded)?.end ?? padded)
         return lower...max(upper, lower.addingTimeInterval(3600))

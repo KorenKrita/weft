@@ -135,13 +135,16 @@ struct ScoreRing: View {
         .help("Focus Score")
     }
 
+    /// A couple of hours in, a score still swings a lot; don't grade it yet.
+    private var isEarly: Bool { activeTime < 2 * 3600 }
+
     private var caption: String {
         guard let score else { return "Collecting data" }
-        return activeTime < 3600 ? "Early estimate" : score.label
+        return isEarly ? "Early estimate" : score.label
     }
 
     private var color: Color {
-        guard let value = score?.value else { return .secondary }
+        guard let value = score?.value, !isEarly else { return .secondary }
         return value >= 80 ? .green : value >= 50 ? .orange : .indigo
     }
 }
