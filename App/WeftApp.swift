@@ -86,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "pause": model.preferences.trackingPaused = true
         case "resume": model.preferences.trackingPaused = false
         case "dashboard":
-            model.page = .today
+            model.showDay()
             model.openDashboard?()
         default: break
         }

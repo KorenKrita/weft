@@ -3,13 +3,38 @@ import SwiftData
 import SwiftUI
 
 struct ActivityList: View {
+    @Environment(AppModel.self) private var model
     let segments: [ActivitySegment]
     @State private var showAll = false
+    @State private var search = ""
+    @State private var category: String?
 
     var body: some View {
-        let groups = ActivityBlocks.build(segments).filter { $0.duration >= 10 }.reversed()
-        let visible = showAll ? Array(groups) : Array(groups.prefix(40))
+        let all = Array(ActivityBlocks.build(segments).filter { $0.duration >= 10 }.reversed())
+        let groups = all.filter(matches)
+        let visible = showAll ? groups : Array(groups.prefix(40))
+        let categories = Set(all.map(\.first.categoryKey)).map(model.classifier.category).sorted { $0.name < $1.name }
         LazyVStack(alignment: .leading, spacing: 0) {
+            HStack {
+                TextField("Filter by app, site or title", text: $search)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 280)
+                Picker("Category", selection: $category) {
+                    Text("All categories").tag(String?.none)
+                    Divider()
+                    ForEach(categories) { Text($0.name).tag(Optional($0.key)) }
+                }
+                .labelsHidden()
+                .fixedSize()
+                Spacer()
+                if groups.count != all.count {
+                    Text("\(groups.count) of \(all.count)").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.bottom, 8)
+            if groups.isEmpty {
+                Text("Nothing matches.").foregroundStyle(.secondary).padding(.vertical, 12)
+            }
             ForEach(visible) { group in
                 ActivityRow(group: group)
                 Divider()
@@ -20,6 +45,15 @@ struct ActivityList: View {
                     .padding(.top, 8)
             }
         }
+    }
+
+    private func matches(_ group: ActivityBlock) -> Bool {
+        if let category, group.first.categoryKey != category { return false }
+        let query = search.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return true }
+        return group.first.appName.localizedCaseInsensitiveContains(query)
+            || (group.first.domain?.localizedCaseInsensitiveContains(query) ?? false)
+            || group.titles.contains { $0.localizedCaseInsensitiveContains(query) }
     }
 }
 

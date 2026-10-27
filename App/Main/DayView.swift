@@ -4,18 +4,32 @@ import SwiftData
 import SwiftUI
 
 struct DayView: View {
-    @State private var day = Calendar.current.startOfDay(for: .now)
+    @Environment(AppModel.self) private var model
+    @State private var showCalendar = false
 
     var body: some View {
+        @Bindable var model = model
+        let day = model.day
         DayContent(day: day)
             .id(day)
             .navigationTitle(day.formatted(.dateTime.weekday(.wide).month().day()))
             .toolbar {
                 ToolbarItemGroup {
+                    Button { showCalendar = true } label: { Image(systemName: "calendar") }
+                        .help("Go to a day")
+                        .popover(isPresented: $showCalendar) {
+                            DatePicker("Day", selection: Binding(
+                                get: { model.day },
+                                set: { model.day = Calendar.current.startOfDay(for: $0); showCalendar = false }
+                            ), in: ...Date.now, displayedComponents: .date)
+                            .datePickerStyle(.graphical)
+                            .labelsHidden()
+                            .padding()
+                        }
                     Button { shift(-1) } label: { Image(systemName: "chevron.left") }
                         .help("Previous day")
                         .keyboardShortcut(.leftArrow, modifiers: .command)
-                    Button("Today") { day = Calendar.current.startOfDay(for: .now) }
+                    Button("Today") { model.showDay() }
                         .disabled(Calendar.current.isDateInToday(day))
                         .keyboardShortcut("t", modifiers: .command)
                     Button { shift(1) } label: { Image(systemName: "chevron.right") }
@@ -27,7 +41,7 @@ struct DayView: View {
     }
 
     private func shift(_ days: Int) {
-        day = Calendar.current.date(byAdding: .day, value: days, to: day) ?? day
+        model.day = Calendar.current.date(byAdding: .day, value: days, to: model.day) ?? model.day
     }
 }
 
@@ -108,7 +122,7 @@ private struct DayContent: View {
                         .fixedSize()
                         switch tab {
                         case .timeline:
-                            DayTimeline(day: day, segments: segments, sessions: sessions)
+                            DayTimeline(day: day, segments: segments, sessions: sessions) { tab = .log }
                         case .breakdown:
                             HStack(alignment: .top, spacing: 16) {
                                 Card("Categories") { CategoryBreakdown(metrics: metrics) }

@@ -62,6 +62,8 @@ private struct WeekReport: View {
     @Query private var segments: [ActivitySegment]
     private let days: [Date]
 
+    @State private var hoveredDay: Date?
+
     /// Categories beyond this many share one grey "Other" in the chart.
     private let chartCategories = 5
     private static let otherKey = "__other"
@@ -142,6 +144,17 @@ private struct WeekReport: View {
                 BarMark(x: .value("Day", row.day, unit: .day), y: .value("Hours", row.hours))
                     .foregroundStyle(by: .value("Category", name(row.category)))
             }
+            if let hoveredDay, let stat = stats.first(where: { $0.day == hoveredDay }) {
+                RectangleMark(x: .value("Day", hoveredDay, unit: .day))
+                    .foregroundStyle(Color.primary.opacity(0.06))
+                    .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
+                        VStack(spacing: 1) {
+                            Text(Format.duration(stat.metrics.activeTime)).fontWeight(.semibold).monospacedDigit()
+                            Text(stat.metrics.activeTime > 0 ? "Click to open" : "No activity").foregroundStyle(.secondary)
+                        }
+                        .font(.caption2)
+                    }
+            }
             if target > 0 {
                 RuleMark(y: .value("Target", target))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
@@ -157,7 +170,28 @@ private struct WeekReport: View {
             AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.abbreviated).day(), centered: true) }
         }
         .chartYAxisLabel("hours")
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .onContinuousHover { phase in
+                        switch phase {
+                        case .active(let location): hoveredDay = day(at: location, proxy, geometry)
+                        case .ended: hoveredDay = nil
+                        }
+                    }
+                    .onTapGesture { location in
+                        if let day = day(at: location, proxy, geometry) { model.showDay(day) }
+                    }
+            }
+        }
         .frame(height: 240)
+    }
+
+    private func day(at location: CGPoint, _ proxy: ChartProxy, _ geometry: GeometryProxy) -> Date? {
+        guard let frame = proxy.plotFrame.map({ geometry[$0] }),
+              let date: Date = proxy.value(atX: location.x - frame.origin.x) else { return nil }
+        let day = Calendar.current.startOfDay(for: date)
+        return days.contains(day) ? day : nil
     }
 
     private func name(_ key: String) -> String {

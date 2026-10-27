@@ -43,6 +43,8 @@ final class AppModel {
     let timeEntries: TimeEntryService
 
     var page: Page = .today
+    /// The day the Today page shows; Reports sets it to drill into a day.
+    var day = Calendar.current.startOfDay(for: .now)
     /// Set by a view that has access to `openWindow`.
     @ObservationIgnored var openDashboard: (() -> Void)?
     var accessibilityGranted = SystemProbe.isAccessibilityTrusted
@@ -148,5 +150,13 @@ final class AppModel {
         accessibilityGranted = SystemProbe.isAccessibilityTrusted
         tracker.requestSample(after: 0)
         classifier.refreshAvailability()
+    }
+}
+
+extension AppModel {
+    /// Shows `date` on the Today page.
+    func showDay(_ date: Date = .now) {
+        day = Calendar.current.startOfDay(for: date)
+        page = .today
     }
 }

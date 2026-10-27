@@ -45,7 +45,7 @@ struct MenuBarView: View {
 
             Spacer()
             Button("Open Dashboard") {
-                model.page = .today
+                model.showDay()
                 openWindow(id: MainView.windowID)
                 NSApp.activate()
             }

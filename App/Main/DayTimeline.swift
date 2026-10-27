@@ -8,6 +8,8 @@ struct DayTimeline: View {
     let day: Date
     let segments: [ActivitySegment]
     let sessions: [SessionRecord]
+    /// Switches to the log, where the short streams are.
+    var showLog: () -> Void = {}
 
     private let pointsPerHour: CGFloat = 120
     /// Short streams still get room for a line of text.
@@ -77,9 +79,12 @@ struct DayTimeline: View {
                 }
             }
             if hidden > 0 {
-                Text("\(hidden) short stream\(hidden == 1 ? "" : "s") under 10 minutes not shown — see Log.")
-                    .font(.caption).foregroundStyle(.tertiary)
-                    .padding(.leading, timeColumn + spacing)
+                HStack(spacing: 4) {
+                    Text("\(hidden) short stream\(hidden == 1 ? "" : "s") under 10 minutes not shown.")
+                    Button("Show in Log", action: showLog).buttonStyle(.link)
+                }
+                .font(.caption).foregroundStyle(.tertiary)
+                .padding(.leading, timeColumn + spacing)
             }
         }
     }
@@ -281,7 +286,19 @@ private struct StreamDetail: View {
                 Text("\(entry.start.formatted(date: .omitted, time: .shortened)) – \(entry.end.formatted(date: .omitted, time: .shortened)) · \(Format.duration(entry.activeTime)) active")
                     .foregroundStyle(.secondary)
                 Spacer()
-                CategoryChip(category: category)
+                // Fixes this stream only; rules for an app or site live in the log.
+                Menu {
+                    ForEach(model.classifier.categories.filter { $0.key != CategoryDefinition.uncategorizedKey }) { option in
+                        Button(option.name) {
+                            for segment in entry.segments { model.classifier.setManualCategory(option.key, for: segment) }
+                        }
+                    }
+                } label: {
+                    CategoryChip(category: category)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Change the category of this stream")
             }
             .font(.callout)
             Divider()
