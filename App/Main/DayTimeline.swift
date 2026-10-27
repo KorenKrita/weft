@@ -11,7 +11,11 @@ struct DayTimeline: View {
     /// Switches to the log, where the short streams are.
     var showLog: () -> Void = {}
 
-    private let pointsPerHour: CGFloat = 120
+    /// Hours with activity are scaled so a full day fits about this height.
+    private let targetHeight: CGFloat = 600
+    private let pointsPerHourRange: ClosedRange<CGFloat> = 48...120
+    /// Folded idle stretches.
+    private let gapHeight: CGFloat = 32
     /// Short streams still get room for a line of text.
     private let minimumHeight: CGFloat = 30
     private let timeColumn: CGFloat = 44
@@ -32,10 +36,9 @@ struct DayTimeline: View {
         let entries = TimeEntries.significant(all)
         let hidden = all.count - entries.count
         let live = liveEntry(entries, now: now)
-        let range = visibleRange(entries, now: now)
-        let hours = Int((range.upperBound.timeIntervalSince(range.lowerBound) / 3600).rounded())
-        let height = CGFloat(hours) * pointsPerHour
-        let placed = layout(entries)
+        let scale = makeScale(entries, now: now)
+        let height = scale.height
+        let placed = layout(entries, scale: scale)
 
         return VStack(alignment: .leading, spacing: 10) {
             if entries.isEmpty {
@@ -44,7 +47,7 @@ struct DayTimeline: View {
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else {
                 ZStack(alignment: .topLeading) {
-                    hourGrid(range: range, hours: hours)
+                    grid(scale)
                     HStack(alignment: .top, spacing: spacing) {
                         Color.clear.frame(width: timeColumn, height: height)
                         GeometryReader { proxy in
@@ -52,9 +55,10 @@ struct DayTimeline: View {
                                 ForEach(placed, id: \.entry.id) { item in
                                     let width = (proxy.size.width - CGFloat(item.columns - 1) * 6) / CGFloat(item.columns)
                                     let isLive = item.entry.id == live?.id
+                                    let top = scale.y(item.entry.start)
                                     StreamView(entry: item.entry, isLive: isLive)
-                                        .frame(width: width, height: itemHeight(item.entry, end: isLive ? now : item.entry.end, range))
-                                        .offset(x: CGFloat(item.column) * (width + 6), y: y(item.entry.start, range))
+                                        .frame(width: width, height: max(minimumHeight, scale.y(isLive ? now : item.entry.end) - top - 3))
+                                        .offset(x: CGFloat(item.column) * (width + 6), y: top)
                                 }
                             }
                         }
@@ -63,8 +67,8 @@ struct DayTimeline: View {
                             ZStack(alignment: .topLeading) {
                                 ForEach(sessions) { session in
                                     SessionBlockView(session: session)
-                                        .frame(width: sessionColumn, height: max(4, y(session.end, range) - y(session.start, range) - 2))
-                                        .offset(y: y(session.start, range))
+                                        .frame(width: sessionColumn, height: max(4, scale.y(session.end) - scale.y(session.start) - 2))
+                                        .offset(y: scale.y(session.start))
                                 }
                             }
                             .frame(width: sessionColumn, height: height, alignment: .topLeading)
@@ -73,8 +77,8 @@ struct DayTimeline: View {
                 }
                 .frame(height: height, alignment: .topLeading)
                 .overlay(alignment: .topLeading) {
-                    if Calendar.current.isDateInToday(day), range.contains(now) {
-                        nowLine.offset(y: y(now, range) - 4)
+                    if Calendar.current.isDateInToday(day), scale.contains(now) {
+                        nowLine.offset(y: scale.y(now) - 4)
                     }
                 }
             }
@@ -91,12 +95,64 @@ struct DayTimeline: View {
 
     // MARK: Geometry
 
-    private func y(_ date: Date, _ range: ClosedRange<Date>) -> CGFloat {
-        CGFloat(date.timeIntervalSince(range.lowerBound) / 3600) * pointsPerHour
+    /// Maps times to y: active hours to scale, idle stretches folded to a thin band.
+    private struct Scale {
+        var axis: TimelineAxis
+        var pointsPerHour: CGFloat
+        var gapHeight: CGFloat
+
+        func height(of section: TimelineAxis.Section) -> CGFloat {
+            switch section {
+            case .time(let interval): CGFloat(interval.duration / 3600) * pointsPerHour
+            case .gap: gapHeight
+            }
+        }
+
+        var height: CGFloat { axis.sections.reduce(0) { $0 + height(of: $1) } }
+
+        func contains(_ date: Date) -> Bool {
+            axis.sections.contains { if case .time(let interval) = $0 { interval.contains(date) } else { false } }
+        }
+
+        /// Where `section` starts.
+        func top(_ index: Int) -> CGFloat {
+            axis.sections.prefix(index).reduce(0) { $0 + height(of: $1) }
+        }
+
+        func y(_ date: Date) -> CGFloat {
+            var offset: CGFloat = 0
+            for section in axis.sections {
+                let interval = section.interval
+                if date < interval.end || section == axis.sections.last {
+                    switch section {
+                    case .time:
+                        return offset + CGFloat(max(0, date.timeIntervalSince(interval.start)) / 3600) * pointsPerHour
+                    case .gap:
+                        return offset + (date <= interval.start ? 0 : gapHeight)
+                    }
+                }
+                offset += height(of: section)
+            }
+            return offset
+        }
     }
 
-    private func itemHeight(_ entry: TimeEntry, end: Date, _ range: ClosedRange<Date>) -> CGFloat {
-        max(minimumHeight, y(end, range) - y(entry.start, range) - 3)
+    /// Whole hours around the streams, sessions and (today) now; scaled down on long days so
+    /// the timeline stays about one screen tall.
+    private func makeScale(_ entries: [TimeEntry], now: Date) -> Scale {
+        let calendar = Calendar.current
+        var intervals = entries.map { DateInterval(start: $0.start, end: max($0.start, $0.end)) }
+        intervals += sessions.map { DateInterval(start: $0.start, end: max($0.start, $0.end)) }
+        if calendar.isDateInToday(day) { intervals.append(DateInterval(start: now, duration: 0)) }
+        let dayStart = calendar.startOfDay(for: day)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+        let axis = TimelineAxis(covering: intervals, within: DateInterval(start: dayStart, end: dayEnd))
+        let hours = axis.sections.reduce(0.0) { total, section in
+            if case .time(let interval) = section { total + interval.duration / 3600 } else { total }
+        }
+        let fitted = targetHeight / CGFloat(max(hours, 1))
+        let pointsPerHour = min(max(fitted, pointsPerHourRange.lowerBound), pointsPerHourRange.upperBound)
+        return Scale(axis: axis, pointsPerHour: pointsPerHour, gapHeight: gapHeight)
     }
 
     /// The stream the user is in right now: the tracker's current category, still being
@@ -106,25 +162,6 @@ struct DayTimeline: View {
         return entries.last { $0.categoryKey == key && now.timeIntervalSince($0.end) < 3 * 60 }
     }
 
-    /// Whole hours covering the streams and sessions (and now, for today), with at least a
-    /// quarter of an hour of breathing room before and half an hour after, kept within the day.
-    private func visibleRange(_ entries: [TimeEntry], now: Date) -> ClosedRange<Date> {
-        let calendar = Calendar.current
-        var first = entries.map(\.start).min() ?? now
-        var last = entries.map(\.end).max() ?? now
-        for session in sessions {
-            first = min(first, session.start)
-            last = max(last, session.end)
-        }
-        if calendar.isDateInToday(day) { last = max(last, now) }
-        let dayStart = calendar.startOfDay(for: day)
-        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
-        let lower = max(dayStart, calendar.dateInterval(of: .hour, for: first.addingTimeInterval(-15 * 60))?.start ?? first)
-        let padded = last.addingTimeInterval(30 * 60)
-        let upper = min(dayEnd, calendar.dateInterval(of: .hour, for: padded)?.end ?? padded)
-        return lower...max(upper, lower.addingTimeInterval(3600))
-    }
-
     private struct Placed {
         var entry: TimeEntry
         var column: Int
@@ -132,9 +169,9 @@ struct DayTimeline: View {
     }
 
     /// Calendar-style layout: overlapping streams share the width in columns.
-    private func layout(_ entries: [TimeEntry]) -> [Placed] {
+    private func layout(_ entries: [TimeEntry], scale: Scale) -> [Placed] {
         // Use the drawn extent, including the minimum height, so text never overlaps.
-        let minimumSpan = TimeInterval(minimumHeight / pointsPerHour * 3600)
+        let minimumSpan = TimeInterval(minimumHeight / scale.pointsPerHour * 3600)
         func visualEnd(_ entry: TimeEntry) -> Date { max(entry.end, entry.start.addingTimeInterval(minimumSpan)) }
 
         var result: [Placed] = []
@@ -160,19 +197,52 @@ struct DayTimeline: View {
         return result
     }
 
-    private func hourGrid(range: ClosedRange<Date>, hours: Int) -> some View {
+    private func grid(_ scale: Scale) -> some View {
         ZStack(alignment: .topLeading) {
-            ForEach(0...hours, id: \.self) { hour in
-                let date = range.lowerBound.addingTimeInterval(TimeInterval(hour * 3600))
-                HStack(alignment: .center, spacing: 8) {
-                    Text(date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .frame(width: timeColumn, alignment: .trailing)
-                    Rectangle().fill(.quaternary).frame(height: 1)
+            ForEach(Array(scale.axis.sections.enumerated()), id: \.offset) { index, section in
+                switch section {
+                case .time(let interval):
+                    ForEach(marks(in: interval, isLast: index == scale.axis.sections.count - 1), id: \.self) { date in
+                        hourLine(date).offset(y: scale.y(date) - 6)
+                    }
+                case .gap(_, let idle):
+                    Text("No activity · \(Format.duration(idle))")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: scale.gapHeight - 14)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(.quaternary.opacity(0.4)))
+                        .padding(.leading, timeColumn + 8)
+                        .offset(y: scale.top(index) + 4)
                 }
-                .offset(y: CGFloat(hour) * pointsPerHour - 6)
             }
+        }
+    }
+
+    /// The section's start, the whole hours inside it, and the end of the last one. Hours
+    /// right next to a boundary are left out so labels don't collide; the end of a section
+    /// before a gap is left to the gap.
+    private func marks(in interval: DateInterval, isLast: Bool) -> [Date] {
+        let calendar = Calendar.current
+        var marks = [interval.start]
+        var hour = calendar.dateInterval(of: .hour, for: interval.start)?.end ?? interval.end
+        while hour < interval.end {
+            if hour.timeIntervalSince(interval.start) >= 20 * 60, interval.end.timeIntervalSince(hour) >= 20 * 60 {
+                marks.append(hour)
+            }
+            hour = calendar.date(byAdding: .hour, value: 1, to: hour) ?? interval.end
+        }
+        if isLast { marks.append(interval.end) }
+        return marks
+    }
+
+    private func hourLine(_ date: Date) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: timeColumn, alignment: .trailing)
+            Rectangle().fill(.quaternary).frame(height: 1)
         }
     }
 
