@@ -59,7 +59,7 @@ public enum BuiltinRules {
             "com.apple.Passwords", "com.1password.1password", "com.agilebits.onepassword7", "com.raycast.macos",
             "com.runningwithcrayons.Alfred", "com.apple.archiveutility", "com.apple.DiskUtility",
             "com.apple.ScreenSharing", "com.apple.screenshot.launcher", "com.cleanshot.CleanShot-X",
-            "com.apple.Spotlight", "com.apple.controlcenter", "io.github.openrize.OpenRize",
+            "com.apple.Spotlight", "com.apple.controlcenter",
             "com.abue-ammar.tinycast", "com.apple.UserNotificationCenter", "com.apple.SecurityAgent",
             "com.apple.coreservices.uiagent",
         ],

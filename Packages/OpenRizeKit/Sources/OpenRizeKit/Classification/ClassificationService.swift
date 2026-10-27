@@ -168,7 +168,7 @@ public final class ClassificationService {
         modelContext.insert(rule)
         try? modelContext.save()
         reloadRules()
-        reclassify(where: rule.rule.matches)
+        reclassify(affectedBy: rule.rule)
     }
 
     public func deleteRule(_ rule: UserRule) {
@@ -176,7 +176,7 @@ public final class ClassificationService {
         modelContext.delete(rule)
         try? modelContext.save()
         reloadRules()
-        reclassify(where: matcher.matches)
+        reclassify(affectedBy: matcher)
     }
 
     /// Changes a single segment without creating a rule.
@@ -186,10 +186,24 @@ public final class ClassificationService {
         try? modelContext.save()
     }
 
-    private func reclassify(where matches: (ActivityContext) -> Bool) {
+    /// Reapplies classification to the segments `rule` could match. The predicate narrows the
+    /// fetch in the store so this stays cheap with months of history; `matches` makes it exact.
+    private func reclassify(affectedBy rule: Rule) {
         let manual = ClassificationSource.manual.rawValue
-        let segments = (try? modelContext.fetch(FetchDescriptor<ActivitySegment>(predicate: #Predicate { $0.classificationSourceRaw != manual }))) ?? []
-        for segment in segments where matches(segment.context) {
+        let pattern = rule.pattern
+        let predicate: Predicate<ActivitySegment>
+        switch rule.field {
+        case .bundleID:
+            predicate = #Predicate { $0.classificationSourceRaw != manual && $0.bundleID.localizedStandardContains(pattern) }
+        case .domain:
+            predicate = #Predicate { $0.classificationSourceRaw != manual && $0.domain.flatMap { $0.localizedStandardContains(pattern) } == true }
+        case .titleContains:
+            predicate = #Predicate { $0.classificationSourceRaw != manual && $0.title.flatMap { $0.localizedStandardContains(pattern) } == true }
+        case .urlContains:
+            predicate = #Predicate { $0.classificationSourceRaw != manual && $0.url.flatMap { $0.localizedStandardContains(pattern) } == true }
+        }
+        let candidates = (try? modelContext.fetch(FetchDescriptor(predicate: predicate))) ?? []
+        for segment in candidates where rule.matches(segment.context) {
             let (key, source) = classify(segment.context)
             segment.categoryKey = key
             segment.classificationSource = source

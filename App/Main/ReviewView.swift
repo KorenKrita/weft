@@ -2,12 +2,11 @@ import OpenRizeKit
 import SwiftData
 import SwiftUI
 
-/// Apps and sites the rules didn't know: still waiting for the model, or classified with
-/// low confidence. Fixing one here creates a rule.
+/// Apps and sites no rule knew: still waiting for the model, or classified by it and not yet
+/// confirmed. Confirming or changing one creates a rule, which takes it off this list.
 struct ReviewView: View {
     @Environment(AppModel.self) private var model
     @Query private var segments: [ActivitySegment]
-    @State private var showAllAI = false
 
     init() {
         let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
@@ -35,7 +34,7 @@ struct ReviewView: View {
             Divider()
             if items.isEmpty {
                 ContentUnavailableView("Nothing to review", systemImage: "checkmark.circle",
-                                       description: Text("Everything from the last 30 days is categorized."))
+                                       description: Text("Every app and site from the last 30 days is covered by a rule."))
                     .frame(maxHeight: .infinity)
             } else {
                 Table(items) {
@@ -73,6 +72,17 @@ struct ReviewView: View {
                         .labelsHidden()
                     }
                     .width(180)
+                    TableColumn("") { item in
+                        Button {
+                            assign(item, to: item.categoryKey)
+                        } label: {
+                            Image(systemName: "checkmark.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(item.source == .pending)
+                        .help("Looks right — keep \(model.classifier.category(item.categoryKey).name) for this app/site")
+                    }
+                    .width(30)
                 }
             }
         }
@@ -94,7 +104,6 @@ struct ReviewView: View {
                 Button("Open Settings") { SystemSettings.openAppleIntelligence() }
             }
             Spacer()
-            Toggle("Show all AI decisions", isOn: $showAllAI)
             Button("Retry") { model.classifier.retryPending() }
                 .help("Ask the model again about everything still waiting")
         }
@@ -114,9 +123,18 @@ struct ReviewView: View {
                                   source: segment.classificationSource, confidence: model.classifier.confidence(forKey: key))
             }
         }
-        return byKey.values
-            .filter { showAllAI || $0.source == .pending || $0.confidence == .low }
-            .sorted { $0.duration > $1.duration }
+        // Waiting first, then least confident, then most time spent.
+        func rank(_ item: Item) -> Int {
+            switch (item.source, item.confidence) {
+            case (.pending, _): 0
+            case (_, .low?), (_, nil): 1
+            case (_, .medium?): 2
+            case (_, .high?): 3
+            }
+        }
+        return byKey.values.sorted { a, b in
+            rank(a) != rank(b) ? rank(a) < rank(b) : a.duration > b.duration
+        }
     }
 
     private func assign(_ item: Item, to categoryKey: String) {

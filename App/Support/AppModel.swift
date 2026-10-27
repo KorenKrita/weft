@@ -61,6 +61,7 @@ final class AppModel {
         }
         let context = container.mainContext
         classifier = ClassificationService(modelContext: context, ai: ai)
+        Maintenance.run(modelContext: context, classifier: classifier)
         tracker = ActivityTracker(modelContext: context, classifier: classifier, preferences: preferences)
         sessions = SessionEngine(modelContext: context, classifier: classifier)
         distractionGuard = DistractionGuard(preferences: preferences, sessions: sessions, notifier: notifier)

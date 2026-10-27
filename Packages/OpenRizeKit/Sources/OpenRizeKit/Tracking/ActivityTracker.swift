@@ -10,6 +10,9 @@ public struct TrackerSample: Sendable {
     public var category: CategoryDefinition?
     /// True when the user is away (idle past the threshold, asleep, locked or paused).
     public var isAway: Bool
+    /// The user is looking at OpenRize itself. That time isn't recorded, but it isn't
+    /// time away either.
+    public var isOwnApp = false
 }
 
 /// Samples the frontmost app every couple of seconds and writes `ActivitySegment`s.
@@ -73,7 +76,8 @@ public final class ActivityTracker {
             return
         }
         let idleSeconds = SystemProbe.secondsSinceLastInput
-        var context = await captureContext()
+        let isOwnApp = SystemProbe.frontmostApplication?.bundleIdentifier == Bundle.main.bundleIdentifier
+        var context = isOwnApp ? nil : await captureContext()
         // Pausing or sleeping may have happened while we were waiting on the browser.
         guard !preferences.trackingPaused, !isSuspendedBySystem else {
             suspend()
@@ -99,10 +103,10 @@ public final class ActivityTracker {
                                    idleExempt: category?.isMeeting ?? false)
         apply(effects, category: classification)
 
-        let isAway = machine.current == nil
-        current = isAway ? nil : context
-        currentCategory = isAway ? nil : category
-        broadcast(TrackerSample(date: now, context: current, category: currentCategory, isAway: isAway))
+        let isAway = isOwnApp ? idleSeconds >= machine.idleThreshold : machine.current == nil
+        current = machine.current == nil ? nil : context
+        currentCategory = machine.current == nil ? nil : category
+        broadcast(TrackerSample(date: now, context: current, category: currentCategory, isAway: isAway, isOwnApp: isOwnApp))
 
         if now.timeIntervalSince(lastSave) > 30 {
             try? modelContext.save()
@@ -128,7 +132,7 @@ public final class ActivityTracker {
         if BrowserURLScripts.isSupported(bundleID) {
             switch await browserURL(bundleID: bundleID, title: title) {
             case .privateWindow: return nil
-            case .url(let value): url = value
+            case .url(let value): url = ActivityContext.isWebURL(value) ? value : nil
             case .unavailable: break
             }
         }

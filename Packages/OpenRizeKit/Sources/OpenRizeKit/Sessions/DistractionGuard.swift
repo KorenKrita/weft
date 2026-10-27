@@ -29,7 +29,6 @@ public final class DistractionGuard {
     @ObservationIgnored private var triggeredKey: String?
     /// Where "Back to Work" returns to.
     @ObservationIgnored private var lastWorkBundleID: String?
-    @ObservationIgnored private let ownBundleID = Bundle.main.bundleIdentifier
 
     public init(preferences: Preferences, sessions: SessionEngine, notifier: any NotificationPosting) {
         self.preferences = preferences
@@ -45,8 +44,8 @@ public final class DistractionGuard {
     }
 
     public func handle(_ sample: TrackerSample) {
-        // Our own overlay coming to the front must not count as leaving the distraction.
-        if let bundleID = sample.context?.bundleID, bundleID == ownBundleID { return }
+        // Glancing at OpenRize (e.g. the menu bar) must not count as leaving the distraction.
+        if sample.isOwnApp { return }
         if let context = sample.context, sample.category?.blockInFocus == false {
             lastWorkBundleID = context.bundleID
         }

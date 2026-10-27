@@ -24,9 +24,16 @@ public struct ActivityContext: Hashable, Sendable {
         return bundleID
     }
 
-    /// Lowercased host without a leading `www.`.
+    /// Only http(s) pages have a meaningful site; `chrome://newtab`, `about:blank`,
+    /// `file://` and the like are treated as plain browser time.
+    public static func isWebURL(_ url: String) -> Bool {
+        guard let scheme = URLComponents(string: url)?.scheme?.lowercased() else { return false }
+        return scheme == "http" || scheme == "https"
+    }
+
+    /// Lowercased host without a leading `www.`, for http(s) URLs only.
     public static func domain(from url: String) -> String? {
-        guard let host = URLComponents(string: url)?.host?.lowercased(), !host.isEmpty else { return nil }
+        guard isWebURL(url), let host = URLComponents(string: url)?.host?.lowercased(), !host.isEmpty else { return nil }
         return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
     }
 
