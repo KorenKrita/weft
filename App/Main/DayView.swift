@@ -49,6 +49,8 @@ private struct DayContent: View {
     @Environment(AppModel.self) private var model
     @Query private var segments: [ActivitySegment]
     @Query private var sessions: [SessionRecord]
+    /// The week before, to say how this day compares with a usual one.
+    @Query private var previous: [ActivitySegment]
     @AppStorage("todayTab") private var tab: DayTab = .timeline
     private let day: Date
     private let dayEnd: Date
@@ -59,6 +61,22 @@ private struct DayContent: View {
         dayEnd = end
         _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > day && $0.start < end }, sort: \.start)
         _sessions = Query(filter: #Predicate<SessionRecord> { $0.end > day && $0.start < end }, sort: \.start)
+        let weekBefore = Calendar.current.date(byAdding: .day, value: -7, to: day) ?? day
+        _previous = Query(filter: #Predicate<ActivitySegment> { $0.end > weekBefore && $0.start < day })
+    }
+
+    /// The seven days before, each cut off at the current time of day while the day being
+    /// viewed is still going, so a morning isn't compared with whole days.
+    private func baseline() -> PeriodSummary {
+        let calendar = Calendar.current
+        let elapsed = calendar.isDateInToday(day) ? Date.now.timeIntervalSince(day) : nil
+        let days = (1...7).compactMap { offset -> DateInterval? in
+            guard let start = calendar.date(byAdding: .day, value: -offset, to: day),
+                  let end = calendar.date(byAdding: .day, value: 1, to: start) else { return nil }
+            return DateInterval(start: start, end: elapsed.map { min(end, start.addingTimeInterval($0)) } ?? end)
+        }
+        return PeriodSummary(DayMetrics.daily(previous.map(SegmentSample.init), days: days,
+                                              categories: model.classifier.categoryLookup))
     }
 
     var body: some View {
@@ -78,7 +96,8 @@ private struct DayContent: View {
                                            description: Text("Nothing was tracked on this day."))
                         .frame(maxWidth: .infinity, minHeight: 300)
                 } else {
-                    Overview(metrics: metrics, target: model.preferences.workHoursTarget * 3600)
+                    Overview(metrics: metrics, target: model.preferences.workHoursTarget * 3600,
+                             baseline: baseline(), isToday: Calendar.current.isDateInToday(day))
                     DailyReview(day: day, metrics: metrics)
                     VStack(alignment: .leading, spacing: 14) {
                         Picker("View", selection: $tab) {
@@ -139,7 +158,16 @@ struct Card<Content: View>: View {
 private struct Overview: View {
     let metrics: DayMetrics
     let target: TimeInterval
+    let baseline: PeriodSummary
+    let isToday: Bool
     @State private var showScoreDetails = false
+
+    private var comparison: String { isToday ? "vs. usual by now" : "vs. 7-day average" }
+
+    /// Nil without a week of history to compare against.
+    private func change(_ value: KeyPath<DayMetrics, TimeInterval>) -> Change? {
+        baseline.perActiveDay(value).map { Change(metrics[keyPath: value], baseline: $0) }
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 28) {
@@ -156,9 +184,12 @@ private struct Overview: View {
                         .font(.system(size: 40, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                     Text("tracked of \(Format.duration(target))").foregroundStyle(.secondary)
+                    if let change = change(\.activeTime) {
+                        ChangeLabel(change: change, suffix: comparison).padding(.leading, 4)
+                    }
                 }
                 GoalBar(metrics: metrics, target: target)
-                HStack(spacing: 16) {
+                HStack(spacing: 14) {
                     legend(GoalBar.focusColor, "Focus", metrics.focusTime)
                     legend(GoalBar.meetingColor, "Meetings", metrics.meetingTime)
                     legend(GoalBar.otherColor, "Other", max(0, metrics.activeTime - metrics.focusTime - metrics.meetingTime - metrics.distractingTime))
@@ -171,7 +202,8 @@ private struct Overview: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Fact(symbol: "brain.head.profile", title: "Deep work",
-                     value: Format.duration(metrics.deepWorkTime), detail: "in stretches of 25 min or more")
+                     value: Format.duration(metrics.deepWorkTime), detail: "in stretches of 25 min or more",
+                     change: change(\.deepWorkTime), comparison: comparison)
                 Fact(symbol: "timer", title: "Longest focus",
                      value: Format.duration(metrics.longestFocusStretch), detail: "without a real break")
                 Fact(symbol: "arrow.left.arrow.right", title: "Switching",
@@ -197,6 +229,8 @@ private struct Overview: View {
             Text(Format.duration(value)).monospacedDigit()
         }
         .font(.callout)
+        .lineLimit(1)
+        .fixedSize()
     }
 }
 
@@ -205,6 +239,8 @@ private struct Fact: View {
     let title: String
     let value: String
     let detail: String
+    var change: Change? = nil
+    var comparison = ""
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -215,7 +251,14 @@ private struct Fact: View {
                     Spacer()
                     Text(value).fontWeight(.medium).monospacedDigit()
                 }
-                Text(detail).font(.caption).foregroundStyle(.tertiary)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(detail).foregroundStyle(.tertiary)
+                    Spacer()
+                    if let change {
+                        ChangeLabel(change: change, help: comparison)
+                    }
+                }
+                .font(.caption)
             }
         }
         .font(.callout)
@@ -445,6 +488,51 @@ private struct AppBreakdown: View {
             apps[sample.bundleID] = app
         }
         return apps.values.sorted { $0.time > $1.time }
+    }
+}
+
+/// "↑ 18m" in green when things went the right way, orange when not.
+struct ChangeLabel: View {
+    enum Unit { case duration, points }
+
+    let change: Change
+    var unit: Unit = .duration
+    var higherIsBetter = true
+    /// Shown after the value, e.g. "vs. last week".
+    var suffix: String? = nil
+    var help: String? = nil
+
+    var body: some View {
+        let context = suffix ?? help ?? ""
+        Group {
+            if isFlat {
+                Text("≈ same" + (suffix.map { " \($0)" } ?? "")).foregroundStyle(.secondary)
+            } else {
+                let isUp = change.difference > 0
+                HStack(spacing: 2) {
+                    Image(systemName: isUp ? "arrow.up" : "arrow.down").imageScale(.small)
+                    Text(amount).monospacedDigit()
+                    if let suffix { Text(suffix).foregroundStyle(.secondary).padding(.leading, 2) }
+                }
+                .foregroundStyle(isUp == higherIsBetter ? Color.green : Color.orange)
+            }
+        }
+        .font(.caption)
+        .help(context)
+    }
+
+    private var isFlat: Bool {
+        switch unit {
+        case .duration: change.isFlat() || abs(change.difference) < 60
+        case .points: abs(change.difference) < 2
+        }
+    }
+
+    private var amount: String {
+        switch unit {
+        case .duration: Format.duration(abs(change.difference))
+        case .points: "\(Int(abs(change.difference).rounded()))"
+        }
     }
 }
 

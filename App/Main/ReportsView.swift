@@ -66,30 +66,27 @@ private struct WeekReport: View {
     private let chartCategories = 5
     private static let otherKey = "__other"
 
+    /// Includes the week before, to compare against.
     init(start: Date) {
         let calendar = Calendar.current
         days = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
+        let from = calendar.date(byAdding: .day, value: -7, to: start) ?? start
         let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
-        _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > start && $0.start < end }, sort: \.start)
+        _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > from && $0.start < end }, sort: \.start)
     }
 
     var body: some View {
-        let stats = dailyStats()
-        let total = stats.reduce(DayMetrics()) { partial, stat in
-            var merged = partial
-            merged.activeTime += stat.metrics.activeTime
-            merged.focusTime += stat.metrics.focusTime
-            merged.deepWorkTime += stat.metrics.deepWorkTime
-            merged.meetingTime += stat.metrics.meetingTime
-            merged.distractingTime += stat.metrics.distractingTime
-            for (key, value) in stat.metrics.byCategory { merged.byCategory[key, default: 0] += value }
-            return merged
-        }
-        let scores = stats.compactMap { $0.metrics.score?.value }
-        let tracked = stats.filter { $0.metrics.activeTime > 0 }.count
-        let average = scores.isEmpty ? nil : scores.reduce(0, +) / scores.count
+        let stats = dailyStats(days)
+        let summary = PeriodSummary(stats.map(\.metrics))
+        let last = PeriodSummary(dailyStats(days.compactMap { Calendar.current.date(byAdding: .day, value: -7, to: $0) }).map(\.metrics))
+        let total = summary.total
+        let average = summary.averageScore
         // Matches the score ring: short days aren't graded yet.
         let isEarly = stats.allSatisfy { $0.metrics.score == nil || $0.metrics.activeTime < 2 * 3600 }
+        // Only compare with a week that was tracked at all.
+        let change = { (value: KeyPath<DayMetrics, TimeInterval>) -> Change? in
+            last.activeDays > 0 ? Change(total[keyPath: value], baseline: last.total[keyPath: value]) : nil
+        }
 
         ScrollView {
             if total.activeTime == 0 {
@@ -99,12 +96,15 @@ private struct WeekReport: View {
             } else {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack(spacing: 12) {
-                        summaryTile("Tracked", total.activeTime,
-                                    "\(Format.duration(total.activeTime / Double(max(tracked, 1)))) a day over \(tracked) day\(tracked == 1 ? "" : "s")")
-                        summaryTile("Focus", total.focusTime, "\(Format.duration(total.deepWorkTime)) deep work")
-                        summaryTile("Meetings", total.meetingTime, share(total.meetingTime, of: total.activeTime))
-                        summaryTile("Distracted", total.distractingTime, share(total.distractingTime, of: total.activeTime))
+                        summaryTile("Tracked", total.activeTime, change: change(\.activeTime),
+                                    "\(Format.duration(total.activeTime / Double(max(summary.activeDays, 1)))) a day over \(summary.activeDays) day\(summary.activeDays == 1 ? "" : "s")")
+                        summaryTile("Focus", total.focusTime, change: change(\.focusTime), "\(Format.duration(total.deepWorkTime)) deep work")
+                        summaryTile("Meetings", total.meetingTime, change: change(\.meetingTime), higherIsBetter: false,
+                                    share(total.meetingTime, of: total.activeTime))
+                        summaryTile("Distracted", total.distractingTime, change: change(\.distractingTime), higherIsBetter: false,
+                                    share(total.distractingTime, of: total.activeTime))
                         tile("Avg. Focus Score", average.map(String.init) ?? "–", isEmpty: average == nil,
+                             change: average.flatMap { now in last.averageScore.map { ChangeLabel(change: Change(Double(now), baseline: Double($0)), unit: .points, help: "vs. last week") } },
                              average.map { isEarly ? "Early estimate" : FocusScore.label(for: $0) } ?? "No score yet")
                     }
                     Card("Time by category") { categoryChart(stats, total: total) }
@@ -116,19 +116,12 @@ private struct WeekReport: View {
         }
     }
 
-    private func dailyStats() -> [DayStat] {
+    private func dailyStats(_ days: [Date]) -> [DayStat] {
         let calendar = Calendar.current
-        let lookup = model.classifier.categoryLookup
-        return days.map { day in
-            let end = calendar.date(byAdding: .day, value: 1, to: day) ?? day
-            let samples = segments.filter { $0.end > day && $0.start < end }.map { segment -> SegmentSample in
-                var sample = SegmentSample(segment)
-                sample.start = max(sample.start, day)
-                sample.end = min(sample.end, end)
-                return sample
-            }
-            return DayStat(day: day, metrics: DayMetrics.compute(samples, categories: lookup))
-        }
+        let intervals = days.map { DateInterval(start: $0, end: calendar.date(byAdding: .day, value: 1, to: $0) ?? $0) }
+        let metrics = DayMetrics.daily(segments.map(SegmentSample.init), days: intervals,
+                                       categories: model.classifier.categoryLookup)
+        return zip(days, metrics).map { DayStat(day: $0, metrics: $1) }
     }
 
     private func categoryChart(_ stats: [DayStat], total: DayMetrics) -> some View {
@@ -211,15 +204,20 @@ private struct WeekReport: View {
         value == 0 ? "None" : "\(Format.percent(value / max(total, 1))) of tracked time"
     }
 
-    private func summaryTile(_ title: String, _ value: TimeInterval, _ detail: String) -> some View {
-        tile(title, Format.duration(value), isEmpty: value == 0, detail)
+    private func summaryTile(_ title: String, _ value: TimeInterval, change: Change?, higherIsBetter: Bool = true,
+                             _ detail: String) -> some View {
+        tile(title, Format.duration(value), isEmpty: value == 0,
+             change: change.map { ChangeLabel(change: $0, higherIsBetter: higherIsBetter, help: "vs. last week") }, detail)
     }
 
-    private func tile(_ title: String, _ value: String, isEmpty: Bool, _ detail: String) -> some View {
+    private func tile(_ title: String, _ value: String, isEmpty: Bool, change: ChangeLabel?, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 22, weight: .semibold, design: .rounded)).monospacedDigit()
-                .foregroundStyle(isEmpty ? .tertiary : .primary)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(value).font(.system(size: 22, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .foregroundStyle(isEmpty ? .tertiary : .primary)
+                change
+            }
             Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
         }
         .padding(12)
