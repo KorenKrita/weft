@@ -8,18 +8,22 @@ struct WeftApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarView()
-                .environment(model)
-                .modelContainer(model.container)
+            OnlyWhileVisible {
+                MenuBarView()
+                    .environment(model)
+                    .modelContainer(model.container)
+            }
         } label: {
             MenuBarLabel(model: model)
         }
         .menuBarExtraStyle(.window)
 
         Window("Weft", id: MainView.windowID) {
-            MainView()
-                .environment(model)
-                .modelContainer(model.container)
+            OnlyWhileVisible {
+                MainView()
+                    .environment(model)
+                    .modelContainer(model.container)
+            }
         }
         .defaultSize(width: 1080, height: 760)
         .defaultLaunchBehavior(model.preferences.hasCompletedOnboarding ? .suppressed : .presented)

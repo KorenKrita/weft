@@ -120,6 +120,10 @@ final class AppModel {
             }
         }
 
+        distractionGuard.requestRecheck = { [weak self] seconds in
+            self?.tracker.requestSample(after: seconds)
+        }
+
         distractionGuard.onIncidentChange = { [weak self] incident in
             guard let self else { return }
             if incident != nil { overlays.showBlocker(model: self) } else { overlays.hideBlocker() }
@@ -142,6 +146,7 @@ final class AppModel {
 
     func refreshPermissions() {
         accessibilityGranted = SystemProbe.isAccessibilityTrusted
+        tracker.requestSample(after: 0)
         classifier.refreshAvailability()
     }
 }

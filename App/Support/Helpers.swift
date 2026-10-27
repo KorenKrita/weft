@@ -99,3 +99,20 @@ enum SystemSettings {
         if let url = URL(string: string) { NSWorkspace.shared.open(url) }
     }
 }
+
+/// Renders its content only while on screen. A closed SwiftUI window keeps its view tree
+/// alive, and a `@Query` inside keeps re-evaluating on every store change; dropping the
+/// tree when hidden stops that work entirely.
+struct OnlyWhileVisible<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @State private var isVisible = false
+
+    var body: some View {
+        ZStack {
+            Color.clear
+            if isVisible { content() }
+        }
+        .onAppear { isVisible = true }
+        .onDisappear { isVisible = false }
+    }
+}

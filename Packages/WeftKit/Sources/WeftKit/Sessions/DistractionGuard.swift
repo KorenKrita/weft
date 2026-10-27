@@ -21,6 +21,9 @@ public final class DistractionGuard {
 
     /// Called when the overlay should appear (non-nil) or go away (nil).
     @ObservationIgnored public var onIncidentChange: ((DistractionIncident?) -> Void)?
+    /// Asks the tracker for another sample after the given seconds; samples are event-driven,
+    /// so nothing else would arrive when the threshold passes.
+    @ObservationIgnored public var requestRecheck: ((TimeInterval) -> Void)?
 
     @ObservationIgnored private let preferences: Preferences
     @ObservationIgnored private let sessions: SessionEngine
@@ -63,6 +66,7 @@ public final class DistractionGuard {
         if dwell?.key != key {
             dwell = (key, sample.date)
             triggeredKey = nil
+            requestRecheck?(TimeInterval(preferences.refocusThresholdSeconds) + 0.5)
         }
         guard triggeredKey != key, let since = dwell?.since,
               sample.date.timeIntervalSince(since) >= TimeInterval(preferences.refocusThresholdSeconds)

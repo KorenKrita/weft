@@ -74,7 +74,8 @@ public final class WorkHoursMonitor {
         }
         defer { lastSample = sample.date }
         guard !sample.isAway, let lastSample else { return }
-        worked += min(sample.date.timeIntervalSince(lastSample), 10)
+        // Samples arrive on events and a one-minute heartbeat; away time never counts.
+        worked += min(sample.date.timeIntervalSince(lastSample), 90)
 
         guard preferences.workHoursNotifications else { return }
         let target = preferences.workHoursTarget * 3600
