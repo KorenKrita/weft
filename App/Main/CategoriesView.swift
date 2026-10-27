@@ -1,4 +1,4 @@
-import OpenRizeKit
+import WeftKit
 import SwiftUI
 
 /// The four category flags are mutually exclusive in practice, so they are presented as one

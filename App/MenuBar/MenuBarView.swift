@@ -1,4 +1,4 @@
-import OpenRizeKit
+import WeftKit
 import SwiftData
 import SwiftUI
 
@@ -52,7 +52,7 @@ struct MenuBarView: View {
             Button(action: showSettings) { Image(systemName: "gearshape") }
                 .help("Settings")
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
-                .help("Quit OpenRize")
+                .help("Quit Weft")
         }
         .buttonStyle(.borderless)
     }

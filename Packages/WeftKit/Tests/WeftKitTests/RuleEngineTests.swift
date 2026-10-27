@@ -1,5 +1,5 @@
 import Testing
-@testable import OpenRizeKit
+@testable import WeftKit
 
 struct RuleEngineTests {
     @Test func builtinBundleRule() {

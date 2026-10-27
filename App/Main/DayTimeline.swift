@@ -1,4 +1,4 @@
-import OpenRizeKit
+import WeftKit
 import SwiftUI
 
 /// A calendar-style day of work streams. Streams in different categories can overlap, so

@@ -1,4 +1,4 @@
-import OpenRizeKit
+import WeftKit
 import SwiftUI
 
 struct RulesView: View {

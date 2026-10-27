@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import OpenRizeKit
+@testable import WeftKit
 
 struct ActivityBlocksTests {
     let t0 = Date(timeIntervalSince1970: 1_700_000_000)

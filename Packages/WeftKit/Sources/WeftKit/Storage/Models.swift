@@ -178,13 +178,20 @@ public final class TimeEntrySummary {
     }
 }
 
-public enum OpenRizeSchema {
+public enum WeftSchema {
     public static let models: [any PersistentModel.Type] = [
         ActivitySegment.self, CategoryRecord.self, UserRule.self, AIClassificationRecord.self, SessionRecord.self,
         TimeEntrySummary.self,
     ]
 
-    /// Store under `~/Library/Application Support/OpenRize/`.
+    public static let folderName = "Weft"
+    public static let storeName = "Weft.store"
+
+    public static var dataFolder: URL {
+        URL.applicationSupportDirectory.appending(path: folderName, directoryHint: .isDirectory)
+    }
+
+    /// Store under `~/Library/Application Support/Weft/`.
     @MainActor
     public static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {
         let schema = Schema(models)
@@ -192,9 +199,8 @@ public enum OpenRizeSchema {
         if inMemory {
             configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         } else {
-            let directory = URL.applicationSupportDirectory.appending(path: "OpenRize", directoryHint: .isDirectory)
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            configuration = ModelConfiguration(schema: schema, url: directory.appending(path: "OpenRize.store"))
+            try FileManager.default.createDirectory(at: dataFolder, withIntermediateDirectories: true)
+            configuration = ModelConfiguration(schema: schema, url: dataFolder.appending(path: storeName))
         }
         return try ModelContainer(for: schema, configurations: configuration)
     }

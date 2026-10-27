@@ -1,4 +1,4 @@
-import OpenRizeKit
+import WeftKit
 import SwiftUI
 
 struct OnboardingView: View {
@@ -10,7 +10,7 @@ struct OnboardingView: View {
             HStack(spacing: 12) {
                 Image(systemName: "circle.circle").font(.system(size: 40)).foregroundStyle(.tint)
                 VStack(alignment: .leading) {
-                    Text("Welcome to OpenRize").font(.title.bold())
+                    Text("Welcome to Weft").font(.title.bold())
                     Text("Automatic time tracking that stays on your Mac.").foregroundStyle(.secondary)
                 }
             }

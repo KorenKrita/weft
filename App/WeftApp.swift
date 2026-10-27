@@ -1,8 +1,8 @@
-import OpenRizeKit
+import WeftKit
 import SwiftUI
 
 @main
-struct OpenRizeApp: App {
+struct WeftApp: App {
     @NSApplicationDelegateAdaptor private var delegate: AppDelegate
     private var model: AppModel { delegate.model }
 
@@ -16,7 +16,7 @@ struct OpenRizeApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("OpenRize", id: MainView.windowID) {
+        Window("Weft", id: MainView.windowID) {
             MainView()
                 .environment(model)
                 .modelContainer(model.container)
@@ -56,17 +56,17 @@ private struct MenuBarLabel: View {
     }
 }
 
-/// Owns the model so `openrize://` URLs can reach it even when no window is open.
+/// Owns the model so `weft://` URLs can reach it even when no window is open.
 ///
-///     openrize://focus?minutes=50   openrize://meeting   openrize://break
-///     openrize://stop               openrize://pause     openrize://resume
-///     openrize://dashboard
+///     weft://focus?minutes=50   weft://meeting   weft://break
+///     weft://stop               weft://pause     weft://resume
+///     weft://dashboard
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls where url.scheme == "openrize" {
+        for url in urls where url.scheme == "weft" {
             handle(url)
         }
     }

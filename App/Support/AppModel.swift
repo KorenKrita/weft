@@ -1,6 +1,6 @@
 import AppKit
 import Observation
-import OpenRizeKit
+import WeftKit
 import SwiftData
 
 enum Page: String, CaseIterable, Identifiable {
@@ -54,9 +54,9 @@ final class AppModel {
 
     init() {
         do {
-            container = try OpenRizeSchema.makeContainer()
+            container = try WeftSchema.makeContainer()
         } catch {
-            fatalError("Could not open the OpenRize database: \(error)")
+            fatalError("Could not open the Weft database: \(error)")
         }
         let context = container.mainContext
         classifier = ClassificationService(modelContext: context, ai: ai)

@@ -1,5 +1,5 @@
 import AppKit
-import OpenRizeKit
+import WeftKit
 import ServiceManagement
 import SwiftUI
 
@@ -77,7 +77,7 @@ enum LaunchAtLogin {
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
         } catch {
-            NSLog("OpenRize: launch at login change failed: \(error)")
+            NSLog("Weft: launch at login change failed: \(error)")
         }
     }
 }

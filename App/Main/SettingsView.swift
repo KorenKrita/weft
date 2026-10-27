@@ -1,4 +1,4 @@
-import OpenRizeKit
+import WeftKit
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
@@ -31,7 +31,7 @@ private struct GeneralSettings: View {
         @Bindable var prefs = model.preferences
         Form {
             Section {
-                Toggle("Launch OpenRize at login", isOn: $launchAtLogin)
+                Toggle("Launch Weft at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in LaunchAtLogin.set(enabled) }
                 Toggle("Pause tracking", isOn: $prefs.trackingPaused)
             }
@@ -54,7 +54,7 @@ private struct GeneralSettings: View {
                     Button("Open Settings") { SystemSettings.openAutomation() }
                 } label: {
                     Text("Browsers")
-                    Text("Each browser asks once whether OpenRize may read the active tab's URL.")
+                    Text("Each browser asks once whether Weft may read the active tab's URL.")
                 }
                 LabeledContent {
                     switch model.classifier.aiAvailability {
@@ -333,7 +333,7 @@ private struct DataSettings: View {
     @Environment(\.modelContext) private var modelContext
     @State private var exportMessage: String?
 
-    private var dataFolder: URL { URL.applicationSupportDirectory.appending(path: "OpenRize") }
+    private var dataFolder: URL { WeftSchema.dataFolder }
 
     var body: some View {
         Form {
@@ -363,7 +363,7 @@ private struct DataSettings: View {
     private func exportCSV() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.commaSeparatedText]
-        panel.nameFieldStringValue = "openrize-activity.csv"
+        panel.nameFieldStringValue = "weft-activity.csv"
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
         let segments = (try? modelContext.fetch(FetchDescriptor<ActivitySegment>(sortBy: [SortDescriptor(\.start)]))) ?? []

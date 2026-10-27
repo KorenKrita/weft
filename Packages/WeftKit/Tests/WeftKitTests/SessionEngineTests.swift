@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
-@testable import OpenRizeKit
+@testable import WeftKit
 
 private struct NoAI: AIClassifying {
     func availability() -> AIAvailability { .unavailable("test") }
@@ -18,7 +18,7 @@ struct SessionEngineTests {
     let engine: SessionEngine
 
     init() throws {
-        container = try OpenRizeSchema.makeContainer(inMemory: true)
+        container = try WeftSchema.makeContainer(inMemory: true)
         let classifier = ClassificationService(modelContext: container.mainContext, ai: NoAI())
         engine = SessionEngine(modelContext: container.mainContext, classifier: classifier)
     }

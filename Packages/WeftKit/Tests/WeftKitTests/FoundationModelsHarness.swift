@@ -1,10 +1,10 @@
 import Foundation
 import Testing
-@testable import OpenRizeKit
+@testable import WeftKit
 
 /// Runs the real on-device model against apps and sites the built-in rules don't know.
-/// Opt in with `OPENRIZE_AI_TESTS=1 swift test --filter FoundationModelsHarness`.
-@Suite(.enabled(if: ProcessInfo.processInfo.environment["OPENRIZE_AI_TESTS"] != nil))
+/// Opt in with `WEFT_AI_TESTS=1 swift test --filter FoundationModelsHarness`.
+@Suite(.enabled(if: ProcessInfo.processInfo.environment["WEFT_AI_TESTS"] != nil))
 struct FoundationModelsHarness {
     let classifier = FoundationModelsClassifier()
 
@@ -59,7 +59,7 @@ struct FoundationModelsHarness {
             - 1. ✳ openrize-macos-swiftui-app
             - ActivityWatch/activitywatch: The best free and open-source automated time tracker
             - ssh build-server
-            - OpenRize – DayView.swift
+            - Weft – DayView.swift
             - Rize alternatives for macOS
             """
         for language in ["English", "Chinese"] {

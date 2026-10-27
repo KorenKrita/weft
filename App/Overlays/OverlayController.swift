@@ -1,5 +1,5 @@
 import AppKit
-import OpenRizeKit
+import WeftKit
 import SwiftUI
 
 /// Borderless windows above everything else, on every Space, for the break screen and the
@@ -33,7 +33,7 @@ final class OverlayController {
 
     /// A non-activating panel can take keyboard focus without activating the app, which
     /// macOS no longer allows us to do on our own. It also keeps the tracker from seeing
-    /// OpenRize as the frontmost app while an overlay is up.
+    /// Weft as the frontmost app while an overlay is up.
     private func makeWindow(on screen: NSScreen, content: some View) -> NSWindow {
         let window = OverlayWindow(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
                                    backing: .buffered, defer: false)

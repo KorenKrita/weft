@@ -10,7 +10,7 @@ public struct TrackerSample: Sendable {
     public var category: CategoryDefinition?
     /// True when the user is away (idle past the threshold, asleep, locked or paused).
     public var isAway: Bool
-    /// The user is looking at OpenRize itself. That time isn't recorded, but it isn't
+    /// The user is looking at Weft itself. That time isn't recorded, but it isn't
     /// time away either.
     public var isOwnApp = false
 }
@@ -105,7 +105,7 @@ public final class ActivityTracker {
 
         let isAway = isOwnApp ? idleSeconds >= machine.idleThreshold : machine.current == nil
         if isOwnApp {
-            // Keep showing what the user was doing before opening OpenRize (e.g. the menu bar
+            // Keep showing what the user was doing before opening Weft (e.g. the menu bar
             // popover), unless they've gone idle in the meantime.
             if isAway { current = nil; currentCategory = nil }
             broadcast(TrackerSample(date: now, context: nil, category: nil, isAway: isAway, isOwnApp: true))

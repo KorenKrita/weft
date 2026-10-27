@@ -1,7 +1,10 @@
-# OpenRize
+# Weft
 
-An open-source, local-first take on the personal side of [Rize](https://rize.io): automatic time tracking, a Focus Score, focus sessions, break reminders and a distraction blocker — with categorization done by Apple's on-device model. Nothing leaves your Mac.
+Weft is an open-source, local-first time tracker for macOS. It quietly records what you work on and weaves your day into a few parallel work streams — coding, research, meetings — each described in a sentence by Apple's on-device model. Nothing leaves your Mac.
 
+Inspired by [Rize](https://rize.io), built around a different idea: people work on several things at once, so the timeline shows overlapping streams of work rather than a log of app switches.
+
+- **Work streams** — activity in the same category within 30 minutes forms a stream; streams of different categories overlap on a calendar-style timeline. Streams under 10 minutes stay in the log, and each finished stream gets a one-sentence description written on device.
 - **Automatic tracking** — frontmost app, focused window title and active browser tab URL, sampled every 2 s. Idle time (5 min without input), sleep and screen lock are cut out. No screenshots, no keystrokes.
 - **Categorization** — ~360 built-in rules → your own rules → Apple Foundation Models (on device) for anything unknown, cached per app/site. Fix any entry from the timeline and it becomes a rule.
 - **Focus Score** — 0–100 from deep-work share (25 + min stretches), focus share, context switching and distraction time, with the breakdown shown in the app.
@@ -21,8 +24,8 @@ An open-source, local-first take on the personal side of [Rize](https://rize.io)
 brew install xcodegen
 cp Config/Local.xcconfig.example Config/Local.xcconfig   # optional: your signing identity
 xcodegen generate
-xcodebuild -project OpenRize.xcodeproj -scheme OpenRize -derivedDataPath build/DerivedData build
-open build/DerivedData/Build/Products/Debug/OpenRize.app
+xcodebuild -project Weft.xcodeproj -scheme Weft -derivedDataPath build/DerivedData build
+open build/DerivedData/Build/Products/Debug/Weft.app
 ```
 
 Without `Local.xcconfig`, the app is signed ad hoc. That works, but macOS forgets the Accessibility permission after every rebuild.
@@ -40,9 +43,9 @@ Without `Local.xcconfig`, the app is signed ad hoc. That works, but macOS forget
 For Raycast, Shortcuts, scripts:
 
 ```
-openrize://focus?minutes=50   openrize://meeting   openrize://break
-openrize://stop               openrize://pause     openrize://resume
-openrize://dashboard
+weft://focus?minutes=50   weft://meeting   weft://break
+weft://stop               weft://pause     weft://resume
+weft://dashboard
 ```
 
 ## Layout
@@ -50,7 +53,7 @@ openrize://dashboard
 ```
 project.yml                 XcodeGen spec
 App/                        SwiftUI app: menu bar, main window, overlays
-Packages/OpenRizeKit/       Tracking, storage (SwiftData), classification, metrics, sessions
+Packages/WeftKit/       Tracking, storage (SwiftData), classification, metrics, sessions
 ```
 
 ## App icon
@@ -62,9 +65,9 @@ dark, tinted and clear appearances.
 ## Tests
 
 ```sh
-cd Packages/OpenRizeKit
+cd Packages/WeftKit
 swift test                                                   # unit tests
-OPENRIZE_AI_TESTS=1 swift test --filter FoundationModelsHarness   # real on-device model
+WEFT_AI_TESTS=1 swift test --filter FoundationModelsHarness   # real on-device model
 ```
 
-Data lives in `~/Library/Application Support/OpenRize/`.
+Data lives in `~/Library/Application Support/Weft/`.

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>OpenRize</string>
+	<string>Weft</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -22,10 +22,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>io.github.openrize.OpenRize</string>
+			<string>me.weishu.Weft</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>openrize</string>
+				<string>weft</string>
 			</array>
 		</dict>
 	</array>
@@ -36,7 +36,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>OpenRize reads the URL of the active browser tab to categorize your time. Nothing leaves your Mac.</string>
+	<string>Weft reads the URL of the active browser tab to categorize your time. Nothing leaves your Mac.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Open source under the MIT license.</string>
 </dict>

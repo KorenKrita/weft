@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import OpenRizeKit
+@testable import WeftKit
 
 struct TrackingStateMachineTests {
     let t0 = Date(timeIntervalSince1970: 1_000_000)

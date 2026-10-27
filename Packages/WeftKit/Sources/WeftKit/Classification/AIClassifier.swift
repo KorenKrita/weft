@@ -104,8 +104,8 @@ public struct FoundationModelsClassifier: AIClassifying {
     public func describeActivity(_ facts: String, language: String) async throws -> String {
         // A native example per language keeps the output from reading like a translation.
         let example = language.localizedCaseInsensitiveContains("Chinese")
-            ? "在终端里开发 openrize 应用，在 GitHub 上查看 ActivityWatch 仓库，并调研了时间追踪工具的替代方案。"
-            : "Worked on the openrize app in the terminal, reviewed the ActivityWatch repo on GitHub and researched time-tracking alternatives."
+            ? "在终端里开发 weft 应用，在 GitHub 上查看 ActivityWatch 仓库，并调研了时间追踪工具的替代方案。"
+            : "Worked on the weft app in the terminal, reviewed the ActivityWatch repo on GitHub and researched time-tracking alternatives."
         let session = LanguageModelSession(instructions: """
             You write entries for a personal timesheet. Given the apps, websites and window \
             titles from a stretch of computer use, write ONE sentence (at most 30 words) that \

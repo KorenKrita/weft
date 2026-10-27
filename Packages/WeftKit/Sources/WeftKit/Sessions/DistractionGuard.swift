@@ -44,7 +44,7 @@ public final class DistractionGuard {
     }
 
     public func handle(_ sample: TrackerSample) {
-        // Glancing at OpenRize (e.g. the menu bar) must not count as leaving the distraction.
+        // Glancing at Weft (e.g. the menu bar) must not count as leaving the distraction.
         if sample.isOwnApp { return }
         if let context = sample.context, sample.category?.blockInFocus == false {
             lastWorkBundleID = context.bundleID

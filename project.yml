@@ -1,7 +1,7 @@
-name: OpenRize
+name: Weft
 
 options:
-  bundleIdPrefix: io.github.openrize
+  bundleIdPrefix: me.weishu
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
@@ -17,46 +17,46 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 
 packages:
-  OpenRizeKit:
-    path: Packages/OpenRizeKit
+  WeftKit:
+    path: Packages/WeftKit
 
 targets:
-  OpenRize:
+  Weft:
     type: application
     platform: macOS
     sources:
       - App
     dependencies:
-      - package: OpenRizeKit
+      - package: WeftKit
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: OpenRize
+        CFBundleDisplayName: Weft
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.productivity
-        NSAppleEventsUsageDescription: OpenRize reads the URL of the active browser tab to categorize your time. Nothing leaves your Mac.
+        NSAppleEventsUsageDescription: Weft reads the URL of the active browser tab to categorize your time. Nothing leaves your Mac.
         NSHumanReadableCopyright: Open source under the MIT license.
         CFBundleURLTypes:
-          - CFBundleURLName: io.github.openrize.OpenRize
-            CFBundleURLSchemes: [openrize]
+          - CFBundleURLName: me.weishu.Weft
+            CFBundleURLSchemes: [weft]
     entitlements:
-      path: App/OpenRize.entitlements
+      path: App/Weft.entitlements
       properties:
         com.apple.security.automation.apple-events: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.openrize.OpenRize
+        PRODUCT_BUNDLE_IDENTIFIER: me.weishu.Weft
         ENABLE_HARDENED_RUNTIME: YES
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
 schemes:
-  OpenRize:
+  Weft:
     build:
       targets:
-        OpenRize: all
+        Weft: all
     run:
       config: Debug
     test:

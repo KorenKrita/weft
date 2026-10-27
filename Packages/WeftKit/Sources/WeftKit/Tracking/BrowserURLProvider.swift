@@ -17,7 +17,7 @@ public enum BrowserURLScripts {
         safari.contains(bundleID) || chromium.contains(bundleID)
     }
 
-    static let privateMarker = "__openrize_private__"
+    static let privateMarker = "__weft_private__"
 
     static func script(for bundleID: String) -> String? {
         if safari.contains(bundleID) {

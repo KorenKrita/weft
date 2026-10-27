@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
-@testable import OpenRizeKit
+@testable import WeftKit
 
 private final class DescribingAI: AIClassifying, @unchecked Sendable {
     private let lock = NSLock()
@@ -15,7 +15,7 @@ private final class DescribingAI: AIClassifying, @unchecked Sendable {
     func summarize(_ facts: String) async throws -> String { "" }
     func describeActivity(_ facts: String, language: String) async throws -> String {
         lock.withLock { _prompts.append(facts) }
-        return "Worked on OpenRize."
+        return "Worked on Weft."
     }
 }
 
@@ -86,7 +86,7 @@ struct TimeEntriesTests {
 
     @MainActor
     @Test func serviceDescribesFinishedStreamsOnceAndCaches() async throws {
-        let container = try OpenRizeSchema.makeContainer(inMemory: true)
+        let container = try WeftSchema.makeContainer(inMemory: true)
         let ai = DescribingAI()
         let service = TimeEntryService(modelContext: container.mainContext, ai: ai)
         let entries = TimeEntries.build([seg(0, 20, "xcode"), seg(60, 20, "xcode")])
@@ -97,12 +97,12 @@ struct TimeEntriesTests {
         for _ in 0..<100 where service.description(for: entries[0]) == nil {
             try await Task.sleep(for: .milliseconds(10))
         }
-        #expect(service.description(for: entries[0]) == "Worked on OpenRize.")
+        #expect(service.description(for: entries[0]) == "Worked on Weft.")
         #expect(service.description(for: entries[1]) == nil)
         #expect(ai.prompts.count == 1)
 
         // A fresh service reads the stored description instead of asking again.
         let reloaded = TimeEntryService(modelContext: container.mainContext, ai: ai)
-        #expect(reloaded.description(for: entries[0]) == "Worked on OpenRize.")
+        #expect(reloaded.description(for: entries[0]) == "Worked on Weft.")
     }
 }

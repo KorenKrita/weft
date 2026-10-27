@@ -1,5 +1,5 @@
 import Charts
-import OpenRizeKit
+import WeftKit
 import SwiftData
 import SwiftUI
 

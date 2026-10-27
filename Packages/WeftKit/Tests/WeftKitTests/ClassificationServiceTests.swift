@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
-@testable import OpenRizeKit
+@testable import WeftKit
 
 private final class FakeAI: AIClassifying, @unchecked Sendable {
     let answer: AIClassification
@@ -28,7 +28,7 @@ struct ClassificationServiceTests {
     let context: ModelContext
 
     init() throws {
-        container = try OpenRizeSchema.makeContainer(inMemory: true)
+        container = try WeftSchema.makeContainer(inMemory: true)
         context = container.mainContext
     }
 
