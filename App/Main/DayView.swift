@@ -362,7 +362,8 @@ private struct AppBreakdown: View {
                         BarRow(label: app.name, value: app.time, total: total, color: .accentColor,
                                detail: Format.percent(app.time / max(total, 1)))
                         // Every row reserves the same slot so the bars line up.
-                        Group {
+                        ZStack {
+                            Color.clear.frame(height: 1)
                             if !app.sites.isEmpty {
                                 Button {
                                     if expanded.contains(app.bundleID) { expanded.remove(app.bundleID) } else { expanded.insert(app.bundleID) }

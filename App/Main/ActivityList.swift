@@ -69,32 +69,33 @@ struct CategoryMenu: View {
 
     var body: some View {
         let target = group.first.domain ?? group.first.appName
-        Menu {
-            Menu("Always for \(target)") {
-                categoryButtons { key in
-                    if let domain = group.first.domain {
-                        model.classifier.addRule(field: .domain, pattern: domain, categoryKey: key)
-                    } else {
-                        model.classifier.addRule(field: .bundleID, pattern: group.first.bundleID, categoryKey: key)
+        // A borderless menu only renders the label's text, so the dot sits outside it.
+        HStack(spacing: 4) {
+            Circle().fill(category.color).frame(width: 8, height: 8)
+            Menu {
+                Menu("Always for \(target)") {
+                    categoryButtons { key in
+                        if let domain = group.first.domain {
+                            model.classifier.addRule(field: .domain, pattern: domain, categoryKey: key)
+                        } else {
+                            model.classifier.addRule(field: .bundleID, pattern: group.first.bundleID, categoryKey: key)
+                        }
                     }
                 }
-            }
-            Menu("Only this entry") {
-                categoryButtons { key in
-                    for segment in group.segments { model.classifier.setManualCategory(key, for: segment) }
+                Menu("Only this entry") {
+                    categoryButtons { key in
+                        for segment in group.segments { model.classifier.setManualCategory(key, for: segment) }
+                    }
                 }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Circle().fill(category.color).frame(width: 8, height: 8)
+            } label: {
                 Text(category.name)
-                if group.first.classificationSource == .pending {
-                    Image(systemName: "sparkles").foregroundStyle(.secondary).help("Waiting for on-device classification")
-                }
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            if group.first.classificationSource == .pending {
+                Image(systemName: "sparkles").foregroundStyle(.secondary).help("Waiting for on-device classification")
             }
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
     }
 
     @ViewBuilder

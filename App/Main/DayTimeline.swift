@@ -4,6 +4,7 @@ import SwiftUI
 /// A calendar-style day of work streams. Streams in different categories can overlap, so
 /// they're laid out side by side like concurrent calendar events; sessions get their own lane.
 struct DayTimeline: View {
+    @Environment(AppModel.self) private var model
     let day: Date
     let segments: [ActivitySegment]
     let sessions: [SessionRecord]
@@ -16,15 +17,25 @@ struct DayTimeline: View {
     private let spacing: CGFloat = 12
 
     var body: some View {
+        if Calendar.current.isDateInToday(day) {
+            // Keeps the now line and the live stream moving between store changes.
+            TimelineView(.periodic(from: .now, by: 60)) { context in content(now: context.date) }
+        } else {
+            content(now: .now)
+        }
+    }
+
+    private func content(now: Date) -> some View {
         let all = TimeEntries.build(segments)
         let entries = TimeEntries.significant(all)
         let hidden = all.count - entries.count
-        let range = visibleRange(entries)
+        let live = liveEntry(entries, now: now)
+        let range = visibleRange(entries, now: now)
         let hours = Int((range.upperBound.timeIntervalSince(range.lowerBound) / 3600).rounded())
         let height = CGFloat(hours) * pointsPerHour
         let placed = layout(entries)
 
-        VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 10) {
             if entries.isEmpty {
                 ContentUnavailableView("No work streams yet", systemImage: "calendar.day.timeline.left",
                                        description: Text("Streams appear once you've spent 10 minutes or more on something."))
@@ -38,8 +49,9 @@ struct DayTimeline: View {
                             ZStack(alignment: .topLeading) {
                                 ForEach(placed, id: \.entry.id) { item in
                                     let width = (proxy.size.width - CGFloat(item.columns - 1) * 6) / CGFloat(item.columns)
-                                    StreamView(entry: item.entry)
-                                        .frame(width: width, height: itemHeight(item.entry, range))
+                                    let isLive = item.entry.id == live?.id
+                                    StreamView(entry: item.entry, isLive: isLive)
+                                        .frame(width: width, height: itemHeight(item.entry, end: isLive ? now : item.entry.end, range))
                                         .offset(x: CGFloat(item.column) * (width + 6), y: y(item.entry.start, range))
                                 }
                             }
@@ -57,8 +69,8 @@ struct DayTimeline: View {
                 }
                 .frame(height: height, alignment: .topLeading)
                 .overlay(alignment: .topLeading) {
-                    if Calendar.current.isDateInToday(day), range.contains(.now) {
-                        nowLine.offset(y: y(.now, range) - 4)
+                    if Calendar.current.isDateInToday(day), range.contains(now) {
+                        nowLine.offset(y: y(now, range) - 4)
                     }
                 }
             }
@@ -76,21 +88,28 @@ struct DayTimeline: View {
         CGFloat(date.timeIntervalSince(range.lowerBound) / 3600) * pointsPerHour
     }
 
-    private func itemHeight(_ entry: TimeEntry, _ range: ClosedRange<Date>) -> CGFloat {
-        max(minimumHeight, y(entry.end, range) - y(entry.start, range) - 3)
+    private func itemHeight(_ entry: TimeEntry, end: Date, _ range: ClosedRange<Date>) -> CGFloat {
+        max(minimumHeight, y(end, range) - y(entry.start, range) - 3)
+    }
+
+    /// The stream the user is in right now: the tracker's current category, still being
+    /// extended. Segments are extended at least once a minute while active.
+    private func liveEntry(_ entries: [TimeEntry], now: Date) -> TimeEntry? {
+        guard Calendar.current.isDateInToday(day), let key = model.tracker.currentCategory?.key else { return nil }
+        return entries.last { $0.categoryKey == key && now.timeIntervalSince($0.end) < 3 * 60 }
     }
 
     /// Whole hours covering the streams and sessions (and now, for today), with an hour of
     /// breathing room before and at least half an hour after, kept within the day.
-    private func visibleRange(_ entries: [TimeEntry]) -> ClosedRange<Date> {
+    private func visibleRange(_ entries: [TimeEntry], now: Date) -> ClosedRange<Date> {
         let calendar = Calendar.current
-        var first = entries.map(\.start).min() ?? .now
-        var last = entries.map(\.end).max() ?? .now
+        var first = entries.map(\.start).min() ?? now
+        var last = entries.map(\.end).max() ?? now
         for session in sessions {
             first = min(first, session.start)
             last = max(last, session.end)
         }
-        if calendar.isDateInToday(day) { last = max(last, .now) }
+        if calendar.isDateInToday(day) { last = max(last, now) }
         let dayStart = calendar.startOfDay(for: day)
         let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
         let lower = max(dayStart, (calendar.dateInterval(of: .hour, for: first)?.start ?? first).addingTimeInterval(-3600))
@@ -166,6 +185,7 @@ struct DayTimeline: View {
 private struct StreamView: View {
     @Environment(AppModel.self) private var model
     let entry: TimeEntry
+    let isLive: Bool
     @State private var isHovering = false
     @State private var showDetail = false
 
@@ -176,19 +196,48 @@ private struct StreamView: View {
             let height = proxy.size.height
             HStack(alignment: .top, spacing: 0) {
                 Rectangle().fill(category.color).frame(width: 4)
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(category.name).fontWeight(.semibold).foregroundStyle(category.color)
-                        Text("\(entry.start.formatted(date: .omitted, time: .shortened))–\(entry.end.formatted(date: .omitted, time: .shortened)) · \(Format.duration(entry.activeTime))")
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.caption)
-                    .lineLimit(1)
-                    if height >= 44 {
-                        Text(text.body)
-                            .font(.callout)
-                            .foregroundStyle(text.isPlaceholder ? .secondary : .primary)
-                            .lineLimit(max(1, Int((height - 30) / 17)))
+                Group {
+                    if height < 44 {
+                        // One line: there's no room for the description underneath.
+                        HStack(spacing: 6) {
+                            Text(category.name).fontWeight(.semibold).foregroundStyle(category.color)
+                            Text(text.body).foregroundStyle(text.isPlaceholder ? .secondary : .primary)
+                            Spacer(minLength: 4)
+                            Text(timeLabel).foregroundStyle(.secondary).layoutPriority(1)
+                        }
+                        .font(.caption)
+                        .lineLimit(1)
+                    } else {
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 6) {
+                                Text(category.name).fontWeight(.semibold).foregroundStyle(category.color)
+                                Text(timeLabel).foregroundStyle(.secondary)
+                            }
+                            .font(.caption)
+                            .lineLimit(1)
+                            Text(text.body)
+                                .font(.callout)
+                                .foregroundStyle(text.isPlaceholder ? .secondary : .primary)
+                                .lineLimit(height >= 80 ? 2 : 1)
+                            // Fill tall blocks with what the time went to.
+                            let rows = Int((height - (height >= 80 ? 74 : 56)) / 18)
+                            if rows > 0 {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    ForEach(entry.usage.prefix(min(rows, 5)), id: \.name) { item in
+                                        HStack(spacing: 5) {
+                                            Image(nsImage: AppIcons.icon(for: item.bundleID)).resizable().frame(width: 12, height: 12)
+                                            Text(item.name).lineLimit(1)
+                                            Spacer(minLength: 4)
+                                            Text(Format.duration(item.time)).monospacedDigit()
+                                        }
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .frame(height: 16)
+                                    }
+                                }
+                                .padding(.top, 4)
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 8)
@@ -206,9 +255,13 @@ private struct StreamView: View {
         .popover(isPresented: $showDetail) { StreamDetail(entry: entry, text: text.body) }
     }
 
+    private var timeLabel: String {
+        let end = isLive ? "now" : entry.end.formatted(date: .omitted, time: .shortened)
+        return "\(entry.start.formatted(date: .omitted, time: .shortened))–\(end) · \(Format.duration(entry.activeTime))"
+    }
+
     private var description: (body: String, isPlaceholder: Bool) {
         if let text = model.timeEntries.description(for: entry) { return (text, false) }
-        if !entry.isComplete(now: .now) { return ("In progress · \(entry.fallbackDescription)", true) }
         return (entry.fallbackDescription, model.classifier.aiAvailability == .available)
     }
 }
