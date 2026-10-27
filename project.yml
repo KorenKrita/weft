@@ -1,0 +1,65 @@
+name: OpenRize
+
+options:
+  bundleIdPrefix: io.github.openrize
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+packages:
+  OpenRizeKit:
+    path: Packages/OpenRizeKit
+
+targets:
+  OpenRize:
+    type: application
+    platform: macOS
+    sources:
+      - App
+    dependencies:
+      - package: OpenRizeKit
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: OpenRize
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
+        NSAppleEventsUsageDescription: OpenRize reads the URL of the active browser tab to categorize your time. Nothing leaves your Mac.
+        NSHumanReadableCopyright: Open source under the MIT license.
+        CFBundleURLTypes:
+          - CFBundleURLName: io.github.openrize.OpenRize
+            CFBundleURLSchemes: [openrize]
+    entitlements:
+      path: App/OpenRize.entitlements
+      properties:
+        com.apple.security.automation.apple-events: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.openrize.OpenRize
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+schemes:
+  OpenRize:
+    build:
+      targets:
+        OpenRize: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release

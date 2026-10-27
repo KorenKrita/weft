@@ -1,0 +1,134 @@
+import AppKit
+import Observation
+import OpenRizeKit
+import SwiftData
+
+enum Page: String, CaseIterable, Identifiable {
+    case today, reports, review, categories, rules, settings
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .today: "Today"
+        case .reports: "Reports"
+        case .review: "Review"
+        case .categories: "Categories"
+        case .rules: "Rules"
+        case .settings: "Settings"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .today: "clock"
+        case .reports: "chart.bar.xaxis"
+        case .review: "questionmark.bubble"
+        case .categories: "square.grid.2x2"
+        case .rules: "list.bullet.rectangle"
+        case .settings: "gearshape"
+        }
+    }
+}
+
+/// Owns every long-lived service and wires them together.
+@MainActor
+@Observable
+final class AppModel {
+    let container: ModelContainer
+    let preferences = Preferences()
+    let ai = FoundationModelsClassifier()
+    let classifier: ClassificationService
+    let tracker: ActivityTracker
+    let sessions: SessionEngine
+    let distractionGuard: DistractionGuard
+
+    var page: Page = .today
+    /// Set by a view that has access to `openWindow`.
+    @ObservationIgnored var openDashboard: (() -> Void)?
+    var accessibilityGranted = SystemProbe.isAccessibilityTrusted
+
+    @ObservationIgnored private let notifier = Notifier()
+    @ObservationIgnored private let breakReminder: BreakReminder
+    @ObservationIgnored private let workHours: WorkHoursMonitor
+    @ObservationIgnored private let overlays = OverlayController()
+
+    init() {
+        do {
+            container = try OpenRizeSchema.makeContainer()
+        } catch {
+            fatalError("Could not open the OpenRize database: \(error)")
+        }
+        let context = container.mainContext
+        classifier = ClassificationService(modelContext: context, ai: ai)
+        tracker = ActivityTracker(modelContext: context, classifier: classifier, preferences: preferences)
+        sessions = SessionEngine(modelContext: context, classifier: classifier)
+        distractionGuard = DistractionGuard(preferences: preferences, sessions: sessions, notifier: notifier)
+        breakReminder = BreakReminder(preferences: preferences, sessions: sessions, notifier: notifier)
+        workHours = WorkHoursMonitor(preferences: preferences, notifier: notifier, modelContext: context)
+
+        wire()
+        notifier.requestAuthorization()
+        tracker.start()
+        classifier.retryPending()
+    }
+
+    private func wire() {
+        tracker.addListener { [weak self] sample in
+            guard let self else { return }
+            breakReminder.handle(sample)
+            workHours.handle(sample)
+            distractionGuard.handle(sample)
+            if !accessibilityGranted, SystemProbe.isAccessibilityTrusted { accessibilityGranted = true }
+        }
+
+        sessions.onStart = { [weak self] session in
+            guard let self else { return }
+            distractionGuard.sessionStarted()
+            if session.kind == .breakTime, preferences.fullScreenBreak {
+                overlays.showBreak(model: self)
+            } else {
+                overlays.hideBreak()
+            }
+        }
+
+        sessions.onEnd = { [weak self] summary in
+            guard let self else { return }
+            overlays.hideBreak()
+            guard summary.completed else { return }
+            switch summary.kind {
+            case .breakTime:
+                notifier.post(.sessionEnded, title: "Break is over", body: "Ready to get back to it?")
+            case .focus, .meeting:
+                var body = "\(summary.kind.title) session complete."
+                if let score = summary.score { body += " Focus Score \(score.value) – \(score.label)." }
+                if summary.distractions > 0 { body += " \(summary.distractions) distraction(s)." }
+                notifier.post(.sessionEnded, title: "Session complete", body: body)
+            }
+        }
+
+        distractionGuard.onIncidentChange = { [weak self] incident in
+            guard let self else { return }
+            if incident != nil { overlays.showBlocker(model: self) } else { overlays.hideBlocker() }
+        }
+
+        notifier.onAction = { [weak self] action in
+            guard let self else { return }
+            switch action {
+            case .startBreak: startSession(.breakTime)
+            case .snooze: breakReminder.snooze()
+            case .backToWork: distractionGuard.backToWork()
+            case .notADistraction: distractionGuard.notADistraction()
+            }
+        }
+    }
+
+    func startSession(_ kind: SessionKind, minutes: Int? = nil) {
+        sessions.start(kind, minutes: minutes ?? preferences.defaultMinutes(for: kind))
+    }
+
+    func refreshPermissions() {
+        accessibilityGranted = SystemProbe.isAccessibilityTrusted
+        classifier.refreshAvailability()
+    }
+}

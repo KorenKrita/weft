@@ -1,0 +1,10 @@
+// Shared build settings. Signing defaults to ad-hoc ("Sign to Run Locally").
+//
+// Ad-hoc signatures change on every build, so macOS forgets the Accessibility grant each
+// time. For day-to-day development copy Local.xcconfig.example to Local.xcconfig and
+// point it at your own signing identity; that file is git-ignored.
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"
