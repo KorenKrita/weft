@@ -26,12 +26,22 @@ struct MenuBarView: View {
     private var footer: some View {
         @Bindable var preferences = model.preferences
         return HStack(spacing: 12) {
-            Toggle(isOn: $preferences.trackingPaused) {
-                Label(preferences.trackingPaused ? "Paused" : "Tracking",
-                      systemImage: preferences.trackingPaused ? "pause.circle.fill" : "record.circle")
+            // A status, not a toggle: green while tracking, orange while paused.
+            Button {
+                preferences.trackingPaused.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    if preferences.trackingPaused {
+                        Image(systemName: "pause.fill").font(.caption2).foregroundStyle(.orange)
+                        Text("Paused").foregroundStyle(.orange)
+                    } else {
+                        Circle().fill(.green).frame(width: 8, height: 8)
+                        Text("Tracking").foregroundStyle(.primary)
+                    }
+                }
+                .frame(minWidth: 84, alignment: .leading)
             }
-            .toggleStyle(.button)
-            .help(preferences.trackingPaused ? "Resume tracking" : "Pause tracking")
+            .help(preferences.trackingPaused ? "Click to resume tracking" : "Click to pause tracking")
 
             Spacer()
             Button("Open Dashboard") {
@@ -217,6 +227,8 @@ private struct CurrentActivityRow: View {
                     Spacer()
                 }
             }
+            // Same height whether tracking, away or paused, so the panel doesn't jump.
+            .frame(height: 34)
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary.opacity(0.5)))
 
@@ -265,29 +277,31 @@ private struct SessionSection: View {
     }
 }
 
-/// A tile that starts a session with the default duration; the corner menu offers others.
+/// A tile that starts a session with the default duration. The duration underneath is a
+/// menu for picking another one.
 private struct SessionButton: View {
     @Environment(AppModel.self) private var model
     let kind: SessionKind
     @State private var isHovering = false
+    @State private var isHoveringDuration = false
 
     var body: some View {
         let minutes = model.preferences.defaultMinutes(for: kind)
-        Button {
-            model.startSession(kind)
-        } label: {
-            VStack(spacing: 3) {
-                Image(systemName: kind.symbol).font(.title3).frame(height: 22)
-                Text(kind.title).font(.callout.weight(.medium))
-                Text(Format.duration(TimeInterval(minutes * 60))).font(.caption).foregroundStyle(.secondary)
+        VStack(spacing: 2) {
+            Button {
+                model.startSession(kind)
+            } label: {
+                VStack(spacing: 3) {
+                    Image(systemName: kind.symbol).font(.title3).frame(height: 22)
+                    Text(kind.title).font(.callout.weight(.medium))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 9)
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-            .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary.opacity(isHovering ? 0.9 : 0.5)))
-            .contentShape(RoundedRectangle(cornerRadius: 10))
-        }
-        .buttonStyle(.plain)
-        .overlay(alignment: .topTrailing) {
+            .buttonStyle(.plain)
+            .help("Start a \(Format.minutesLabel(minutes)) \(kind.title.lowercased()) session")
+
             Menu {
                 Section("Start a \(kind.title.lowercased()) session") {
                     ForEach(SessionEngine.presetMinutes, id: \.self) { preset in
@@ -295,16 +309,25 @@ private struct SessionButton: View {
                     }
                 }
             } label: {
-                Image(systemName: "ellipsis")
+                Text(Format.duration(TimeInterval(minutes * 60)))
+                    .font(.caption)
+                    .foregroundStyle(isHoveringDuration ? .primary : .secondary)
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
+            .buttonStyle(.plain)
             .menuIndicator(.hidden)
             .fixedSize()
-            .padding(6)
-            .help("Other durations")
+            // Lights up on hover to show it can be clicked for other durations.
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(Capsule().fill(.primary.opacity(isHoveringDuration ? 0.12 : 0)))
+            .onHover { isHoveringDuration = $0 }
+            .padding(.bottom, 7)
+            .help("Choose another duration")
         }
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary.opacity(isHovering ? 0.9 : 0.5)))
         .onHover { isHovering = $0 }
-        .help("Start a \(Format.minutesLabel(minutes)) \(kind.title.lowercased()) session")
     }
 }
 

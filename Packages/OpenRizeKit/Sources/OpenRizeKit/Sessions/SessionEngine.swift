@@ -39,6 +39,10 @@ public final class SessionEngine {
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var distractions = 0
 
+    /// Sessions shorter than this are too short to review; stopped early, they're discarded
+    /// as a mis-click or a change of mind.
+    public static let minimumReviewDuration: TimeInterval = 5 * 60
+
     /// Durations offered in the menu, in minutes. Mirrors Rize.
     public static let presetMinutes = [5, 10, 15, 20, 25, 30, 45, 50, 60, 90, 120, 180, 240]
 
@@ -100,6 +104,14 @@ public final class SessionEngine {
         ticker = nil
         active = nil
         let end = min(Date(), session.plannedEnd)
+        let isShort = end.timeIntervalSince(session.start) < Self.minimumReviewDuration
+
+        if isShort && !completed {
+            lastSummary = nil
+            onEnd?(SessionSummary(kind: session.kind, start: session.start, end: end, completed: false,
+                                  distractions: distractions))
+            return
+        }
 
         let record = SessionRecord(kind: session.kind, start: session.start, end: end, plannedDuration: session.plannedDuration)
         record.distractions = distractions
@@ -117,7 +129,8 @@ public final class SessionEngine {
         modelContext.insert(record)
         try? modelContext.save()
         summary.recordID = record.persistentModelID
-        lastSummary = summary
+        // Only sessions long enough to judge get the summary and the "how focused" question.
+        lastSummary = session.kind == .breakTime || isShort ? nil : summary
         onEnd?(summary)
     }
 

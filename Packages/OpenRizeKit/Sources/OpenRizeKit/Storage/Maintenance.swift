@@ -33,6 +33,12 @@ public enum Maintenance {
             segment.categoryKey = key
             segment.classificationSource = source
         }
+        // Sessions stopped within a few minutes used to be recorded; they're mis-clicks.
+        let sessions = (try? modelContext.fetch(FetchDescriptor<SessionRecord>())) ?? []
+        for session in sessions where session.end.timeIntervalSince(session.start) < SessionEngine.minimumReviewDuration
+            && session.end.timeIntervalSince(session.start) < session.plannedDuration - 1 {
+            modelContext.delete(session)
+        }
         try? modelContext.save()
     }
 }

@@ -91,6 +91,16 @@ struct FixesTests {
         #expect(stale.classificationSource == .builtin)
     }
 
+    @Test func maintenanceDropsSessionsStoppedRightAway() throws {
+        let start = Date.now
+        context.insert(SessionRecord(kind: .focus, start: start, end: start + 59, plannedDuration: 25 * 60))
+        context.insert(SessionRecord(kind: .breakTime, start: start, end: start + 60, plannedDuration: 60))
+        context.insert(SessionRecord(kind: .focus, start: start, end: start + 20 * 60, plannedDuration: 25 * 60))
+        Maintenance.run(modelContext: context, classifier: classifier, ownBundleID: nil)
+        let kept = try context.fetch(FetchDescriptor<SessionRecord>()).map { $0.end.timeIntervalSince($0.start) }.sorted()
+        #expect(kept == [60, 20 * 60])
+    }
+
     @Test func glancingAtOpenRizeKeepsTheBlockerUp() {
         let defaults = UserDefaults(suiteName: "openrize-tests-\(UUID().uuidString)")!
         let preferences = Preferences(defaults: defaults)
