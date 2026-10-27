@@ -104,9 +104,16 @@ public final class ActivityTracker {
         apply(effects, category: classification)
 
         let isAway = isOwnApp ? idleSeconds >= machine.idleThreshold : machine.current == nil
-        current = machine.current == nil ? nil : context
-        currentCategory = machine.current == nil ? nil : category
-        broadcast(TrackerSample(date: now, context: current, category: currentCategory, isAway: isAway, isOwnApp: isOwnApp))
+        if isOwnApp {
+            // Keep showing what the user was doing before opening OpenRize (e.g. the menu bar
+            // popover), unless they've gone idle in the meantime.
+            if isAway { current = nil; currentCategory = nil }
+            broadcast(TrackerSample(date: now, context: nil, category: nil, isAway: isAway, isOwnApp: true))
+        } else {
+            current = machine.current == nil ? nil : context
+            currentCategory = machine.current == nil ? nil : category
+            broadcast(TrackerSample(date: now, context: current, category: currentCategory, isAway: isAway))
+        }
 
         if now.timeIntervalSince(lastSave) > 30 {
             try? modelContext.save()

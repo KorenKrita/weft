@@ -10,18 +10,18 @@ struct RulesView: View {
     var body: some View {
         Form {
             Section("Add a rule") {
+                Picker("Match", selection: $field) {
+                    ForEach(RuleField.allCases, id: \.self) { Text(Self.label(for: $0)).tag($0) }
+                }
+                TextField("Pattern", text: $pattern, prompt: Text(Self.placeholder(for: field)))
+                    .onSubmit(add)
+                Picker("Category", selection: $categoryKey) {
+                    ForEach(model.classifier.categories) { Text($0.name).tag($0.key) }
+                }
                 HStack {
-                    Picker("Match", selection: $field) {
-                        ForEach(RuleField.allCases, id: \.self) { Text(Self.label(for: $0)).tag($0) }
-                    }
-                    .fixedSize()
-                    TextField(Self.placeholder(for: field), text: $pattern)
-                        .onSubmit(add)
-                    Picker("Category", selection: $categoryKey) {
-                        ForEach(model.classifier.categories) { Text($0.name).tag($0.key) }
-                    }
-                    .fixedSize()
-                    Button("Add", action: add).disabled(pattern.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Spacer()
+                    Button("Add Rule", action: add)
+                        .disabled(pattern.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
 

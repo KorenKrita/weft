@@ -2,43 +2,12 @@ import OpenRizeKit
 import SwiftData
 import SwiftUI
 
-/// Consecutive segments of the same app/site and category, shown as one row.
-struct ActivityGroup: Identifiable {
-    var segments: [ActivitySegment]
-
-    var id: PersistentIdentifier { segments[0].persistentModelID }
-    var first: ActivitySegment { segments[0] }
-    var start: Date { first.start }
-    var end: Date { segments[segments.count - 1].end }
-    var duration: TimeInterval { segments.reduce(0) { $0 + $1.duration } }
-    var titles: [String] {
-        var seen = Set<String>()
-        return segments.compactMap(\.title).filter { seen.insert($0).inserted }
-    }
-
-    static func build(_ segments: [ActivitySegment], mergeGap: TimeInterval = 60) -> [ActivityGroup] {
-        var groups: [ActivityGroup] = []
-        for segment in segments.sorted(by: { $0.start < $1.start }) {
-            if var last = groups.last,
-               last.first.bundleID == segment.bundleID, last.first.domain == segment.domain,
-               last.first.categoryKey == segment.categoryKey,
-               segment.start.timeIntervalSince(last.end) <= mergeGap {
-                last.segments.append(segment)
-                groups[groups.count - 1] = last
-            } else {
-                groups.append(ActivityGroup(segments: [segment]))
-            }
-        }
-        return groups
-    }
-}
-
 struct ActivityList: View {
     let segments: [ActivitySegment]
     @State private var showAll = false
 
     var body: some View {
-        let groups = ActivityGroup.build(segments).filter { $0.duration >= 10 }.reversed()
+        let groups = ActivityBlocks.build(segments).filter { $0.duration >= 10 }.reversed()
         let visible = showAll ? Array(groups) : Array(groups.prefix(40))
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(visible) { group in
@@ -56,7 +25,7 @@ struct ActivityList: View {
 
 private struct ActivityRow: View {
     @Environment(AppModel.self) private var model
-    let group: ActivityGroup
+    let group: ActivityBlock
 
     var body: some View {
         let category = model.classifier.category(group.first.categoryKey)
@@ -69,10 +38,18 @@ private struct ActivityRow: View {
                 .resizable().frame(width: 18, height: 18)
             VStack(alignment: .leading, spacing: 2) {
                 Text(group.first.domain ?? group.first.appName).font(.callout.weight(.medium))
-                if let title = group.titles.first {
-                    Text(group.titles.count > 1 ? "\(title) (+\(group.titles.count - 1))" : title)
+                let titles = group.titles
+                if let title = titles.first {
+                    Text(titles.count > 1 ? "\(title) (+\(titles.count - 1))" : title)
                         .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        .help(group.titles.prefix(10).joined(separator: "\n"))
+                        .help(titles.prefix(10).joined(separator: "\n"))
+                }
+                if !group.interruptions.isEmpty {
+                    let names = group.interruptionNames
+                    Label("\(group.interruptions.count) brief switch\(group.interruptions.count == 1 ? "" : "es") · \(names.prefix(3).joined(separator: ", "))\(names.count > 3 ? "…" : "")",
+                          systemImage: "arrow.triangle.branch")
+                        .font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+                        .help("Short visits folded into this entry:\n" + names.joined(separator: "\n"))
                 }
             }
             Spacer()
@@ -87,7 +64,7 @@ private struct ActivityRow: View {
 /// Lets the user fix a classification, either just here or as a rule for the app/site.
 struct CategoryMenu: View {
     @Environment(AppModel.self) private var model
-    let group: ActivityGroup
+    let group: ActivityBlock
     let category: CategoryDefinition
 
     var body: some View {
