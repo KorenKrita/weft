@@ -48,7 +48,7 @@ struct RulesView: View {
             } header: {
                 Text("Your rules")
             } footer: {
-                Text("Your rules take priority over \(BuiltinRules.all.count) built-in rules. More specific matches (title, URL) win over domains, which win over apps. Anything no rule matches is classified by the on-device model.")
+                Text("Your rules take priority over \(BuiltinRules.all.count) built-in rules. More specific matches (title, URL) win over domains, which win over apps. Anything no rule matches is classified by the model chosen in Settings, or guessed when there is none.")
                     .font(.callout).foregroundStyle(.secondary)
             }
         }

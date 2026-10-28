@@ -17,7 +17,7 @@ struct OnboardingView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 bullet("record.circle", "Records the frontmost app, window title and browser URL — no screenshots, no keystrokes.")
-                bullet("sparkles", "Unknown apps and sites are categorized by Apple's on-device model. Nothing is uploaded.")
+                bullet("sparkles", "Unknown apps and sites are categorized by Apple's on-device model, so nothing is uploaded. You can pick another model in Settings.")
                 bullet("scope", "Start Focus, Meeting or Break sessions from the menu bar.")
             }
 
@@ -31,13 +31,18 @@ struct OnboardingView: View {
                 LabeledContent {
                     switch model.classifier.aiAvailability {
                     case .available: Label("Available", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                    case .unavailable: Button("Open Settings") { SystemSettings.openAppleIntelligence() }
+                    case .unavailable:
+                        // Where Apple Intelligence isn't offered, another model is the way forward.
+                        HStack {
+                            Button("Open Settings") { SystemSettings.openAppleIntelligence() }
+                            SettingsLink { Text("Use Another Model…") }
+                        }
                     }
                 } label: {
                     Text("Apple Intelligence")
                     switch model.classifier.aiAvailability {
                     case .available: Text("Ready for on-device classification.")
-                    case .unavailable(let reason): Text("\(reason) Built-in rules still work.")
+                    case .unavailable(let reason): Text("\(reason) Weft can guess instead, or use an OpenAI-compatible API.")
                     }
                 }
                 LabeledContent("Browsers") {

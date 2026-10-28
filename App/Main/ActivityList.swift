@@ -133,8 +133,14 @@ struct CategoryMenu: View {
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
-            if group.first.classificationSource == .pending {
-                Image(systemName: "sparkles").foregroundStyle(.secondary).help("Waiting for on-device classification")
+            switch group.first.classificationSource {
+            case .pending:
+                Image(systemName: "sparkles").foregroundStyle(.secondary).help("Waiting for the model")
+            case .guess:
+                Image(systemName: "questionmark.circle").foregroundStyle(.secondary)
+                    .help("A guess made without a model; choose the right category to fix it")
+            default:
+                EmptyView()
             }
         }
     }

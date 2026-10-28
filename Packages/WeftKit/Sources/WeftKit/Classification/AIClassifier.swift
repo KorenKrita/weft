@@ -1,6 +1,6 @@
-import AppKit
 import Foundation
 import FoundationModels
+import Synchronization
 
 public enum AIConfidence: String, Codable, Sendable, CaseIterable {
     case low, medium, high
@@ -21,7 +21,7 @@ public enum AIAvailability: Equatable, Sendable {
     case unavailable(String)
 }
 
-/// Abstraction over the on-device model so tests can inject a fake.
+/// Abstraction over the model (on device or remote) so tests can inject a fake.
 public protocol AIClassifying: Sendable {
     func availability() -> AIAvailability
     func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification
@@ -40,7 +40,8 @@ public struct FoundationModelsClassifier: AIClassifying {
         case .available:
             return .available
         case .unavailable(.deviceNotEligible):
-            return .unavailable("This Mac does not support Apple Intelligence.")
+            // Also what regions without Apple Intelligence may report.
+            return .unavailable("Apple Intelligence isn't available on this Mac or in your region.")
         case .unavailable(.appleIntelligenceNotEnabled):
             return .unavailable("Apple Intelligence is turned off in System Settings.")
         case .unavailable(.modelNotReady):
@@ -51,7 +52,7 @@ public struct FoundationModelsClassifier: AIClassifying {
     }
 
     public func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
-        let candidates = categories.filter { !$0.isDoNotTrack && $0.key != CategoryDefinition.uncategorizedKey }
+        let candidates = ModelPrompts.candidates(categories)
         let keys = candidates.map(\.key)
 
         let root = DynamicGenerationSchema(
@@ -71,29 +72,9 @@ public struct FoundationModelsClassifier: AIClassifying {
         )
         let schema = try GenerationSchema(root: root, dependencies: [])
 
-        let categoryList = candidates.map { "- \($0.key): \($0.hint)" }.joined(separator: "\n")
-        let session = LanguageModelSession(instructions: """
-            You categorize what a person is doing on their Mac for a personal time tracker.
-            Pick exactly one category key from this list:
-            \(categoryList)
-
-            Judge by what the app or website is for, not by incidental words in the window title.
-            Use "browsing" only for a web browser tab whose site has no clear purpose; \
-            never use it for a native app. For a native app you don't know, infer its \
-            purpose from its name and bundle identifier.
-            """)
-
-        var prompt = context.domain == nil
-            ? "Native app: \(context.appName) (bundle identifier \(context.bundleID))"
-            : "Web browser tab in \(context.appName)"
-        if context.domain == nil, let category = Self.appStoreCategory(bundleID: context.bundleID) {
-            prompt += "\nApp Store category: \(category)"
-        }
-        if let domain = context.domain { prompt += "\nWebsite: \(domain)" }
-        if let title = context.title { prompt += "\nWindow title: \(title.prefix(200))" }
-
+        let session = LanguageModelSession(instructions: ModelPrompts.classifyInstructions(candidates))
         let response = try await session.respond(
-            to: prompt, schema: schema, options: GenerationOptions(samplingMode: .greedy)
+            to: ModelPrompts.classifyPrompt(context), schema: schema, options: GenerationOptions(samplingMode: .greedy)
         )
         let key = try response.content.value(String.self, forProperty: "category")
         let confidence = try response.content.value(String.self, forProperty: "confidence")
@@ -102,11 +83,54 @@ public struct FoundationModelsClassifier: AIClassifying {
     }
 
     public func describeActivity(_ facts: String, language: String) async throws -> String {
+        let session = LanguageModelSession(instructions: ModelPrompts.describeInstructions(language: language))
+        return try await session.respond(to: facts).content
+    }
+
+    public func summarize(_ facts: String) async throws -> String {
+        let session = LanguageModelSession(instructions: ModelPrompts.summarizeInstructions)
+        return try await session.respond(to: facts).content
+    }
+}
+
+/// Instructions and prompts shared by every model backend.
+enum ModelPrompts {
+    static func candidates(_ categories: [CategoryDefinition]) -> [CategoryDefinition] {
+        categories.filter { !$0.isDoNotTrack && $0.key != CategoryDefinition.uncategorizedKey }
+    }
+
+    static func classifyInstructions(_ candidates: [CategoryDefinition]) -> String {
+        let categoryList = candidates.map { "- \($0.key): \($0.hint)" }.joined(separator: "\n")
+        return """
+            You categorize what a person is doing on their Mac for a personal time tracker.
+            Pick exactly one category key from this list:
+            \(categoryList)
+
+            Judge by what the app or website is for, not by incidental words in the window title.
+            Use "browsing" only for a web browser tab whose site has no clear purpose; \
+            never use it for a native app. For a native app you don't know, infer its \
+            purpose from its name and bundle identifier.
+            """
+    }
+
+    static func classifyPrompt(_ context: ActivityContext) -> String {
+        var prompt = context.domain == nil
+            ? "Native app: \(context.appName) (bundle identifier \(context.bundleID))"
+            : "Web browser tab in \(context.appName)"
+        if context.domain == nil, let category = CategoryGuess.appStoreCategory(bundleID: context.bundleID) {
+            prompt += "\nApp Store category: \(category.replacingOccurrences(of: "-", with: " "))"
+        }
+        if let domain = context.domain { prompt += "\nWebsite: \(domain)" }
+        if let title = context.title { prompt += "\nWindow title: \(title.prefix(200))" }
+        return prompt
+    }
+
+    static func describeInstructions(language: String) -> String {
         // A native example per language keeps the output from reading like a translation.
         let example = language.localizedCaseInsensitiveContains("Chinese")
             ? "在终端里开发 weft 应用，在 GitHub 上查看 ActivityWatch 仓库，并调研了时间追踪工具的替代方案。"
             : "Worked on the weft app in the terminal, reviewed the ActivityWatch repo on GitHub and researched time-tracking alternatives."
-        let session = LanguageModelSession(instructions: """
+        return """
             You write entries for a personal timesheet. Given the apps, websites and window \
             titles from a stretch of computer use, write ONE sentence (at most 30 words) that \
             says what the person did. Cover the two or three main things, naming the concrete \
@@ -114,25 +138,43 @@ public struct FoundationModelsClassifier: AIClassifying {
             Never mention durations, percentages or yourself.
             Write the sentence in \(language), as naturally as a native speaker would. Example:
             \(example)
-            """)
-        return try await session.respond(to: facts).content
+            """
     }
 
-    /// `public.app-category.developer-tools` → `developer tools`, from the app's Info.plist.
-    static func appStoreCategory(bundleID: String) -> String? {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID),
-              let type = Bundle(url: url)?.object(forInfoDictionaryKey: "LSApplicationCategoryType") as? String,
-              type.hasPrefix("public.app-category.") else { return nil }
-        return type.dropFirst("public.app-category.".count).replacingOccurrences(of: "-", with: " ")
+    static let summarizeInstructions = """
+        You are a supportive productivity coach. Given statistics about one day of computer \
+        use, write a short review in the same language as the request: 2–3 sentences on how \
+        the day went, then one concrete, specific suggestion for tomorrow. No headings, no lists.
+        """
+}
+
+/// Forwards every call to the model chosen in Settings. Swapping it takes effect from the
+/// next call on, so services can keep one reference for the app's lifetime.
+public final class ModelRouter: AIClassifying {
+    private let current: Mutex<any AIClassifying>
+
+    public init(_ model: any AIClassifying) {
+        current = Mutex(model)
+    }
+
+    public func use(_ model: any AIClassifying) {
+        current.withLock { $0 = model }
+    }
+
+    private var model: any AIClassifying { current.withLock { $0 } }
+
+    public func availability() -> AIAvailability { model.availability() }
+
+    public func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+        try await model.classify(context, categories: categories)
     }
 
     public func summarize(_ facts: String) async throws -> String {
-        let session = LanguageModelSession(instructions: """
-            You are a supportive productivity coach. Given statistics about one day of computer \
-            use, write a short review in the same language as the request: 2–3 sentences on how \
-            the day went, then one concrete, specific suggestion for tomorrow. No headings, no lists.
-            """)
-        return try await session.respond(to: facts).content
+        try await model.summarize(facts)
+    }
+
+    public func describeActivity(_ facts: String, language: String) async throws -> String {
+        try await model.describeActivity(facts, language: language)
     }
 }
 

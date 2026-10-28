@@ -1,5 +1,6 @@
 import AppKit
 import WeftKit
+import Security
 import ServiceManagement
 import SwiftUI
 
@@ -79,6 +80,32 @@ enum LaunchAtLogin {
         } catch {
             NSLog("Weft: launch at login change failed: \(error)")
         }
+    }
+}
+
+/// Secrets in the login keychain, as generic passwords for this app.
+enum Keychain {
+    private static let service = Bundle.main.bundleIdentifier ?? "me.weishu.Weft"
+
+    static func string(for account: String) -> String? {
+        var result: AnyObject?
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: account,
+            kSecReturnData: true, kSecMatchLimit: kSecMatchLimitOne,
+        ]
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// An empty value removes the item.
+    static func set(_ value: String, for account: String) {
+        let item: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: account]
+        SecItemDelete(item as CFDictionary)
+        guard !value.isEmpty else { return }
+        var added = item
+        added[kSecValueData] = Data(value.utf8)
+        let status = SecItemAdd(added as CFDictionary, nil)
+        if status != errSecSuccess { NSLog("Weft: saving to the keychain failed: \(status)") }
     }
 }
 

@@ -2,8 +2,9 @@ import WeftKit
 import SwiftData
 import SwiftUI
 
-/// Apps and sites no rule knew: still waiting for the model, or classified by it and not yet
-/// confirmed. Confirming or changing one creates a rule, which takes it off this list.
+/// Apps and sites no rule knew: still waiting for the model, guessed without one, or
+/// classified by it and not yet confirmed. Confirming or changing one creates a rule, which
+/// takes it off this list.
 struct ReviewView: View {
     @Environment(AppModel.self) private var model
     @Query private var segments: [ActivitySegment]
@@ -11,9 +12,11 @@ struct ReviewView: View {
     init() {
         let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
         let pending = ClassificationSource.pending.rawValue
+        let guess = ClassificationSource.guess.rawValue
         let ai = ClassificationSource.ai.rawValue
         _segments = Query(filter: #Predicate<ActivitySegment> {
-            $0.end > since && ($0.classificationSourceRaw == pending || $0.classificationSourceRaw == ai)
+            $0.end > since && ($0.classificationSourceRaw == pending || $0.classificationSourceRaw == guess
+                || $0.classificationSourceRaw == ai)
         })
     }
 
@@ -56,6 +59,7 @@ struct ReviewView: View {
                     TableColumn("Status") { item in
                         switch item.source {
                         case .pending: Label("Waiting", systemImage: "hourglass").foregroundStyle(.secondary)
+                        case .guess: Label("Guess", systemImage: "questionmark.circle").foregroundStyle(.secondary)
                         default: Text("AI · \(item.confidence?.rawValue ?? "?") confidence").foregroundStyle(.secondary)
                         }
                     }
@@ -104,19 +108,20 @@ struct ReviewView: View {
         HStack {
             switch model.classifier.aiAvailability {
             case .available:
+                let queued = model.classifier.queuedCount
                 Image(systemName: "sparkles")
-                Text(model.classifier.queuedCount > 0
-                     ? "Classifying \(model.classifier.queuedCount) app(s)/site(s) on device…"
-                     : "On-device classification is on.")
-                if model.classifier.queuedCount > 0 { ProgressView().controlSize(.small) }
+                Text(queued > 0
+                     ? "Classifying \(queued) app(s)/site(s) \(model.modelPlace)…"
+                     : "Unknown apps and sites are classified \(model.modelPlace).")
+                if queued > 0 { ProgressView().controlSize(.small) }
             case .unavailable(let reason):
                 Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
-                Text(reason)
-                Button("Open Settings") { SystemSettings.openAppleIntelligence() }
+                Text("\(reason) Weft guesses from each app's App Store category and each site's name until a model is available.")
+                SettingsLink { Text("Model Settings…") }
             }
             Spacer()
             Button("Retry") { model.classifier.retryPending() }
-                .help("Ask the model again about everything still waiting")
+                .help("Ask the model again about everything still waiting or guessed")
         }
         .font(.callout)
         .padding(12)

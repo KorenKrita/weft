@@ -10,7 +10,7 @@ Weft takes after [Rize](https://rize.io) but works from a different idea: people
 
 - **Native and small.** Weft is built with SwiftUI, so it looks and feels like the rest of macOS. The whole app is under 10 MB, with no Electron and no bundled browser.
 - **Easy on your battery.** A native app already uses far less power than an Electron one. Weft is also event-driven instead of constantly polling your windows, so it stays idle until something actually changes.
-- **Your data never leaves your Mac.** There's no account, no server and no analytics. Categories, summaries and reviews all come from Apple's on-device model, and your history stays in a folder on your Mac (see [Privacy](#privacy)).
+- **Your data never leaves your Mac.** There's no account, no server and no analytics. Categories, summaries and reviews come from Apple's on-device model by default, and your history stays in a folder on your Mac (see [Privacy](#privacy)).
 - **Open source and free.** Weft is [MIT-licensed](LICENSE), with no subscription and no paid tier. You can read the code, change it and build it yourself.
 
 ## What you get
@@ -19,7 +19,7 @@ Weft takes after [Rize](https://rize.io) but works from a different idea: people
 
 **Tracking you don't have to think about.** Start Weft once and forget about it. It records when you switch apps, windows or browser tabs, and stops counting when you step away (after 5 minutes without input, adjustable), close the lid or lock the screen. Calls and meetings keep counting even when you don't touch the keyboard.
 
-**Categories that sort themselves.** Weft already knows a few hundred common apps and websites. Anything new is categorized by Apple Intelligence, once per app or site. If Weft gets one wrong, click the category in the log and choose:
+**Categories that sort themselves.** Weft already knows a few hundred common apps and websites. Anything new is categorized by Apple Intelligence, or by another model if you set one up, once per app or site. If Weft gets one wrong, click the category in the log and choose:
 - **Always for …**: remembers your choice for that app or site, including your past activity.
 - **Only this entry**: fixes just that entry.
 
@@ -39,13 +39,13 @@ The **Review** page collects the AI's guesses so you can confirm them in one go.
 
 - **What Weft records:** the app in front, its window title and, in supported browsers, the address of the current tab.
 - **What it never records:** screenshots, keystrokes or the contents of your screen.
-- **Where it goes:** nowhere. Categories, summaries and reviews are all produced on your Mac. Your data lives in `~/Library/Application Support/Weft/`.
+- **Where it goes:** nowhere. Categories, summaries and reviews are all produced on your Mac. Your data lives in `~/Library/Application Support/Weft/`. The one exception is a remote model you set up yourself in **Settings → Model**: it receives the apps and sites Weft doesn't know with their window titles, the apps, sites and window titles behind each work stream, and your daily totals. A local server such as Ollama or LM Studio keeps even that on your Mac.
 - **What you control:** In **Settings → Tracking**, you can stop recording window titles, keep only the domain of URLs, and exclude specific apps and websites completely. Pause tracking any time from the menu bar or Settings.
 - **Your data is yours:** You can export everything to CSV from **Settings → Data**. To erase your history, quit Weft and delete the folder above.
 
 ## Getting started
 
-You'll need **macOS 26 or later**. Apple Intelligence is optional but recommended. Without it, Weft still categorizes the apps and sites it already knows and anything you've set yourself. Everything else waits on the Review page until you sort it.
+You'll need **macOS 26 or later**. Apple Intelligence is optional but recommended (it isn't offered in every region). Without it, Weft still categorizes the apps and sites it already knows and anything you've set yourself, and makes a rough guess for the rest from each app's App Store category or each site's name. Those guesses wait on the Review page for you to confirm or fix. You can also connect any OpenAI-compatible API (OpenAI, OpenRouter, DeepSeek, a local Ollama…) in **Settings → Model**.
 
 1. Download the latest `Weft-<version>.dmg` from [Releases](https://github.com/tiann/weft/releases/latest).
 2. Open it and drag **Weft** into **Applications**.
@@ -92,7 +92,7 @@ For example, `open "weft://focus?minutes=25"` in Terminal.
 
 ## Troubleshooting
 
-**Lots of entries are "Uncategorized".** Apple Intelligence is probably off or still downloading. Turn it on in System Settings, then open **Review** and click **Retry**. You can also categorize entries yourself from the log.
+**Lots of entries are "Uncategorized" or marked with a question mark.** No model is available, so those entries are waiting or only guessed. Apple Intelligence is probably off or still downloading: turn it on in System Settings, or set up another model in **Settings → Model**. Then open **Review** and click **Retry**. You can also categorize entries yourself from the log.
 
 **Time I spent reading is missing.** Weft treats you as away after 5 minutes without keyboard or mouse input. If you often read or think for longer stretches, raise the threshold in **Settings → Tracking**.
 

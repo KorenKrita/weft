@@ -37,6 +37,9 @@ public struct Rule: Hashable, Sendable {
     public func matches(_ context: ActivityContext) -> Bool {
         switch field {
         case .bundleID:
+            // A built-in app rule says what the app is for; in a browser tab the site decides,
+            // so sites no rule knows go to the model instead of all counting as browsing.
+            guard source == .user || context.domain == nil else { return false }
             return context.bundleID.lowercased() == pattern
         case .domain:
             // `github.com` matches `github.com` and `gist.github.com`.

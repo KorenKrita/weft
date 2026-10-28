@@ -8,6 +8,15 @@ public enum BlockerStyle: String, CaseIterable, Sendable, Identifiable {
     public var id: String { rawValue }
 }
 
+/// Which model categorizes unknown apps and sites and writes descriptions and reviews.
+public enum ModelProvider: String, CaseIterable, Sendable, Identifiable {
+    case appleIntelligence
+    /// A Chat Completions server; the API key lives in the keychain, not here.
+    case openAICompatible
+
+    public var id: String { rawValue }
+}
+
 /// User settings, persisted in UserDefaults and observable from both views and engines.
 @MainActor
 @Observable
@@ -42,6 +51,11 @@ public final class Preferences {
     /// Classification keys the user marked as "not a distraction".
     public var blockerAllowList: [String] { didSet { save(blockerAllowList, "blockerAllowList") } }
 
+    // Model
+    public var modelProvider: ModelProvider { didSet { save(modelProvider.rawValue, "modelProvider") } }
+    public var remoteBaseURL: String { didSet { save(remoteBaseURL, "remoteBaseURL") } }
+    public var remoteModel: String { didSet { save(remoteModel, "remoteModel") } }
+
     public var hasCompletedOnboarding: Bool { didSet { save(hasCompletedOnboarding, "hasCompletedOnboarding") } }
 
     public init(defaults: UserDefaults = .standard) {
@@ -60,6 +74,8 @@ public final class Preferences {
             "blockerEnabled": true,
             "blockerStyle": BlockerStyle.overlay.rawValue,
             "refocusThresholdSeconds": 10,
+            "modelProvider": ModelProvider.appleIntelligence.rawValue,
+            "remoteBaseURL": RemoteModelConfig.defaultBaseURL,
         ])
         trackingPaused = defaults.bool(forKey: "trackingPaused")
         idleThresholdMinutes = defaults.integer(forKey: "idleThresholdMinutes")
@@ -80,6 +96,9 @@ public final class Preferences {
         blockerStyle = BlockerStyle(rawValue: defaults.string(forKey: "blockerStyle") ?? "") ?? .overlay
         refocusThresholdSeconds = defaults.integer(forKey: "refocusThresholdSeconds")
         blockerAllowList = defaults.stringArray(forKey: "blockerAllowList") ?? []
+        modelProvider = ModelProvider(rawValue: defaults.string(forKey: "modelProvider") ?? "") ?? .appleIntelligence
+        remoteBaseURL = defaults.string(forKey: "remoteBaseURL") ?? RemoteModelConfig.defaultBaseURL
+        remoteModel = defaults.string(forKey: "remoteModel") ?? ""
         hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
     }
 

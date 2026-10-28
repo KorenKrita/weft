@@ -22,6 +22,25 @@ private final class FakeAI: AIClassifying, @unchecked Sendable {
     func describeActivity(_ facts: String, language: String) async throws -> String { "" }
 }
 
+private struct NoModel: AIClassifying {
+    func availability() -> AIAvailability { .unavailable("test") }
+    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+        throw ClassificationError.unknownCategory("")
+    }
+    func summarize(_ facts: String) async throws -> String { "" }
+    func describeActivity(_ facts: String, language: String) async throws -> String { "" }
+}
+
+/// Available, but every call fails, like a remote server that's down.
+private struct FailingModel: AIClassifying {
+    func availability() -> AIAvailability { .available }
+    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+        throw URLError(.notConnectedToInternet)
+    }
+    func summarize(_ facts: String) async throws -> String { "" }
+    func describeActivity(_ facts: String, language: String) async throws -> String { "" }
+}
+
 @MainActor
 struct ClassificationServiceTests {
     let container: ModelContainer
@@ -82,5 +101,93 @@ struct ClassificationServiceTests {
         service.deleteRule(service.userRules[0])
         #expect(auto.categoryKey == "entertainment")
         #expect(auto.classificationSource == .builtin)
+    }
+
+    @Test func withoutAModelUnknownActivityIsGuessed() {
+        let service = ClassificationService(modelContext: context, ai: NoModel())
+        let app = ActivityContext(bundleID: "com.example.NotInstalled", appName: "Mystery")
+        #expect(service.classify(app) == ("miscellaneous", .guess))
+        // Known apps still go by their rules.
+        #expect(service.classify(ActivityContext(bundleID: "com.apple.dt.Xcode", appName: "Xcode")) == ("code", .builtin))
+    }
+
+    @Test func failedModelCallsFallBackToAGuess() async {
+        let service = ClassificationService(modelContext: context, ai: FailingModel())
+        let app = ActivityContext(bundleID: "com.example.NotInstalled", appName: "Mystery")
+        let first = service.classify(app)
+        #expect(first.source == .pending)
+        let segment = ActivitySegment(context: app, start: .now, categoryKey: first.categoryKey, source: first.source)
+        context.insert(segment)
+        await waitForQueue(service)
+
+        #expect(segment.categoryKey == "miscellaneous")
+        #expect(segment.classificationSource == .guess)
+        // Not asked again until a retry.
+        #expect(service.classify(app) == ("miscellaneous", .guess))
+    }
+
+    @Test func guessesAreReplacedOnceAModelIsChosen() async {
+        let router = ModelRouter(NoModel())
+        let service = ClassificationService(modelContext: context, ai: router)
+        let unknown = ActivityContext(bundleID: "com.example.Unknown", appName: "Unknown")
+        let waiting = ActivitySegment(context: unknown, start: .now, categoryKey: CategoryDefinition.uncategorizedKey, source: .pending)
+        context.insert(waiting)
+
+        // Leftovers from before, waiting on a model that isn't there, get a guess.
+        service.retryPending()
+        #expect(waiting.classificationSource == .guess)
+
+        let ai = FakeAI(answer: .init(categoryKey: "design", confidence: .medium))
+        router.use(ai)
+        service.retryPending()
+        #expect(service.aiAvailability == .available)
+        await waitForQueue(service)
+
+        #expect(ai.calls == 1)
+        #expect(waiting.categoryKey == "design")
+        #expect(waiting.classificationSource == .ai)
+    }
+
+    @Test func maintenanceLetsRulesReplaceGuesses() {
+        let service = ClassificationService(modelContext: context, ai: NoModel())
+        let finder = ActivitySegment(context: ActivityContext(bundleID: "com.apple.finder", appName: "Finder"),
+                                     start: .now, categoryKey: "miscellaneous", source: .guess)
+        let unknown = ActivitySegment(context: ActivityContext(bundleID: "com.example.Unknown", appName: "Unknown"),
+                                      start: .now, categoryKey: "miscellaneous", source: .guess)
+        context.insert(finder)
+        context.insert(unknown)
+        Maintenance.run(modelContext: context, classifier: service)
+        #expect(finder.categoryKey == "utility")
+        #expect(finder.classificationSource == .builtin)
+        #expect(unknown.classificationSource == .guess)
+    }
+
+    @Test func unknownSitesGoToTheModelNotTheBrowserRule() async {
+        let ai = FakeAI(answer: .init(categoryKey: "research", confidence: .high))
+        let service = ClassificationService(modelContext: context, ai: ai)
+        let site = ActivityContext(bundleID: "com.google.Chrome", appName: "Chrome", url: "https://example.org/paper")
+        #expect(service.classify(site) == (CategoryDefinition.uncategorizedKey, .pending))
+        await waitForQueue(service)
+        #expect(service.classify(site) == ("research", .ai))
+        // Known sites and tabs without one still go by the built-in rules.
+        #expect(service.classify(ActivityContext(bundleID: "com.google.Chrome", appName: "Chrome", url: "https://github.com/a")) == ("code", .builtin))
+        #expect(service.classify(ActivityContext(bundleID: "com.google.Chrome", appName: "Chrome", url: "chrome://newtab/")) == ("browsing", .builtin))
+        // A user's rule for the browser itself still covers every tab.
+        service.addRule(field: .bundleID, pattern: "com.google.Chrome", categoryKey: "personal")
+        #expect(service.classify(site) == ("personal", .rule))
+    }
+
+    @Test func maintenanceSendsSitesFiledAsBrowsingToTheModel() {
+        let service = ClassificationService(modelContext: context, ai: NoModel())
+        let shop = ActivitySegment(context: ActivityContext(bundleID: "com.google.Chrome", appName: "Chrome", url: "https://shop.example.com/"),
+                                   start: .now, categoryKey: "browsing", source: .builtin)
+        let newTab = ActivitySegment(context: ActivityContext(bundleID: "com.google.Chrome", appName: "Chrome"),
+                                     start: .now, categoryKey: "browsing", source: .builtin)
+        context.insert(shop)
+        context.insert(newTab)
+        Maintenance.run(modelContext: context, classifier: service)
+        #expect(shop.categoryKey == "shopping")
+        #expect(shop.classificationSource == .guess)
+        #expect(newTab.classificationSource == .builtin)
     }
 }

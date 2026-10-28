@@ -36,7 +36,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Weft reads the URL of the active browser tab to categorize your time. Nothing leaves your Mac.</string>
+	<string>Weft reads the URL of the active browser tab to categorize your time.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Open source under the MIT license.</string>
 </dict>

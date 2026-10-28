@@ -35,7 +35,7 @@ enum Page: String, CaseIterable, Identifiable {
 final class AppModel {
     let container: ModelContainer
     let preferences = Preferences()
-    let ai = FoundationModelsClassifier()
+    let ai: ModelRouter
     let classifier: ClassificationService
     let tracker: ActivityTracker
     let sessions: SessionEngine
@@ -61,6 +61,7 @@ final class AppModel {
             fatalError("Could not open the Weft database: \(error)")
         }
         let context = container.mainContext
+        ai = ModelRouter(Self.chosenModel(preferences))
         classifier = ClassificationService(modelContext: context, ai: ai)
         Maintenance.run(modelContext: context, classifier: classifier)
         tracker = ActivityTracker(modelContext: context, classifier: classifier, preferences: preferences)
@@ -144,6 +145,35 @@ final class AppModel {
 
     func startSession(_ kind: SessionKind, minutes: Int? = nil) {
         sessions.start(kind, minutes: minutes ?? preferences.defaultMinutes(for: kind))
+    }
+
+    static let apiKeyAccount = "remoteAPIKey"
+
+    /// The model picked in Settings. The keychain is only read once a remote model is chosen.
+    private static func chosenModel(_ preferences: Preferences) -> any AIClassifying {
+        switch preferences.modelProvider {
+        case .appleIntelligence:
+            FoundationModelsClassifier()
+        case .openAICompatible:
+            OpenAICompatibleClassifier(config: RemoteModelConfig(
+                baseURL: preferences.remoteBaseURL, model: preferences.remoteModel,
+                apiKey: Keychain.string(for: apiKeyAccount) ?? ""
+            ))
+        }
+    }
+
+    /// "on device" or "with gpt-5-mini", for status text.
+    var modelPlace: String {
+        switch preferences.modelProvider {
+        case .appleIntelligence: "on device"
+        case .openAICompatible: "with \(preferences.remoteModel)"
+        }
+    }
+
+    /// Switches to the model now chosen in Settings and gives it everything still waiting or guessed.
+    func applyModelChoice() {
+        ai.use(Self.chosenModel(preferences))
+        classifier.retryPending()
     }
 
     func refreshPermissions() {

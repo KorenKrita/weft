@@ -2,7 +2,7 @@
 
 Guidance for coding agents working in this repository.
 
-Weft is a local-first macOS (26+) menu bar time tracker written in Swift 6 / SwiftUI / SwiftData. It classifies activity with rules plus Apple's on-device Foundation Models; nothing leaves the Mac.
+Weft is a local-first macOS (26+) menu bar time tracker written in Swift 6 / SwiftUI / SwiftData. It classifies activity with rules plus Apple's on-device Foundation Models, or an OpenAI-compatible API if the user sets one up. By default nothing leaves the Mac.
 
 ## Commands
 
@@ -43,13 +43,13 @@ There are two layers:
 
 1. **Tracking** (`Tracking/`): `ActivityTracker` is event-driven to save power. `WindowEventObserver` (AX/workspace notifications) triggers a sample when the app, window or title changes. On top of that there's a 60 s heartbeat, a one-shot idle timer and a slower check while the user is away. There is no fast polling loop; keep it that way. `TitleChangeThrottle` mutes noisy title changes, such as terminal spinners. `BrowserURLProvider` reads the tab URL via Apple Events. Each sample builds an `ActivityContext`. `TrackingStateMachine` is pure (no AppKit or storage, unit tested) and turns samples into `.open/.extend/.close` effects, which the tracker applies to `ActivitySegment` records. Idle (5 min), sleep, lock and pause close the segment. Meetings are exempt from the idle cut. Every sample also goes out as a `TrackerSample` to listeners (break reminder, work hours, distraction guard).
 2. **Classification** (`Classification/`): `ClassificationService.classify` tries, in order:
-   1. `RuleEngine` (user rules + about 360 `BuiltinRules`)
+   1. `RuleEngine` (user rules + about 360 `BuiltinRules`). Built-in bundle-ID rules don't apply to a tab with a domain, so a browser's own "browsing" rule only covers tabs without a site; unknown sites go on to the model.
    2. the cached AI answer, keyed by `ActivityContext.classificationKey` (bundle ID, plus the domain for browsers)
-   3. a background queue to `AIClassifying` (`FoundationModelsClassifier`)
+   3. a background queue to `AIClassifying`. In the app that's a `ModelRouter`, which forwards to `FoundationModelsClassifier` or `OpenAICompatibleClassifier` (Chat Completions), whichever **Settings → Model** picks; `AppModel.applyModelChoice` swaps it. Both share their prompts through `ModelPrompts`. The API key lives in the keychain, everything else in `Preferences`.
 
-   While a segment waits on the model, it is stored as `uncategorized` with source `.pending`, and gets patched in place when the answer arrives. Adding or deleting a rule reclassifies matching past segments, except `.manual` ones. At launch, `Maintenance.run` lets newer rules override old AI answers.
+   While a segment waits on the model, it is stored as `uncategorized` with source `.pending`, and gets patched in place when the answer arrives. When there is no model, or the call fails, the segment gets source `.guess` and a category from `CategoryGuess` (the app's App Store category, or words in the site's domain). `retryPending` asks the model again about pending and guessed segments, and its answers replace guesses. Adding or deleting a rule reclassifies matching past segments, except `.manual` ones. At launch, `Maintenance.run` lets newer rules override old AI answers and guesses, and reclassifies sites that older versions filed as built-in browsing.
 3. **Metrics** (`Metrics/`): pure functions over segments. `ActivityBlocks` builds the activity log rows and folds short detours into them. `TimeEntries` builds the overlapping per-category "work streams" on the Today timeline: same category within 30 min forms one stream, and only streams of 10 min or more count as significant. `DayMetrics` computes the Focus Score.
-4. **Descriptions**: `TimeEntryService` queues finished streams for a one-sentence on-device description, cached in `TimeEntrySummary` by `TimeEntry.key` (category + start). `AppModel` runs it every ~5 min.
+4. **Descriptions**: `TimeEntryService` queues finished streams for a one-sentence description from the model, cached in `TimeEntrySummary` by `TimeEntry.key` (category + start). `AppModel` runs it every ~5 min.
 5. **Sessions** (`Sessions/`): `SessionEngine` handles Focus, Meeting and Break sessions. `DistractionGuard` triggers the blocker overlay when the user stays in a category marked `blockInFocus` during a focus session. `Reminders` holds the break and work-hours monitors, and `Notifier` wraps `UNUserNotificationCenter`.
 
 ### Storage

@@ -36,7 +36,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.productivity
-        NSAppleEventsUsageDescription: Weft reads the URL of the active browser tab to categorize your time. Nothing leaves your Mac.
+        NSAppleEventsUsageDescription: Weft reads the URL of the active browser tab to categorize your time.
         NSHumanReadableCopyright: Open source under the MIT license.
         CFBundleURLTypes:
           - CFBundleURLName: me.weishu.Weft

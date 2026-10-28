@@ -10,6 +10,7 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             Tab("General", systemImage: "gearshape") { GeneralSettings() }
+            Tab("Model", systemImage: "sparkles") { ModelSettings() }
             Tab("Tracking", systemImage: "record.circle") { TrackingSettings() }
             Tab("Sessions", systemImage: "timer") { SessionSettings() }
             Tab("Blocker", systemImage: "hand.raised") { BlockerSettings() }
@@ -56,18 +57,6 @@ private struct GeneralSettings: View {
                     Text("Browsers")
                     Text("Each browser asks once whether Weft may read the active tab's URL.")
                 }
-                LabeledContent {
-                    switch model.classifier.aiAvailability {
-                    case .available: Label("Available", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                    case .unavailable: Button("Open Settings") { SystemSettings.openAppleIntelligence() }
-                    }
-                } label: {
-                    Text("Apple Intelligence")
-                    switch model.classifier.aiAvailability {
-                    case .available: Text("Unknown apps and sites are classified on device.")
-                    case .unavailable(let reason): Text(reason)
-                    }
-                }
             }
         }
         .formStyle(.grouped)
@@ -91,6 +80,137 @@ struct PermissionRow: View {
             Text(title)
             Text(detail)
         }
+    }
+}
+
+// MARK: - Model
+
+private struct ModelSettings: View {
+    @Environment(AppModel.self) private var model
+    @State private var baseURL = ""
+    @State private var modelName = ""
+    @State private var apiKey = ""
+    @State private var loaded = false
+    /// The category the server gave Xcode, or why it couldn't answer.
+    @State private var check: Result<String, any Error>?
+    @State private var isChecking = false
+    /// Bumped to check the server again.
+    @State private var checks = 0
+
+    var body: some View {
+        @Bindable var prefs = model.preferences
+        Form {
+            Section {
+                Picker("Categorize with", selection: $prefs.modelProvider) {
+                    Text("Apple Intelligence").tag(ModelProvider.appleIntelligence)
+                    Text("OpenAI-compatible API").tag(ModelProvider.openAICompatible)
+                }
+                LabeledContent {
+                    switch (model.classifier.aiAvailability, prefs.modelProvider) {
+                    case (.available, .appleIntelligence):
+                        Label("Ready", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    case (.unavailable, .appleIntelligence):
+                        Button("Open Settings") { SystemSettings.openAppleIntelligence() }
+                    case (.unavailable, .openAICompatible):
+                        Label("Not set up", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    case (.available, .openAICompatible):
+                        if isChecking {
+                            ProgressView().controlSize(.small)
+                        } else if case .success = check {
+                            Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                        } else if case .failure = check {
+                            Label("Can't connect", systemImage: "xmark.octagon.fill").foregroundStyle(.red)
+                        }
+                    }
+                } label: {
+                    Text("Status")
+                    switch (model.classifier.aiAvailability, prefs.modelProvider) {
+                    case (.available, .appleIntelligence):
+                        Text("Runs on this Mac.")
+                    case (.unavailable(let reason), _):
+                        Text("\(reason) Until a model is available, Weft guesses from each app's App Store category and each site's name.")
+                    case (.available, .openAICompatible):
+                        switch check {
+                        case _ where isChecking: Text("Checking \(host)…")
+                        case .success(let category)?: Text("Requests go to \(host), which put Xcode in \(category).")
+                        case .failure(let error)?: Text("\(error.localizedDescription) Until it answers, Weft guesses instead.")
+                        case nil: Text("Requests go to \(host).")
+                        }
+                    }
+                }
+            } footer: {
+                Text("The model categorizes apps and sites no rule knows, describes your work streams and writes daily reviews.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            if prefs.modelProvider == .openAICompatible {
+                Section {
+                    TextField("Base URL", text: $baseURL, prompt: Text(RemoteModelConfig.defaultBaseURL))
+                    TextField("Model", text: $modelName, prompt: Text("gpt-5-mini"))
+                    SecureField("API key", text: $apiKey, prompt: Text("Not needed for local servers"))
+                    HStack {
+                        Spacer()
+                        Button("Save", action: save).disabled(isChecking)
+                    }
+                } header: {
+                    Text("Server")
+                } footer: {
+                    Text("Works with OpenAI and any server with a compatible Chat Completions API, such as OpenRouter, DeepSeek, Ollama or LM Studio. Weft sends it the apps and sites it doesn't know with their window titles, the apps, sites and window titles behind each work stream, and your daily totals. The API key is kept in your keychain.")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear(perform: loadServer)
+        .task(id: checks) { await checkServer() }
+        .onChange(of: prefs.modelProvider) {
+            model.applyModelChoice()
+            loadServer()
+            checks += 1
+        }
+    }
+
+    private var host: String {
+        RemoteModelConfig(baseURL: model.preferences.remoteBaseURL, model: "", apiKey: "").endpoint?.host() ?? "the server"
+    }
+
+    /// Fills in the saved server, reading the keychain only once a remote model is chosen.
+    private func loadServer() {
+        guard !loaded, model.preferences.modelProvider == .openAICompatible else { return }
+        baseURL = model.preferences.remoteBaseURL
+        modelName = model.preferences.remoteModel
+        apiKey = Keychain.string(for: AppModel.apiKeyAccount) ?? ""
+        loaded = true
+    }
+
+    /// Saves the server, switches to it and checks that it answers.
+    private func save() {
+        model.preferences.remoteBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        model.preferences.remoteModel = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+        Keychain.set(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: AppModel.apiKeyAccount)
+        model.applyModelChoice()
+        checks += 1
+    }
+
+    /// Asks the server about Xcode, so Status says whether it really answers rather than
+    /// only whether it's filled in. Runs when the tab opens, the model changes or on Save.
+    private func checkServer() async {
+        check = nil
+        isChecking = false
+        guard model.preferences.modelProvider == .openAICompatible, model.classifier.aiAvailability == .available
+        else { return }
+        isChecking = true
+        let outcome: Result<String, any Error>
+        do {
+            let xcode = ActivityContext(bundleID: "com.apple.dt.Xcode", appName: "Xcode")
+            let result = try await model.ai.classify(xcode, categories: model.classifier.categories)
+            outcome = .success(model.classifier.category(result.categoryKey).name)
+        } catch {
+            outcome = .failure(error)
+        }
+        // A newer check replaced this one.
+        guard !Task.isCancelled else { return }
+        check = outcome
+        isChecking = false
     }
 }
 
