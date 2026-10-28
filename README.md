@@ -1,73 +1,95 @@
 # Weft
 
-Weft is an open-source, local-first time tracker for macOS. It quietly records what you work on and weaves your day into a few parallel work streams — coding, research, meetings — each described in a sentence by Apple's on-device model. Nothing leaves your Mac.
+**See where your day actually went, without sending it anywhere.**
 
-Inspired by [Rize](https://rize.io), built around a different idea: people work on several things at once, so the timeline shows overlapping streams of work rather than a log of app switches.
+Weft is a free, open-source time tracker that lives in your Mac's menu bar. It notices which app, window and website you're using, sorts the time into categories like Code, Meetings or Social Media, and draws your day as a few parallel streams of work.
 
-- **Work streams** — activity in the same category within 30 minutes forms a stream; streams of different categories overlap on a calendar-style timeline. Streams under 10 minutes stay in the log, and each finished stream gets a one-sentence description written on device.
-- **Automatic tracking** — frontmost app, focused window title and active browser tab URL, sampled every 2 s. Idle time (5 min without input), sleep and screen lock are cut out. No screenshots, no keystrokes.
-- **Categorization** — ~360 built-in rules → your own rules → Apple Foundation Models (on device) for anything unknown, cached per app/site. Fix any entry from the timeline and it becomes a rule.
-- **Focus Score** — 0–100 from deep-work share (25 + min stretches), focus share, context switching and distraction time, with the breakdown shown in the app.
-- **Sessions** — Focus / Meeting / Break with Rize-style durations from the menu bar, a full-screen break screen, and an end-of-session summary with self-rating.
-- **Break reminders** after continuous *activity* (time away resets them), plus work-hours target and overworking notifications.
-- **Distraction blocker** — during focus sessions, lingering on a “Block” category (Entertainment, Social Media, …) for 10 s brings up an overlay: Back to Work / Not a distraction / Disable for this session.
-- Day and week reports, an AI daily review, CSV export.
+Weft takes after [Rize](https://rize.io) but works from a different idea: people rarely do one thing at a time. You write code, check a doc, answer a message and go back to the code. So instead of a log of app switches, Weft shows the threads of work you kept coming back to.
 
-## Requirements
+## Why Weft
 
-- macOS 26 or later
-- Apple Intelligence enabled for on-device classification and daily reviews. Without it, the built-in rules and your own rules still work, and unknown apps wait in **Review**.
+- **Native and small.** Weft is built with SwiftUI, so it looks and feels like the rest of macOS. The whole app is under 10 MB, with no Electron and no bundled browser.
+- **Easy on your battery.** A native app already uses far less power than an Electron one. Weft is also event-driven instead of constantly polling your windows, so it stays idle until something actually changes.
+- **Your data never leaves your Mac.** There's no account, no server and no analytics. Categories, summaries and reviews all come from Apple's on-device model, and your history stays in a folder on your Mac (see [Privacy](#privacy)).
+- **Open source and free.** Weft is MIT-licensed, with no subscription and no paid tier. You can read the code, change it and build it yourself.
 
-## Build
+## What you get
+
+**A timeline of your day.** Time in the same category forms a *work stream* as long as you come back to it within 30 minutes. Streams of different categories overlap side by side, like events in a calendar. Each finished stream gets a one-sentence summary such as "Fixed the login redirect bug and reviewed two pull requests." Detours shorter than 10 minutes stay out of the way in the activity log below.
+
+**Tracking you don't have to think about.** Start Weft once and forget about it. It records when you switch apps, windows or browser tabs, and stops counting when you step away (after 5 minutes without input, adjustable), close the lid or lock the screen. Calls and meetings keep counting even when you don't touch the keyboard.
+
+**Categories that sort themselves.** Weft already knows a few hundred common apps and websites. Anything new is categorized by Apple Intelligence, once per app or site. If Weft gets one wrong, click the category in the log and choose:
+- **Always for …**: remembers your choice for that app or site, including your past activity.
+- **Only this entry**: fixes just that entry.
+
+The **Review** page collects the AI's guesses so you can confirm them in one go.
+
+**A Focus Score.** A 0–100 score for each day. It goes up with long stretches of focused work (25 minutes or more counts as deep work) and down with frequent context switching and time spent on distractions. Meetings don't count either way. Click the score to see how it was calculated.
+
+**Focus, meeting and break sessions.** Start a timed session from the menu bar. Breaks can take over the screen, so you actually step away. When a focus session ends, Weft shows how focused you were and asks how it felt to you.
+
+**A gentle distraction blocker.** During a focus session, if you stay on something distracting for 10 seconds (by default Social Media, Entertainment, Gaming, Shopping and Personal), Weft asks whether you meant to. You can go back to work, mark the app or site as *not a distraction*, or switch the blocker off for the rest of the session. You choose which categories count as distracting, and whether you get a full-screen prompt or just a notification.
+
+**Breaks and healthy hours.** Weft reminds you to take a break after an hour of continuous work. Stepping away resets the timer, so it never nags you right after you get back. Set a daily target and Weft also lets you know when you reach it and when you're working too long.
+
+**Daily and weekly reviews.** For any day, ask for a short on-device review with a suggestion for tomorrow. The weekly report compares tracked, focus, meeting and distracted time with the previous week, and shows time by category and your Focus Score trend. Click a day to open it.
+
+## Privacy
+
+- **What Weft records:** the app in front, its window title and, in supported browsers, the address of the current tab.
+- **What it never records:** screenshots, keystrokes or the contents of your screen.
+- **Where it goes:** nowhere. Categories, summaries and reviews are all produced on your Mac. Your data lives in `~/Library/Application Support/Weft/`.
+- **What you control:** In **Settings → Tracking**, you can stop recording window titles, keep only the domain of URLs, and exclude specific apps and websites completely. Pause tracking any time from the menu bar or Settings.
+- **Your data is yours:** You can export everything to CSV from **Settings → Data**. To erase your history, quit Weft and delete the folder above.
+
+## Getting started
+
+You'll need **macOS 26 or later**. Apple Intelligence is optional but recommended. Without it, Weft still categorizes the apps and sites it already knows and anything you've set yourself. Everything else waits on the Review page until you sort it.
+
+There's no download yet, so you'll build Weft yourself. Install [Xcode](https://apps.apple.com/app/xcode/id497799835) and [Homebrew](https://brew.sh), then run:
 
 ```sh
 brew install xcodegen
-cp Config/Local.xcconfig.example Config/Local.xcconfig   # optional: your signing identity
+git clone https://github.com/tiann/weft.git
+cd weft
 xcodegen generate
 xcodebuild -project Weft.xcodeproj -scheme Weft -derivedDataPath build/DerivedData build
 open build/DerivedData/Build/Products/Debug/Weft.app
 ```
 
-Without `Local.xcconfig`, the app is signed ad hoc. That works, but macOS forgets the Accessibility permission after every rebuild.
+Weft appears in the menu bar. On first launch, it asks for Accessibility access. The other permissions come up the first time Weft needs them:
 
-### Permissions
-
-| Permission | Why |
+| Permission | What it's for |
 | --- | --- |
-| Accessibility | Read the focused window's title |
-| Automation (per browser) | Read the active tab URL (Safari, Chrome, Arc, Edge, Brave, Vivaldi, Opera, Dia, Comet) |
-| Notifications | Break reminders, session ends, blocker in notification mode |
+| Accessibility | Reading window titles, so the timeline shows *which* document or project you were working in, not just the app |
+| Automation (asked once per browser) | Reading the current tab's address in Safari, Chrome, Arc, Edge, Brave, Vivaldi, Opera, Dia and Comet. Other browsers are tracked by app and window title only |
+| Notifications | Break reminders, session endings and the blocker's notification mode |
 
-## URL scheme
+To start Weft automatically, turn on **Launch Weft at login** in **Settings → General**.
 
-For Raycast, Shortcuts, scripts:
+## Shortcuts and automation
 
-```
-weft://focus?minutes=50   weft://meeting   weft://break
-weft://stop               weft://pause     weft://resume
-weft://dashboard
-```
+Control Weft from Raycast, Alfred, Shortcuts or a script by opening these links:
 
-## Layout
+| Link | Does |
+| --- | --- |
+| `weft://focus?minutes=50` | Start a focus session (leave out `minutes` to use your default) |
+| `weft://meeting`, `weft://break` | Start a meeting or a break; both also accept `minutes` |
+| `weft://stop` | End the current session |
+| `weft://pause`, `weft://resume` | Pause or resume tracking |
+| `weft://dashboard` | Open today in the main window |
 
-```
-project.yml                 XcodeGen spec
-App/                        SwiftUI app: menu bar, main window, overlays
-Packages/WeftKit/       Tracking, storage (SwiftData), classification, metrics, sessions
-```
+For example, `open "weft://focus?minutes=25"` in Terminal.
 
-## App icon
+## Troubleshooting
 
-`App/AppIcon.icon` is a layered Liquid Glass icon (Icon Composer format), generated by
-`python3 scripts/make-glass-icon.py`. Open it in Icon Composer to preview the default,
-dark, tinted and clear appearances.
+**Window titles stopped showing up after I rebuilt Weft.** By default, Weft is signed without a developer certificate, so macOS treats each build as a new app and drops its Accessibility permission. Grant it again in **System Settings → Privacy & Security → Accessibility**. To avoid this on every build, sign with your own identity: copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` and fill it in.
 
-## Tests
+**Lots of entries are "Uncategorized".** Apple Intelligence is probably off or still downloading. Turn it on in System Settings, then open **Review** and click **Retry**. You can also categorize entries yourself from the log.
 
-```sh
-cd Packages/WeftKit
-swift test                                                   # unit tests
-WEFT_AI_TESTS=1 swift test --filter FoundationModelsHarness   # real on-device model
-```
+**Time I spent reading is missing.** Weft treats you as away after 5 minutes without keyboard or mouse input. If you often read or think for longer stretches, raise the threshold in **Settings → Tracking**.
 
-Data lives in `~/Library/Application Support/Weft/`.
+## Contributing
+
+Bug reports and pull requests are welcome. [AGENTS.md](AGENTS.md) covers the architecture, build commands and how to run the tests.
