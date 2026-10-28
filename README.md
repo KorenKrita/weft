@@ -11,7 +11,7 @@ Weft takes after [Rize](https://rize.io) but works from a different idea: people
 - **Native and small.** Weft is built with SwiftUI, so it looks and feels like the rest of macOS. The whole app is under 10 MB, with no Electron and no bundled browser.
 - **Easy on your battery.** A native app already uses far less power than an Electron one. Weft is also event-driven instead of constantly polling your windows, so it stays idle until something actually changes.
 - **Your data never leaves your Mac.** There's no account, no server and no analytics. Categories, summaries and reviews all come from Apple's on-device model, and your history stays in a folder on your Mac (see [Privacy](#privacy)).
-- **Open source and free.** Weft is MIT-licensed, with no subscription and no paid tier. You can read the code, change it and build it yourself.
+- **Open source and free.** Weft is [MIT-licensed](LICENSE), with no subscription and no paid tier. You can read the code, change it and build it yourself.
 
 ## What you get
 
@@ -47,7 +47,23 @@ The **Review** page collects the AI's guesses so you can confirm them in one go.
 
 You'll need **macOS 26 or later**. Apple Intelligence is optional but recommended. Without it, Weft still categorizes the apps and sites it already knows and anything you've set yourself. Everything else waits on the Review page until you sort it.
 
-There's no download yet, so you'll build Weft yourself. Install [Xcode](https://apps.apple.com/app/xcode/id497799835) and [Homebrew](https://brew.sh), then run:
+1. Download the latest `Weft-<version>.dmg` from [Releases](https://github.com/tiann/weft/releases/latest).
+2. Open it and drag **Weft** into **Applications**.
+3. Open Weft from Applications. It's signed and notarized by Apple, so macOS opens it without warnings.
+
+Weft appears in the menu bar. On first launch, it asks for Accessibility access. The other permissions come up the first time Weft needs them:
+
+| Permission | What it's for |
+| --- | --- |
+| Accessibility | Reading window titles, so the timeline shows *which* document or project you were working in, not just the app |
+| Automation (asked once per browser) | Reading the current tab's address in Safari, Chrome, Arc, Edge, Brave, Vivaldi, Opera, Dia and Comet. Other browsers are tracked by app and window title only |
+| Notifications | Break reminders, session endings and the blocker's notification mode |
+
+To start Weft automatically, turn on **Launch Weft at login** in **Settings → General**. To update, download the new DMG and replace the app. Your history and permissions carry over.
+
+### Building from source
+
+Install [Xcode](https://apps.apple.com/app/xcode/id497799835) and [Homebrew](https://brew.sh), then run:
 
 ```sh
 brew install xcodegen
@@ -58,15 +74,7 @@ xcodebuild -project Weft.xcodeproj -scheme Weft -derivedDataPath build/DerivedDa
 open build/DerivedData/Build/Products/Debug/Weft.app
 ```
 
-Weft appears in the menu bar. On first launch, it asks for Accessibility access. The other permissions come up the first time Weft needs them:
-
-| Permission | What it's for |
-| --- | --- |
-| Accessibility | Reading window titles, so the timeline shows *which* document or project you were working in, not just the app |
-| Automation (asked once per browser) | Reading the current tab's address in Safari, Chrome, Arc, Edge, Brave, Vivaldi, Opera, Dia and Comet. Other browsers are tracked by app and window title only |
-| Notifications | Break reminders, session endings and the blocker's notification mode |
-
-To start Weft automatically, turn on **Launch Weft at login** in **Settings → General**.
+Your own builds aren't signed with a developer certificate, so macOS treats each one as a new app and drops its Accessibility permission. Grant it again in **System Settings → Privacy & Security → Accessibility**. Alternatively, sign with your own identity: copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` and fill it in.
 
 ## Shortcuts and automation
 
@@ -83,8 +91,6 @@ Control Weft from Raycast, Alfred, Shortcuts or a script by opening these links:
 For example, `open "weft://focus?minutes=25"` in Terminal.
 
 ## Troubleshooting
-
-**Window titles stopped showing up after I rebuilt Weft.** By default, Weft is signed without a developer certificate, so macOS treats each build as a new app and drops its Accessibility permission. Grant it again in **System Settings → Privacy & Security → Accessibility**. To avoid this on every build, sign with your own identity: copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` and fill it in.
 
 **Lots of entries are "Uncategorized".** Apple Intelligence is probably off or still downloading. Turn it on in System Settings, then open **Review** and click **Retry**. You can also categorize entries yourself from the log.
 
