@@ -48,6 +48,8 @@ final class AppModel {
     /// Set by a view that has access to `openWindow`.
     @ObservationIgnored var openDashboard: (() -> Void)?
     var accessibilityGranted = SystemProbe.isAccessibilityTrusted
+    /// Nil until macOS has answered.
+    var notificationPermission: NotificationPermission?
 
     @ObservationIgnored private let notifier = Notifier()
     @ObservationIgnored private let breakReminder: BreakReminder
@@ -68,11 +70,14 @@ final class AppModel {
         sessions = SessionEngine(modelContext: context, classifier: classifier)
         distractionGuard = DistractionGuard(preferences: preferences, sessions: sessions, notifier: notifier)
         timeEntries = TimeEntryService(modelContext: context, ai: ai)
-        breakReminder = BreakReminder(preferences: preferences, sessions: sessions, notifier: notifier)
+        breakReminder = BreakReminder(preferences: preferences, sessions: sessions, notifier: notifier, modelContext: context)
         workHours = WorkHoursMonitor(preferences: preferences, notifier: notifier, modelContext: context)
 
         wire()
-        notifier.requestAuthorization()
+        Task {
+            await notifier.requestAuthorization()
+            await refreshNotificationPermission()
+        }
         tracker.start()
         classifier.retryPending()
         describeTimeEntriesPeriodically()
@@ -180,6 +185,24 @@ final class AppModel {
         accessibilityGranted = SystemProbe.isAccessibilityTrusted
         tracker.requestSample(after: 0)
         classifier.refreshAvailability()
+        Task { await refreshNotificationPermission() }
+    }
+
+    private func refreshNotificationPermission() async {
+        notificationPermission = await notifier.permission()
+    }
+
+    /// Asks for permission the first time; once the user has answered, only System Settings
+    /// can change it.
+    func enableNotifications() {
+        guard notificationPermission == .notDetermined else {
+            SystemSettings.openNotifications()
+            return
+        }
+        Task {
+            await notifier.requestAuthorization()
+            await refreshNotificationPermission()
+        }
     }
 }
 

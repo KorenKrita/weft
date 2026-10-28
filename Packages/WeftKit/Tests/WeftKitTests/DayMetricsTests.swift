@@ -54,6 +54,50 @@ struct DayMetricsTests {
         #expect(DayMetrics.compute(samples, categories: categories).deepWorkTime == 0)
     }
 
+    @Test func detoursOfAFewMinutesKeepAStretch() {
+        // Two minutes on chat, then a minute and a half away from the Mac.
+        let samples = [sample(0, 20, "code"), sample(20, 2, "messaging", app: "slack"), sample(22, 20, "code"),
+                       sample(43.5, 20, "code")]
+        let metrics = DayMetrics.compute(samples, categories: categories)
+        #expect(metrics.deepWorkTime == 60 * 60)
+        #expect(metrics.longestFocusStretch == 60 * 60)
+    }
+
+    @Test func movingBetweenFocusAppsIsNotSwitching() {
+        // A terminal, the docs and GitHub in the browser, back and forth every minute or two.
+        var samples: [SegmentSample] = []
+        for i in 0..<40 {
+            let start = Double(i) * 3
+            samples.append(sample(start, 2, "code", app: "iterm"))
+            samples.append(sample(start + 2, 1, i.isMultiple(of: 2) ? "code" : "research", app: "chrome"))
+        }
+        let metrics = DayMetrics.compute(samples, categories: categories)
+        #expect(metrics.contextSwitches == 0)
+        #expect(metrics.deepWorkTime == 120 * 60)
+        #expect(metrics.score?.value == 100)
+    }
+
+    @Test func glancesAreNotSwitches() {
+        var samples: [SegmentSample] = []
+        for i in 0..<6 {
+            samples.append(sample(Double(i) * 10, 9.75, "code", app: "xcode"))
+            samples.append(sample(Double(i) * 10 + 9.75, 0.25, "messaging", app: "slack"))
+        }
+        #expect(DayMetrics.compute(samples, categories: categories).contextSwitches == 0)
+    }
+
+    @Test func constantDetoursAreNotDeepWork() {
+        // Never away for long, but only half of it is focus work.
+        var samples: [SegmentSample] = []
+        for i in 0..<30 {
+            samples.append(sample(Double(i) * 4, 2, "code", app: "xcode"))
+            samples.append(sample(Double(i) * 4 + 2, 2, "messaging", app: "slack"))
+        }
+        let metrics = DayMetrics.compute(samples, categories: categories)
+        #expect(metrics.deepWorkTime == 0)
+        #expect(metrics.contextSwitches == 59)
+    }
+
     @Test func distractionAndSwitchingLowerScore() {
         var samples: [SegmentSample] = []
         for i in 0..<60 {

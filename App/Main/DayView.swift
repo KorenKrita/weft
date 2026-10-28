@@ -170,6 +170,7 @@ struct Card<Content: View>: View {
 /// The answer to "how did today go?": score, progress towards the target, and three
 /// plain-language facts.
 private struct Overview: View {
+    @Environment(AppModel.self) private var model
     let metrics: DayMetrics
     let target: TimeInterval
     let baseline: PeriodSummary
@@ -202,6 +203,7 @@ private struct Overview: View {
                         ChangeLabel(change: change, suffix: comparison).padding(.leading, 4)
                     }
                 }
+                .help("Time at your Mac. Time away (\(model.preferences.idleThresholdMinutes) minutes without input), asleep or locked isn't counted.")
                 GoalBar(metrics: metrics, target: target)
                 HStack(spacing: 14) {
                     legend(GoalBar.focusColor, "Focus", metrics.focusTime)
@@ -285,7 +287,7 @@ private struct ScoreExplanation: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("How the Focus Score works").font(.headline)
-            Text("100 × (½ deep-work share + ½ focus share) − switching penalty − distraction penalty. Meetings are left out.")
+            Text("100 × (½ deep-work share + ½ focus share) − switching penalty − distraction penalty. Meetings are left out. Moving between focus apps, like the terminal and the docs in your browser, isn't a switch, and neither is a glance under 30 seconds. A detour of up to 3 minutes doesn't end a deep-work stretch, as long as three quarters of the stretch is focus work.")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let score {

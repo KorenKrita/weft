@@ -25,13 +25,13 @@ Weft takes after [Rize](https://rize.io) but works from a different idea: people
 
 The **Review** page collects the AI's guesses so you can confirm them in one go.
 
-**A Focus Score.** A 0–100 score for each day. It goes up with long stretches of focused work (25 minutes or more counts as deep work) and down with frequent context switching and time spent on distractions. Meetings don't count either way. Click the score to see how it was calculated.
+**A Focus Score.** A 0–100 score for each day. It goes up with long stretches of focused work (25 minutes or more counts as deep work, and a detour of up to 3 minutes doesn't end a stretch) and down when you keep leaving focused work for other things, and with time spent on distractions. Going back and forth between focus apps, like a terminal and the docs in your browser, doesn't count against you. Meetings don't count either way. Click the score to see how it was calculated.
 
 **Focus, meeting and break sessions.** Start a timed session from the menu bar. Breaks can take over the screen, so you actually step away. When a focus session ends, Weft shows how focused you were and asks how it felt to you.
 
 **A gentle distraction blocker.** During a focus session, if you stay on something distracting for 10 seconds (by default Social Media, Entertainment, Gaming, Shopping and Personal), Weft asks whether you meant to. You can go back to work, mark the app or site as *not a distraction*, or switch the blocker off for the rest of the session. You choose which categories count as distracting, and whether you get a full-screen prompt or just a notification.
 
-**Breaks and healthy hours.** Weft reminds you to take a break after an hour of continuous work. Stepping away resets the timer, so it never nags you right after you get back. Set a daily target and Weft also lets you know when you reach it and when you're working too long.
+**Breaks and healthy hours.** Weft reminds you to take a break after an hour of continuous work. Stepping away for 5 minutes or more resets the timer, so it never nags you right after you get back, while a screen that locks for a moment doesn't. Set a daily target and Weft also lets you know when you reach it and when you're working too long.
 
 **Daily and weekly reviews.** For any day, ask for a short on-device review with a suggestion for tomorrow. The weekly report compares tracked, focus, meeting and distracted time with the previous week, and shows time by category and your Focus Score trend. Click a day to open it.
 
@@ -57,7 +57,7 @@ Weft appears in the menu bar. On first launch, it asks for Accessibility access.
 | --- | --- |
 | Accessibility | Reading window titles, so the timeline shows *which* document or project you were working in, not just the app |
 | Automation (asked once per browser) | Reading the current tab's address in Safari, Chrome, Arc, Edge, Brave, Vivaldi, Opera, Dia and Comet. Other browsers are tracked by app and window title only |
-| Notifications | Break reminders, session endings and the blocker's notification mode |
+| Notifications | Break reminders, work-hours alerts, session endings and the blocker's notification mode. If they're off, **Settings → General** shows it |
 
 To start Weft automatically, turn on **Launch Weft at login** in **Settings → General**. To update, download the new DMG and replace the app. Your history and permissions carry over.
 

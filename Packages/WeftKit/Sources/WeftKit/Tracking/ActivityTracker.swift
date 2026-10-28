@@ -13,6 +13,9 @@ public struct TrackerSample: Sendable {
     /// The user is looking at Weft itself. That time isn't recorded, but it isn't
     /// time away either.
     public var isOwnApp = false
+    /// Seconds since the last keyboard or mouse input, so listeners can tell when the user
+    /// actually left.
+    public var idleSeconds: TimeInterval = 0
 }
 
 /// Records what the user is doing as `ActivitySegment`s. Event-driven to save power: it samples
@@ -215,11 +218,13 @@ public final class ActivityTracker {
             // Keep showing what the user was doing before opening Weft (e.g. the menu bar
             // popover), unless they've gone idle in the meantime.
             if isAway { current = nil; currentCategory = nil }
-            broadcast(TrackerSample(date: now, context: nil, category: nil, isAway: isAway, isOwnApp: true))
+            broadcast(TrackerSample(date: now, context: nil, category: nil, isAway: isAway, isOwnApp: true,
+                                    idleSeconds: idleSeconds))
         } else {
             current = machine.current == nil ? nil : context
             currentCategory = machine.current == nil ? nil : category
-            broadcast(TrackerSample(date: now, context: current, category: currentCategory, isAway: isAway))
+            broadcast(TrackerSample(date: now, context: current, category: currentCategory, isAway: isAway,
+                                    idleSeconds: idleSeconds))
         }
 
         if now.timeIntervalSince(lastSave) > 30 {

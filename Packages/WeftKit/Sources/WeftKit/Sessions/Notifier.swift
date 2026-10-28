@@ -15,6 +15,10 @@ public enum NotificationKind: String, Sendable {
     case workHours = "WORK_HOURS"
 }
 
+public enum NotificationPermission: Sendable {
+    case notDetermined, allowed, denied
+}
+
 @MainActor
 public protocol NotificationPosting: AnyObject {
     func post(_ kind: NotificationKind, title: String, body: String)
@@ -49,8 +53,21 @@ public final class Notifier: NSObject, NotificationPosting {
         ])
     }
 
-    public func requestAuthorization() {
-        center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    /// Asks once; after that macOS remembers the answer and only System Settings changes it.
+    public func requestAuthorization() async {
+        do {
+            _ = try await center.requestAuthorization(options: [.alert, .sound])
+        } catch {
+            NSLog("Weft: asking for notification permission failed: \(error)")
+        }
+    }
+
+    public func permission() async -> NotificationPermission {
+        switch await center.notificationSettings().authorizationStatus {
+        case .notDetermined: .notDetermined
+        case .denied: .denied
+        default: .allowed
+        }
     }
 
     public func post(_ kind: NotificationKind, title: String, body: String) {
@@ -60,7 +77,9 @@ public final class Notifier: NSObject, NotificationPosting {
         content.sound = .default
         content.categoryIdentifier = kind.rawValue
         // Reusing the identifier replaces an older notification of the same kind.
-        center.add(UNNotificationRequest(identifier: kind.rawValue, content: content, trigger: nil))
+        center.add(UNNotificationRequest(identifier: kind.rawValue, content: content, trigger: nil)) { error in
+            if let error { NSLog("Weft: posting a notification failed: \(error)") }
+        }
     }
 }
 

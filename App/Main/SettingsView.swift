@@ -43,6 +43,7 @@ private struct GeneralSettings: View {
                     }
                 }
                 Toggle("Notify when I reach the target and when I'm overworking", isOn: $prefs.workHoursNotifications)
+                if prefs.workHoursNotifications { NotificationsOffNote() }
             }
             Section("Permissions") {
                 PermissionRow(
@@ -52,6 +53,17 @@ private struct GeneralSettings: View {
                     action: { SystemProbe.requestAccessibility(); SystemSettings.openAccessibility() }
                 )
                 LabeledContent {
+                    switch model.notificationPermission {
+                    case .allowed?: Label("Granted", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    case .notDetermined?: Button("Allow", action: model.enableNotifications)
+                    case .denied?: Button("Open Settings", action: model.enableNotifications)
+                    case nil: EmptyView()
+                    }
+                } label: {
+                    Text("Notifications")
+                    Text("Needed for break reminders, work-hours alerts and session endings.")
+                }
+                LabeledContent {
                     Button("Open Settings") { SystemSettings.openAutomation() }
                 } label: {
                     Text("Browsers")
@@ -60,6 +72,22 @@ private struct GeneralSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Shown next to settings that rely on notifications macOS won't deliver.
+private struct NotificationsOffNote: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let permission = model.notificationPermission, permission != .allowed {
+            LabeledContent {
+                Button(permission == .notDetermined ? "Allow" : "Open Settings", action: model.enableNotifications)
+            } label: {
+                Label("Notifications are off for Weft, so these can't reach you.", systemImage: "bell.slash")
+                    .foregroundStyle(.orange)
+            }
+        }
     }
 }
 
@@ -369,10 +397,11 @@ private struct SessionSettings: View {
                     .disabled(!prefs.breakRemindersEnabled)
                 durationPicker("Snooze for", $prefs.snoozeMinutes, options: [5, 10, 15, 20, 30])
                     .disabled(!prefs.breakRemindersEnabled)
+                if prefs.breakRemindersEnabled { NotificationsOffNote() }
             } header: {
                 Text("Break reminders")
             } footer: {
-                Text("Only active time counts; stepping away from the keyboard resets the timer.")
+                Text("Only active time counts; being away from the Mac for 5 minutes or more resets the timer.")
                     .font(.callout).foregroundStyle(.secondary)
             }
         }

@@ -118,6 +118,10 @@ enum SystemSettings {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
     }
 
+    static func openNotifications() {
+        open("x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(Bundle.main.bundleIdentifier ?? "")")
+    }
+
     static func openAppleIntelligence() {
         open("x-apple.systempreferences:com.apple.Siri-Settings.extension")
     }

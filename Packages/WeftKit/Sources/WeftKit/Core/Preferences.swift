@@ -43,6 +43,10 @@ public final class Preferences {
     public var snoozeMinutes: Int { didSet { save(snoozeMinutes, "snoozeMinutes") } }
     public var workHoursTarget: Double { didSet { save(workHoursTarget, "workHoursTarget") } }
     public var workHoursNotifications: Bool { didSet { save(workHoursNotifications, "workHoursNotifications") } }
+    /// When the target and overtime notifications last went out, so relaunching Weft neither
+    /// repeats nor skips them.
+    public var workHoursTargetNotifiedAt: Date? { didSet { defaults.set(workHoursTargetNotifiedAt, forKey: "workHoursTargetNotifiedAt") } }
+    public var overtimeNotifiedAt: Date? { didSet { defaults.set(overtimeNotifiedAt, forKey: "overtimeNotifiedAt") } }
 
     // Distraction blocker
     public var blockerEnabled: Bool { didSet { save(blockerEnabled, "blockerEnabled") } }
@@ -92,6 +96,8 @@ public final class Preferences {
         snoozeMinutes = defaults.integer(forKey: "snoozeMinutes")
         workHoursTarget = defaults.double(forKey: "workHoursTarget")
         workHoursNotifications = defaults.bool(forKey: "workHoursNotifications")
+        workHoursTargetNotifiedAt = defaults.object(forKey: "workHoursTargetNotifiedAt") as? Date
+        overtimeNotifiedAt = defaults.object(forKey: "overtimeNotifiedAt") as? Date
         blockerEnabled = defaults.bool(forKey: "blockerEnabled")
         blockerStyle = BlockerStyle(rawValue: defaults.string(forKey: "blockerStyle") ?? "") ?? .overlay
         refocusThresholdSeconds = defaults.integer(forKey: "refocusThresholdSeconds")

@@ -31,10 +31,15 @@ public extension SegmentSample {
 public struct FocusScoreConfig: Sendable {
     /// Focus stretches at least this long count as deep work.
     public var deepWorkMinimum: TimeInterval = 25 * 60
-    /// Non-focus interruptions up to this long don't break a focus stretch.
-    public var interruptionTolerance: TimeInterval = 60
-    /// Switches shorter than this are ignored (e.g. Cmd-Tab passing through an app).
-    public var switchNoiseFloor: TimeInterval = 5
+    /// A detour (something that isn't focus work, or time not tracked) up to this long doesn't
+    /// end a focus stretch: a quarter of 15 minutes, as in Rize's 75% rule.
+    public var interruptionTolerance: TimeInterval = 3 * 60
+    /// The share of a stretch that must be focus work, so that many short detours in a row
+    /// don't pass for deep work.
+    public var minimumFocusShare: Double = 0.75
+    /// Visits shorter than this aren't switches: a glance at a message, Cmd-Tab passing
+    /// through an app.
+    public var switchNoiseFloor: TimeInterval = 30
     /// Context switches per hour that are considered normal.
     public var freeSwitchesPerHour: Double = 12
     /// Below this much active time there is not enough data for a score.
@@ -89,7 +94,7 @@ public struct DayMetrics: Sendable {
             metrics.addToHours(sample, calendar: calendar)
         }
 
-        metrics.contextSwitches = countSwitches(samples, noiseFloor: config.switchNoiseFloor)
+        metrics.contextSwitches = countSwitches(samples, isFocus: isFocus, noiseFloor: config.switchNoiseFloor)
         (metrics.deepWorkTime, metrics.longestFocusStretch) = focusStretches(samples, isFocus: isFocus, config: config)
         metrics.score = FocusScore.compute(metrics, config: config)
         return metrics
@@ -106,13 +111,15 @@ public struct DayMetrics: Sendable {
         }
     }
 
-    /// A switch is moving to a different app or site, ignoring blips shorter than the noise floor.
-    static func countSwitches(_ samples: [SegmentSample], noiseFloor: TimeInterval) -> Int {
+    /// A switch is moving to a different kind of work, ignoring visits shorter than the noise
+    /// floor. Moving between focus categories isn't one: coding means going back and forth
+    /// between the terminal, the editor and the docs.
+    static func countSwitches(_ samples: [SegmentSample], isFocus: (String) -> Bool, noiseFloor: TimeInterval) -> Int {
         var switches = 0
-        var previous: (bundleID: String, domain: String?)?
+        var previous: String?
         for sample in samples where sample.duration >= noiseFloor {
-            let current = (sample.bundleID, sample.domain)
-            if let previous, previous.bundleID != current.0 || previous.domain != current.1 {
+            let current = sample.categoryKey
+            if let previous, previous != current, !(isFocus(previous) && isFocus(current)) {
                 switches += 1
             }
             previous = current
@@ -121,35 +128,44 @@ public struct DayMetrics: Sendable {
     }
 
     /// Sum of focus stretches that last at least `deepWorkMinimum`, and the longest stretch.
-    /// Short non-focus interruptions are tolerated but don't count towards a stretch; idle
-    /// gaps end it.
+    /// A stretch survives detours of up to `interruptionTolerance` each, whether to something
+    /// else or away from the Mac, but they don't count towards it; a longer one ends it. A
+    /// stretch that's less than `minimumFocusShare` focus work doesn't count at all.
     static func focusStretches(_ samples: [SegmentSample], isFocus: (String) -> Bool,
                                config: FocusScoreConfig) -> (deepWork: TimeInterval, longest: TimeInterval) {
         var total: TimeInterval = 0
         var longest: TimeInterval = 0
         var stretch: TimeInterval = 0
-        var interruption: TimeInterval = 0
+        var detours: TimeInterval = 0
+        var detour: TimeInterval = 0
         var lastEnd: Date?
 
         func flush() {
-            if stretch >= config.deepWorkMinimum { total += stretch }
-            longest = max(longest, stretch)
+            if stretch > 0, stretch >= config.minimumFocusShare * (stretch + detours) {
+                if stretch >= config.deepWorkMinimum { total += stretch }
+                longest = max(longest, stretch)
+            }
             stretch = 0
-            interruption = 0
+            detours = 0
+            detour = 0
+        }
+
+        func addDetour(_ duration: TimeInterval) {
+            guard stretch > 0 else { return }
+            detour += duration
+            if detour > config.interruptionTolerance { flush() }
         }
 
         for sample in samples {
-            if let lastEnd, sample.start.timeIntervalSince(lastEnd) > config.interruptionTolerance {
-                flush()
-            }
+            if let lastEnd { addDetour(max(0, sample.start.timeIntervalSince(lastEnd))) }
             if isFocus(sample.categoryKey) {
                 stretch += sample.duration
-                interruption = 0
-            } else if stretch > 0 {
-                interruption += sample.duration
-                if interruption > config.interruptionTolerance { flush() }
+                detours += detour
+                detour = 0
+            } else {
+                addDetour(sample.duration)
             }
-            lastEnd = sample.end
+            lastEnd = max(lastEnd ?? sample.end, sample.end)
         }
         flush()
         return (total, longest)
