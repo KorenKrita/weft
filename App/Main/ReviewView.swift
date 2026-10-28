@@ -27,6 +27,8 @@ struct ReviewView: View {
         var categoryKey: String
         var source: ClassificationSource
         var confidence: AIConfidence?
+        /// The most used window or page titles, so it's clear what the app or site was used for.
+        var titles: [String] = []
         var id: String { key }
     }
 
@@ -46,10 +48,14 @@ struct ReviewView: View {
                             Image(nsImage: AppIcons.icon(for: item.sample.bundleID)).resizable().frame(width: 16, height: 16)
                             VStack(alignment: .leading) {
                                 Text(item.sample.domain ?? item.sample.appName)
-                                if item.sample.domain != nil {
+                                if !item.titles.isEmpty {
+                                    Text(item.titles.prefix(2).joined(separator: " · "))
+                                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                } else if item.sample.domain != nil {
                                     Text(item.sample.appName).font(.caption).foregroundStyle(.secondary)
                                 }
                             }
+                            .help(item.titles.joined(separator: "\n"))
                         }
                     }
                     TableColumn("Time (30 days)") { item in
@@ -129,8 +135,10 @@ struct ReviewView: View {
 
     private func items() -> [Item] {
         var byKey: [String: Item] = [:]
+        var titles: [String: [(title: String?, duration: TimeInterval)]] = [:]
         for segment in segments {
             let key = segment.classificationKey
+            titles[key, default: []].append((segment.title, segment.duration))
             if var item = byKey[key] {
                 item.duration += segment.duration
                 byKey[key] = item
@@ -138,6 +146,10 @@ struct ReviewView: View {
                 byKey[key] = Item(key: key, sample: segment, duration: segment.duration, categoryKey: segment.categoryKey,
                                   source: segment.classificationSource, confidence: model.classifier.confidence(forKey: key))
             }
+        }
+        for (key, samples) in titles {
+            guard let appName = byKey[key]?.sample.appName else { continue }
+            byKey[key]?.titles = TitleSummary.mostUsed(samples, appName: appName, limit: 3)
         }
         // Waiting first, then least confident, then most time spent.
         func rank(_ item: Item) -> Int {

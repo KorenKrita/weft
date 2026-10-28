@@ -9,7 +9,7 @@ private final class DescribingAI: AIClassifying, @unchecked Sendable {
     var prompts: [String] { lock.withLock { _prompts } }
 
     func availability() -> AIAvailability { .available }
-    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+    func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification {
         AIClassification(categoryKey: "code", confidence: .high)
     }
     func summarize(_ facts: String) async throws -> String { "" }

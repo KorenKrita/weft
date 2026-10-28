@@ -60,14 +60,14 @@ public struct OpenAICompatibleClassifier: AIClassifying {
         return .available
     }
 
-    public func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+    public func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification {
         let candidates = ModelPrompts.candidates(categories)
         let instructions = ModelPrompts.classifyInstructions(candidates) + "\n\n" + """
             Reply with only this JSON object and nothing else:
             {"category": "<key from the list>", "confidence": "low" | "medium" | "high"}
             Use low confidence when the app or site could reasonably fit several categories.
             """
-        let reply = try await complete(instructions: instructions, prompt: ModelPrompts.classifyPrompt(context))
+        let reply = try await complete(instructions: instructions, prompt: ModelPrompts.classifyPrompt(context, titles: titles))
         return try Self.parseClassification(reply, candidates: candidates)
     }
 

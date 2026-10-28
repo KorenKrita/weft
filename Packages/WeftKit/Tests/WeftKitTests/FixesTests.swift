@@ -5,7 +5,7 @@ import Testing
 
 private struct NoAI: AIClassifying {
     func availability() -> AIAvailability { .unavailable("test") }
-    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+    func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification {
         throw ClassificationError.unknownCategory("")
     }
     func summarize(_ facts: String) async throws -> String { "" }

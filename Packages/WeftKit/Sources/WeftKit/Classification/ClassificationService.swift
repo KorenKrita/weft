@@ -133,7 +133,8 @@ public final class ClassificationService {
     private func drain() async {
         while let next = queue.first {
             do {
-                let result = try await ai.classify(next.context, categories: categories)
+                let result = try await ai.classify(next.context, titles: titles(forKey: next.key, context: next.context),
+                                                  categories: categories)
                 store(result, forKey: next.key)
             } catch {
                 failedKeys.insert(next.key)
@@ -143,6 +144,38 @@ public final class ClassificationService {
             queuedCount = queue.count
         }
         worker = nil
+    }
+
+    /// Up to five titles seen for the app or site, most time first, so the model doesn't have
+    /// to judge a site by a login page or a tab that hadn't loaded yet.
+    private func titles(forKey key: String, context: ActivityContext) -> [String] {
+        let segments = (try? modelContext.fetch(FetchDescriptor<ActivitySegment>(
+            predicate: #Predicate { $0.classificationKey == key }
+        ))) ?? []
+        var samples: [(title: String?, duration: TimeInterval)] = segments.map { ($0.title, $0.duration) }
+        samples.append((context.title, 0))
+        return TitleSummary.mostUsed(samples, appName: context.appName, limit: 5)
+    }
+
+    /// Asks the model again about the sites it filed under `categoryKey` that nobody has
+    /// confirmed yet, e.g. after it started getting more than one page title per site.
+    public func reaskSites(filedAs categoryKey: String) {
+        let ai = ClassificationSource.ai.rawValue
+        let segments = (try? modelContext.fetch(FetchDescriptor<ActivitySegment>(
+            predicate: #Predicate { $0.classificationSourceRaw == ai && $0.categoryKey == categoryKey && $0.domain != nil }
+        ))) ?? []
+        for key in Set(segments.map(\.classificationKey)) {
+            cache[key] = nil
+            for record in (try? modelContext.fetch(FetchDescriptor<AIClassificationRecord>(predicate: #Predicate { $0.key == key }))) ?? [] {
+                modelContext.delete(record)
+            }
+        }
+        for segment in segments {
+            segment.categoryKey = CategoryDefinition.uncategorizedKey
+            segment.classificationSource = .pending
+        }
+        try? modelContext.save()
+        retryPending()
     }
 
     private func guess(_ context: ActivityContext) -> String {

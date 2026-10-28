@@ -79,8 +79,18 @@ final class AppModel {
             await refreshNotificationPermission()
         }
         tracker.start()
+        reaskBrowsingSitesOnce()
         classifier.retryPending()
         describeTimeEntriesPeriodically()
+    }
+
+    /// The model used to see one title per site, often a login page or a tab that hadn't
+    /// loaded, and filed many sites as browsing. Give those one more look with all their titles.
+    private func reaskBrowsingSitesOnce() {
+        let key = "reaskedBrowsingSitesWithTitles"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        classifier.reaskSites(filedAs: "browsing")
+        UserDefaults.standard.set(true, forKey: key)
     }
 
     /// Describes finished time entries in the background so the timeline is ready when opened.

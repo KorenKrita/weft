@@ -7,14 +7,19 @@ private final class FakeAI: AIClassifying, @unchecked Sendable {
     let answer: AIClassification
     private let lock = NSLock()
     private var _calls = 0
+    private var _titles: [[String]] = []
     var calls: Int { lock.withLock { _calls } }
+    var titles: [[String]] { lock.withLock { _titles } }
 
     init(answer: AIClassification) { self.answer = answer }
 
     func availability() -> AIAvailability { .available }
 
-    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
-        lock.withLock { _calls += 1 }
+    func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification {
+        lock.withLock {
+            _calls += 1
+            _titles.append(titles)
+        }
         return answer
     }
 
@@ -24,7 +29,7 @@ private final class FakeAI: AIClassifying, @unchecked Sendable {
 
 private struct NoModel: AIClassifying {
     func availability() -> AIAvailability { .unavailable("test") }
-    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+    func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification {
         throw ClassificationError.unknownCategory("")
     }
     func summarize(_ facts: String) async throws -> String { "" }
@@ -34,7 +39,7 @@ private struct NoModel: AIClassifying {
 /// Available, but every call fails, like a remote server that's down.
 private struct FailingModel: AIClassifying {
     func availability() -> AIAvailability { .available }
-    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+    func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification {
         throw URLError(.notConnectedToInternet)
     }
     func summarize(_ facts: String) async throws -> String { "" }
@@ -189,5 +194,50 @@ struct ClassificationServiceTests {
         #expect(shop.categoryKey == "shopping")
         #expect(shop.classificationSource == .guess)
         #expect(newTab.classificationSource == .builtin)
+    }
+
+    @Test func theModelSeesASitesMostUsedTitles() async {
+        let ai = FakeAI(answer: .init(categoryKey: "finance", confidence: .high))
+        let service = ClassificationService(modelContext: context, ai: ai)
+        func tab(_ title: String, minutes: Double) -> ActivitySegment {
+            let segment = ActivitySegment(context: ActivityContext(bundleID: "com.google.Chrome", appName: "Google Chrome",
+                                                                   title: title, url: "https://broker.example.com/x"),
+                                          start: .now, categoryKey: "browsing", source: .guess)
+            segment.end = segment.start.addingTimeInterval(minutes * 60)
+            context.insert(segment)
+            return segment
+        }
+        _ = tab("New Tab - Google Chrome - weishu", minutes: 1)
+        _ = tab("Login - Google Chrome - weishu", minutes: 1)
+        _ = tab("Positions - Google Chrome - weishu", minutes: 30)
+        _ = tab("Transfers - Google Chrome - weishu", minutes: 5)
+
+        service.retryPending()
+        await waitForQueue(service)
+        #expect(ai.titles == [["Positions - Google Chrome - weishu", "Transfers - Google Chrome - weishu",
+                               "Login - Google Chrome - weishu"]])
+    }
+
+    @Test func browsingSitesCanBeAskedAgain() async {
+        let ai = FakeAI(answer: .init(categoryKey: "finance", confidence: .high))
+        context.insert(AIClassificationRecord(key: "com.google.Chrome|broker.example.com", categoryKey: "browsing", confidence: .medium))
+        try? context.save()
+        let service = ClassificationService(modelContext: context, ai: ai)
+        let site = ActivityContext(bundleID: "com.google.Chrome", appName: "Google Chrome", url: "https://broker.example.com/")
+        let browsing = ActivitySegment(context: site, start: .now, categoryKey: "browsing", source: .ai)
+        let confirmed = ActivitySegment(context: ActivityContext(bundleID: "com.google.Chrome", appName: "Google Chrome",
+                                                                 url: "https://news.example.com/"),
+                                        start: .now, categoryKey: "browsing", source: .rule)
+        context.insert(browsing)
+        context.insert(confirmed)
+        #expect(service.classify(site) == ("browsing", .ai))
+
+        service.reaskSites(filedAs: "browsing")
+        await waitForQueue(service)
+        #expect(ai.calls == 1)
+        #expect(browsing.categoryKey == "finance")
+        #expect(browsing.classificationSource == .ai)
+        #expect(confirmed.classificationSource == .rule)
+        #expect(service.classify(site) == ("finance", .ai))
     }
 }

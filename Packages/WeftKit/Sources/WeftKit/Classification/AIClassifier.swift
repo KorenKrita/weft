@@ -24,10 +24,19 @@ public enum AIAvailability: Equatable, Sendable {
 /// Abstraction over the model (on device or remote) so tests can inject a fake.
 public protocol AIClassifying: Sendable {
     func availability() -> AIAvailability
-    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification
+    /// `titles` are the window or page titles that say the most about the app or site, most
+    /// used first.
+    func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification
     func summarize(_ facts: String) async throws -> String
     /// One sentence describing a stretch of activity, in `language`.
     func describeActivity(_ facts: String, language: String) async throws -> String
+}
+
+public extension AIClassifying {
+    /// Classifies by the context's own title alone.
+    func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+        try await classify(context, titles: context.title.map { [$0] } ?? [], categories: categories)
+    }
 }
 
 /// Classifies activity with Apple's on-device Foundation Models. The category list is
@@ -51,7 +60,7 @@ public struct FoundationModelsClassifier: AIClassifying {
         }
     }
 
-    public func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
+    public func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification {
         let candidates = ModelPrompts.candidates(categories)
         let keys = candidates.map(\.key)
 
@@ -74,7 +83,7 @@ public struct FoundationModelsClassifier: AIClassifying {
 
         let session = LanguageModelSession(instructions: ModelPrompts.classifyInstructions(candidates))
         let response = try await session.respond(
-            to: ModelPrompts.classifyPrompt(context), schema: schema, options: GenerationOptions(samplingMode: .greedy)
+            to: ModelPrompts.classifyPrompt(context, titles: titles), schema: schema, options: GenerationOptions(samplingMode: .greedy)
         )
         let key = try response.content.value(String.self, forProperty: "category")
         let confidence = try response.content.value(String.self, forProperty: "confidence")
@@ -106,23 +115,29 @@ enum ModelPrompts {
             Pick exactly one category key from this list:
             \(categoryList)
 
-            Judge by what the app or website is for, not by incidental words in the window title.
-            Use "browsing" only for a web browser tab whose site has no clear purpose; \
-            never use it for a native app. For a native app you don't know, infer its \
-            purpose from its name and bundle identifier.
+            Judge by what the app or website is for, not by incidental words in a title.
+            Judge a website by its domain and page titles; the browser it's open in doesn't \
+            matter. Use "browsing" only when neither the domain nor the titles give any hint of \
+            what the site is for, and never for a native app. For a native app you don't know, \
+            infer its purpose from its name and bundle identifier.
             """
     }
 
-    static func classifyPrompt(_ context: ActivityContext) -> String {
-        var prompt = context.domain == nil
-            ? "Native app: \(context.appName) (bundle identifier \(context.bundleID))"
-            : "Web browser tab in \(context.appName)"
-        if context.domain == nil, let category = CategoryGuess.appStoreCategory(bundleID: context.bundleID) {
-            prompt += "\nApp Store category: \(category.replacingOccurrences(of: "-", with: " "))"
+    static func classifyPrompt(_ context: ActivityContext, titles: [String]) -> String {
+        var lines: [String]
+        if let domain = context.domain {
+            lines = ["Website: \(domain) (open in \(context.appName))"]
+        } else {
+            lines = ["Native app: \(context.appName) (bundle identifier \(context.bundleID))"]
+            if let category = CategoryGuess.appStoreCategory(bundleID: context.bundleID) {
+                lines.append("App Store category: \(category.replacingOccurrences(of: "-", with: " "))")
+            }
         }
-        if let domain = context.domain { prompt += "\nWebsite: \(domain)" }
-        if let title = context.title { prompt += "\nWindow title: \(title.prefix(200))" }
-        return prompt
+        if !titles.isEmpty {
+            lines.append(context.domain == nil ? "Window titles, most used first:" : "Page titles, most used first:")
+            lines += titles.map { "- \($0.prefix(200))" }
+        }
+        return lines.joined(separator: "\n")
     }
 
     static func describeInstructions(language: String) -> String {
@@ -165,8 +180,8 @@ public final class ModelRouter: AIClassifying {
 
     public func availability() -> AIAvailability { model.availability() }
 
-    public func classify(_ context: ActivityContext, categories: [CategoryDefinition]) async throws -> AIClassification {
-        try await model.classify(context, categories: categories)
+    public func classify(_ context: ActivityContext, titles: [String], categories: [CategoryDefinition]) async throws -> AIClassification {
+        try await model.classify(context, titles: titles, categories: categories)
     }
 
     public func summarize(_ facts: String) async throws -> String {
