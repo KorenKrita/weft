@@ -1,18 +1,17 @@
 import Foundation
 
-/// The vertical axis of the day timeline: the time around activity, rounded to quarter
-/// hours, with idle stretches between them folded into gaps so they don't take up the screen.
+/// The vertical axis of the day timeline: the time around activity, with idle stretches
+/// folded into thin gaps so they don't take up the screen.
 public struct TimelineAxis: Equatable {
     public enum Section: Equatable {
         /// Drawn to scale.
         case time(DateInterval)
-        /// Drawn as a thin band, whatever its length. `idle` is how long nothing happened,
-        /// which is longer than the band's interval because of the padding around activity.
-        case gap(DateInterval, idle: TimeInterval)
+        /// Nothing happened; drawn as a thin band, whatever its length.
+        case gap(DateInterval)
 
         public var interval: DateInterval {
             switch self {
-            case .time(let interval), .gap(let interval, _): interval
+            case .time(let interval), .gap(let interval): interval
             }
         }
     }
@@ -22,13 +21,25 @@ public struct TimelineAxis: Equatable {
     /// - Parameters:
     ///   - intervals: what must be visible (streams, sessions, the current time).
     ///   - day: the axis never leaves this.
-    ///   - padding: room kept before and after activity.
-    ///   - step: section edges are rounded out to multiples of this within the hour, unless
-    ///     that would close a gap.
-    ///   - minimumIdle: shorter idle stretches stay to scale.
+    ///   - minimumIdle: shorter idle stretches stay to scale. Longer ones become gaps that
+    ///     start and end exactly where activity does, so no blank time is left around them.
+    ///   - padding: room before the first and after the last activity, which are then rounded
+    ///     out to multiples of `step` within the hour.
     public init(covering intervals: [DateInterval], within day: DateInterval,
-                padding: TimeInterval = 10 * 60, step: TimeInterval = 15 * 60,
-                minimumIdle: TimeInterval = 45 * 60, calendar: Calendar = .current) {
+                minimumIdle: TimeInterval = 30 * 60,
+                padding: TimeInterval = 5 * 60, step: TimeInterval = 15 * 60,
+                calendar: Calendar = .current) {
+        var clusters: [DateInterval] = []
+        for interval in intervals.sorted(by: { $0.start < $1.start }) {
+            let start = min(max(interval.start, day.start), day.end)
+            let end = min(max(interval.end, start), day.end)
+            if let last = clusters.last, start.timeIntervalSince(last.end) < minimumIdle {
+                clusters[clusters.count - 1] = DateInterval(start: last.start, end: max(last.end, end))
+            } else {
+                clusters.append(DateInterval(start: start, end: end))
+            }
+        }
+
         func floor(_ date: Date) -> Date {
             guard let hour = calendar.dateInterval(of: .hour, for: date)?.start else { return date }
             return hour.addingTimeInterval((date.timeIntervalSince(hour) / step).rounded(.down) * step)
@@ -38,36 +49,12 @@ public struct TimelineAxis: Equatable {
             return down == date ? date : down.addingTimeInterval(step)
         }
 
-        // Activity with less idle time between it than `minimumIdle` stays together.
-        var clusters: [DateInterval] = []
-        for interval in intervals.sorted(by: { $0.start < $1.start }) {
-            if let last = clusters.last, interval.start.timeIntervalSince(last.end) < minimumIdle {
-                clusters[clusters.count - 1].end = max(last.end, interval.end)
-            } else {
-                clusters.append(interval)
-            }
-        }
-
-        var bounds = clusters.map {
-            DateInterval(start: max(day.start, floor($0.start.addingTimeInterval(-padding))),
-                         end: min(day.end, ceil($0.end.addingTimeInterval(padding))))
-        }
-        for index in bounds.indices.dropFirst() where bounds[index].start <= bounds[index - 1].end {
-            // Rounding closed the gap; keep the exact padded edges instead. (Setting a
-            // DateInterval's start moves its end too, so build new ones.)
-            bounds[index - 1] = DateInterval(start: bounds[index - 1].start,
-                                             end: clusters[index - 1].end.addingTimeInterval(padding))
-            bounds[index] = DateInterval(start: clusters[index].start.addingTimeInterval(-padding),
-                                         end: bounds[index].end)
-        }
-
         sections = []
-        for index in bounds.indices {
-            if index > 0 {
-                sections.append(.gap(DateInterval(start: bounds[index - 1].end, end: bounds[index].start),
-                                     idle: clusters[index].start.timeIntervalSince(clusters[index - 1].end)))
-            }
-            sections.append(.time(bounds[index]))
+        for (index, cluster) in clusters.enumerated() {
+            let start = index == 0 ? max(day.start, floor(cluster.start.addingTimeInterval(-padding))) : cluster.start
+            let end = index == clusters.count - 1 ? min(day.end, ceil(cluster.end.addingTimeInterval(padding))) : cluster.end
+            if index > 0 { sections.append(.gap(DateInterval(start: clusters[index - 1].end, end: cluster.start))) }
+            sections.append(.time(DateInterval(start: start, end: end)))
         }
     }
 

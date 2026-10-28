@@ -15,41 +15,19 @@ struct TimelineAxisTests {
     func at(_ hour: Double, _ minute: Double = 0) -> Date { midnight + hour * 3600 + minute * 60 }
     func span(_ from: Date, _ to: Date) -> DateInterval { DateInterval(start: from, end: to) }
 
-    @Test func roundsOutToQuarterHoursWithPadding() {
-        // 9:10–10:40, padded by 10 min, becomes 9:00–10:50, then 9:00–11:00.
+    @Test func outerEdgesArePaddedAndRounded() {
+        // 9:10–10:40, padded by 5 min, becomes 9:05–10:45, then 9:00–10:45.
         let axis = TimelineAxis(covering: [span(at(9, 10), at(10, 40))], within: day, calendar: calendar)
-        #expect(axis.sections == [.time(span(at(9), at(11)))])
+        #expect(axis.sections == [.time(span(at(9), at(10, 45)))])
     }
 
-    @Test func idleHourBecomesAGap() {
+    @Test func gapsHugTheActivityAroundThem() {
         let axis = TimelineAxis(covering: [span(at(14, 39), at(16, 30)), span(at(17, 31), at(18, 32))],
                                 within: day, calendar: calendar)
         #expect(axis.sections == [
-            .time(span(at(14, 15), at(16, 45))),
-            .gap(span(at(16, 45), at(17, 15)), idle: 61 * 60),
-            .time(span(at(17, 15), at(18, 45))),
-        ])
-    }
-
-    @Test func idleIsJudgedBeforeRounding() {
-        // 57 idle minutes, though only a quarter hour is left between the rounded edges.
-        let axis = TimelineAxis(covering: [span(at(17, 31), at(18, 37)), span(at(19, 34), at(20))],
-                                within: day, calendar: calendar)
-        #expect(axis.sections == [
-            .time(span(at(17, 15), at(19))),
-            .gap(span(at(19), at(19, 15)), idle: 57 * 60),
-            .time(span(at(19, 15), at(20, 15))),
-        ])
-    }
-
-    @Test func roundingNeverClosesAGap() {
-        // 10:16 rounds up and 10:41 rounds down to 10:30; keep the exact edges instead.
-        let axis = TimelineAxis(covering: [span(at(9), at(10, 6)), span(at(10, 51), at(11, 30))],
-                                within: day, calendar: calendar)
-        #expect(axis.sections == [
-            .time(span(at(8, 45), at(10, 16))),
-            .gap(span(at(10, 16), at(10, 41)), idle: 45 * 60),
-            .time(span(at(10, 41), at(11, 45))),
+            .time(span(at(14, 30), at(16, 30))),
+            .gap(span(at(16, 30), at(17, 31))),
+            .time(span(at(17, 31), at(18, 45))),
         ])
     }
 
@@ -63,14 +41,14 @@ struct TimelineAxisTests {
         let axis = TimelineAxis(covering: [span(at(14, 30), at(15, 30)), span(at(9, 30), at(12)), span(at(10), at(11))],
                                 within: day, calendar: calendar)
         #expect(axis.sections == [
-            .time(span(at(9, 15), at(12, 15))),
-            .gap(span(at(12, 15), at(14, 15)), idle: 150 * 60),
-            .time(span(at(14, 15), at(15, 45))),
+            .time(span(at(9, 15), at(12))),
+            .gap(span(at(12), at(14, 30))),
+            .time(span(at(14, 30), at(15, 45))),
         ])
     }
 
     @Test func staysWithinTheDay() {
-        let axis = TimelineAxis(covering: [span(at(0, 5), at(0, 30)), span(at(23, 40), at(23, 55))],
+        let axis = TimelineAxis(covering: [span(at(-1), at(0, 30)), span(at(23, 40), at(25))],
                                 within: day, calendar: calendar)
         #expect(axis.start == at(0))
         #expect(axis.end == at(24))

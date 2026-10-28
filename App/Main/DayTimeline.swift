@@ -15,7 +15,7 @@ struct DayTimeline: View {
     private let targetHeight: CGFloat = 600
     private let pointsPerHourRange: ClosedRange<CGFloat> = 48...120
     /// Folded idle stretches.
-    private let gapHeight: CGFloat = 32
+    private let gapHeight: CGFloat = 24
     /// Short streams still get room for a line of text.
     private let minimumHeight: CGFloat = 30
     private let timeColumn: CGFloat = 44
@@ -137,22 +137,33 @@ struct DayTimeline: View {
         }
     }
 
-    /// Whole hours around the streams, sessions and (today) now; scaled down on long days so
-    /// the timeline stays about one screen tall.
+    /// The time around the streams, sessions and (today) now, with idle stretches folded;
+    /// scaled down on long days so the timeline stays about one screen tall.
     private func makeScale(_ entries: [TimeEntry], now: Date) -> Scale {
         let calendar = Calendar.current
-        var intervals = entries.map { DateInterval(start: $0.start, end: max($0.start, $0.end)) }
-        intervals += sessions.map { DateInterval(start: $0.start, end: max($0.start, $0.end)) }
-        if calendar.isDateInToday(day) { intervals.append(DateInterval(start: now, duration: 0)) }
         let dayStart = calendar.startOfDay(for: day)
         let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
-        let axis = TimelineAxis(covering: intervals, within: DateInterval(start: dayStart, end: dayEnd))
-        let hours = axis.sections.reduce(0.0) { total, section in
-            if case .time(let interval) = section { total + interval.duration / 3600 } else { total }
+        let isToday = calendar.isDateInToday(day)
+
+        func scale(minimumSpan: TimeInterval) -> Scale {
+            // Short streams are drawn taller than their time; cover that so they can't run
+            // into a gap.
+            var intervals = entries.map { DateInterval(start: $0.start, end: max($0.end, $0.start.addingTimeInterval(minimumSpan))) }
+            intervals += sessions.map { DateInterval(start: $0.start, end: max($0.start, $0.end)) }
+            if isToday { intervals.append(DateInterval(start: now, duration: 0)) }
+            let axis = TimelineAxis(covering: intervals, within: DateInterval(start: dayStart, end: dayEnd))
+            let hours = axis.sections.reduce(0.0) { total, section in
+                if case .time(let interval) = section { total + interval.duration / 3600 } else { total }
+            }
+            let fitted = targetHeight / CGFloat(max(hours, 1))
+            let pointsPerHour = min(max(fitted, pointsPerHourRange.lowerBound), pointsPerHourRange.upperBound)
+            return Scale(axis: axis, pointsPerHour: pointsPerHour, gapHeight: gapHeight)
         }
-        let fitted = targetHeight / CGFloat(max(hours, 1))
-        let pointsPerHour = min(max(fitted, pointsPerHourRange.lowerBound), pointsPerHourRange.upperBound)
-        return Scale(axis: axis, pointsPerHour: pointsPerHour, gapHeight: gapHeight)
+
+        // The minimum height depends on the scale, which depends on the axis: one pass to find
+        // the scale, a second with room for it (a little extra, as the scale can shrink).
+        let rough = scale(minimumSpan: 0)
+        return scale(minimumSpan: TimeInterval(minimumHeight / rough.pointsPerHour * 3600) * 1.15)
     }
 
     /// The stream the user is in right now: the tracker's current category, still being
@@ -202,18 +213,18 @@ struct DayTimeline: View {
             ForEach(Array(scale.axis.sections.enumerated()), id: \.offset) { index, section in
                 switch section {
                 case .time(let interval):
-                    ForEach(marks(in: interval, isLast: index == scale.axis.sections.count - 1), id: \.self) { date in
+                    ForEach(marks(in: interval, isLast: index == scale.axis.sections.count - 1, scale: scale), id: \.self) { date in
                         hourLine(date).offset(y: scale.y(date) - 6)
                     }
-                case .gap(_, let idle):
-                    Text("No activity · \(Format.duration(idle))")
+                case .gap(let interval):
+                    Text("No activity · \(Format.duration(interval.duration))")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: scale.gapHeight - 14)
+                        .frame(height: scale.gapHeight - 10)
                         .background(RoundedRectangle(cornerRadius: 5).fill(.quaternary.opacity(0.4)))
                         .padding(.leading, timeColumn + 8)
-                        .offset(y: scale.top(index) + 4)
+                        .offset(y: scale.top(index) + 3)
                 }
             }
         }
@@ -222,12 +233,13 @@ struct DayTimeline: View {
     /// The section's start, the whole hours inside it, and the end of the last one. Hours
     /// right next to a boundary are left out so labels don't collide; the end of a section
     /// before a gap is left to the gap.
-    private func marks(in interval: DateInterval, isLast: Bool) -> [Date] {
+    private func marks(in interval: DateInterval, isLast: Bool, scale: Scale) -> [Date] {
         let calendar = Calendar.current
+        let clearance = TimeInterval(16 / scale.pointsPerHour * 3600)
         var marks = [interval.start]
         var hour = calendar.dateInterval(of: .hour, for: interval.start)?.end ?? interval.end
         while hour < interval.end {
-            if hour.timeIntervalSince(interval.start) >= 20 * 60, interval.end.timeIntervalSince(hour) >= 20 * 60 {
+            if hour.timeIntervalSince(interval.start) >= clearance, interval.end.timeIntervalSince(hour) >= clearance {
                 marks.append(hour)
             }
             hour = calendar.date(byAdding: .hour, value: 1, to: hour) ?? interval.end
