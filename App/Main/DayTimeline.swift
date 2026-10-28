@@ -221,10 +221,9 @@ struct DayTimeline: View {
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: scale.gapHeight - 10)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(.quaternary.opacity(0.4)))
+                        .frame(height: scale.gapHeight)
                         .padding(.leading, timeColumn + 8)
-                        .offset(y: scale.top(index) + 3)
+                        .offset(y: scale.top(index))
                 }
             }
         }
