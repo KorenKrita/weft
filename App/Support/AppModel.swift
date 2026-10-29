@@ -10,11 +10,11 @@ enum Page: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .today: "Today"
-        case .reports: "Reports"
-        case .review: "Review"
-        case .categories: "Categories"
-        case .rules: "Rules"
+        case .today: String(localized: "Today")
+        case .reports: String(localized: "Reports")
+        case .review: String(localized: "Review")
+        case .categories: String(localized: "Categories")
+        case .rules: String(localized: "Rules")
         }
     }
 
@@ -140,12 +140,12 @@ final class AppModel {
             guard summary.completed else { return }
             switch summary.kind {
             case .breakTime:
-                notifier.post(.sessionEnded, title: "Break is over", body: "Ready to get back to it?")
+                notifier.post(.sessionEnded, title: String(localized: "Break is over"), body: String(localized: "Ready to get back to it?"))
             case .focus, .meeting:
-                var body = "\(summary.kind.title) session complete."
-                if let score = summary.score { body += " Focus Score \(score.value) – \(score.label)." }
-                if summary.distractions > 0 { body += " \(summary.distractions) distraction(s)." }
-                notifier.post(.sessionEnded, title: "Session complete", body: body)
+                var body = String(localized: "\(summary.kind.title) session complete.")
+                if let score = summary.score { body += String(localized: " Focus Score \(score.value) – \(score.label).") }
+                if summary.distractions > 0 { body += summary.distractions == 1 ? String(localized: " 1 distraction.") : String(localized: " \(summary.distractions) distractions.") }
+                notifier.post(.sessionEnded, title: String(localized: "Session complete"), body: body)
             }
         }
 
@@ -191,8 +191,8 @@ final class AppModel {
     /// "on device" or "with gpt-5-mini", for status text.
     var modelPlace: String {
         switch preferences.modelProvider {
-        case .appleIntelligence: "on device"
-        case .openAICompatible: "with \(preferences.remoteModel)"
+        case .appleIntelligence: String(localized: "on device")
+        case .openAICompatible: String(localized: "with \(preferences.remoteModel)")
         }
     }
 

@@ -18,11 +18,11 @@ enum CategoryType: CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .focus: "Focus"
-        case .meeting: "Meetings"
-        case .neutral: "Neutral"
-        case .distracting: "Distracting"
-        case .doNotTrack: "Don't Track"
+        case .focus: String(localized: "Focus")
+        case .meeting: String(localized: "Meetings")
+        case .neutral: String(localized: "Neutral")
+        case .distracting: String(localized: "Distracting")
+        case .doNotTrack: String(localized: "Don't Track")
         }
     }
 
@@ -38,11 +38,11 @@ enum CategoryType: CaseIterable, Identifiable {
 
     var explanation: String {
         switch self {
-        case .focus: "Counts as focus time and raises your Focus Score."
-        case .meeting: "Counted separately; never marked as away while you listen."
-        case .neutral: "Tracked, but neither focus nor distraction."
-        case .distracting: "Lowers your Focus Score and triggers the blocker during focus sessions."
-        case .doNotTrack: "Activity is discarded and never stored."
+        case .focus: String(localized: "Counts as focus time and raises your Focus Score.")
+        case .meeting: String(localized: "Counted separately; never marked as away while you listen.")
+        case .neutral: String(localized: "Tracked, but neither focus nor distraction.")
+        case .distracting: String(localized: "Lowers your Focus Score and triggers the blocker during focus sessions.")
+        case .doNotTrack: String(localized: "Activity is discarded and never stored.")
         }
     }
 
@@ -91,9 +91,9 @@ private struct CategoryRow: View {
         HStack(spacing: 10) {
             Circle().fill(category.color).frame(width: 12, height: 12)
             VStack(alignment: .leading, spacing: 1) {
-                Text(category.name)
+                Text(category.displayName)
                 if !category.hint.isEmpty {
-                    Text(category.hint).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(category.displayHint).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer()

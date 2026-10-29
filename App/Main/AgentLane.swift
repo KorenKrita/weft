@@ -50,6 +50,7 @@ enum AgentStyle {
 /// One session's work on the timeline, drawn like a work stream. The bar on the left is
 /// solid where the agent was working and faint where it waited for its next prompt.
 struct AgentBlockView: View {
+    @Environment(\.liveness) private var liveness
     let block: AgentBlock
     let session: AgentSession?
     let isLive: Bool
@@ -58,11 +59,16 @@ struct AgentBlockView: View {
     let userSamples: [SegmentSample]
     @State private var isHovering = false
     @State private var showDetail = false
+    /// Read from the session, which changes as long as its agent works; held still while not
+    /// live.
+    @State private var read = Memo<(flavor: String, title: String, details: [(symbol: String, text: String)])>()
 
     var body: some View {
-        let flavor = AgentStyle.flavor(session, key: block.sessionKey)
+        let (flavor, title, details) = read.value(liveness) {
+            let flavor = AgentStyle.flavor(session, key: block.sessionKey)
+            return (flavor, AgentStyle.title(session, flavor: flavor), self.details)
+        }
         let color = AgentStyle.color(flavor)
-        let title = AgentStyle.title(session, flavor: flavor)
         GeometryReader { proxy in
             let height = proxy.size.height
             HStack(alignment: .top, spacing: 0) {
@@ -145,7 +151,7 @@ struct AgentBlockView: View {
     }
 
     private var timeLabel: String {
-        let end = isLive ? "now" : block.end.formatted(date: .omitted, time: .shortened)
+        let end = isLive ? String(localized: "now") : block.end.formatted(date: .omitted, time: .shortened)
         return "\(block.start.formatted(date: .omitted, time: .shortened))–\(end) · \(Format.duration(block.activeTime))"
     }
 
@@ -154,8 +160,8 @@ struct AgentBlockView: View {
         if let path = session?.projectPath { rows.append(("folder", (path as NSString).abbreviatingWithTildeInPath)) }
         if let host = session?.host { rows.append(("desktopcomputer", host)) }
         let turns = block.turnCount
-        if turns > 0 { rows.append(("text.bubble", "\(turns) prompt\(turns == 1 ? "" : "s")")) }
-        if block.waitedOnUser >= 60 { rows.append(("hand.raised", "Waited \(Format.duration(block.waitedOnUser)) for you")) }
+        if turns > 0 { rows.append(("text.bubble", turns == 1 ? String(localized: "1 prompt") : String(localized: "\(turns) prompts"))) }
+        if block.waitedOnUser >= 60 { rows.append(("hand.raised", String(localized: "Waited \(Format.duration(block.waitedOnUser)) for you"))) }
         return rows
     }
 }
@@ -176,7 +182,7 @@ private struct AgentBlockDetail: View {
                 HStack(spacing: 6) {
                     Label(AgentStyle.name(flavor), systemImage: AgentStyle.symbol(flavor)).foregroundStyle(AgentStyle.color(flavor))
                     Text("·").foregroundStyle(.tertiary)
-                    Text(session?.host ?? "This Mac").foregroundStyle(.secondary)
+                    Text(session?.host ?? String(localized: "This Mac")).foregroundStyle(.secondary)
                     if isLive {
                         Text("·").foregroundStyle(.tertiary)
                         Label("Working now", systemImage: "circle.fill").labelStyle(.titleAndIcon).foregroundStyle(.green)
@@ -191,7 +197,7 @@ private struct AgentBlockDetail: View {
             }
             Divider()
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(block.start.formatted(date: .omitted, time: .shortened)) – \(isLive ? "now" : block.end.formatted(date: .omitted, time: .shortened))")
+                Text("\(block.start.formatted(date: .omitted, time: .shortened)) – \(isLive ? String(localized: "now") : block.end.formatted(date: .omitted, time: .shortened))")
                 Text(worked).foregroundStyle(.secondary)
             }
             .font(.callout)
@@ -202,7 +208,7 @@ private struct AgentBlockDetail: View {
                     let category = model.classifier.category(key)
                     HStack {
                         Circle().fill(category.color).frame(width: 7, height: 7)
-                        Text(category.name)
+                        Text(category.displayName)
                         Spacer()
                         Text(Format.duration(time)).monospacedDigit().foregroundStyle(.secondary)
                     }
@@ -225,9 +231,9 @@ private struct AgentBlockDetail: View {
 
     private var worked: String {
         let turns = block.turnCount
-        var text = "Worked \(Format.duration(block.activeTime))"
-        if turns > 0 { text += " over \(turns) prompt\(turns == 1 ? "" : "s")" }
-        if block.waitedOnUser >= 60 { text += ", waited \(Format.duration(block.waitedOnUser)) for your answers" }
+        var text = String(localized: "Worked \(Format.duration(block.activeTime))")
+        if turns > 0 { text += turns == 1 ? String(localized: " over 1 prompt") : String(localized: " over \(turns) prompts") }
+        if block.waitedOnUser >= 60 { text += String(localized: ", waited \(Format.duration(block.waitedOnUser)) for your answers") }
         return text
     }
 }

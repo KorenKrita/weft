@@ -1,0 +1,23 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "NSAppleEventsUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weft reads the URL of the active browser tab to categorize your time."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weft 会读取当前浏览器标签页的网址，用来给你的时间分类。"
+          }
+        }
+      }
+    }
+  }
+}

@@ -115,12 +115,12 @@ private struct TodayCard: View {
     /// they show on hover.
     private func legend(_ metrics: DayMetrics) -> some View {
         HStack(spacing: 16) {
-            LegendItem(color: GoalBar.focusColor, title: "Focus", value: metrics.focusTime)
-            LegendItem(color: GoalBar.meetingColor, title: "Meetings", value: metrics.meetingTime)
+            LegendItem(color: GoalBar.focusColor, title: String(localized: "Focus"), value: metrics.focusTime)
+            LegendItem(color: GoalBar.meetingColor, title: String(localized: "Meetings"), value: metrics.meetingTime)
             if metrics.agentWaitingTime > 0 {
-                LegendItem(color: GoalBar.waitingColor, title: "Waiting on agents", value: metrics.agentWaitingTime)
+                LegendItem(color: GoalBar.waitingColor, title: String(localized: "Waiting on agents"), value: metrics.agentWaitingTime)
             }
-            LegendItem(color: GoalBar.distractedColor, title: "Distracted",
+            LegendItem(color: GoalBar.distractedColor, title: String(localized: "Distracted"),
                        value: max(0, metrics.distractingTime - metrics.distractingWhileWaiting))
         }
     }
@@ -157,8 +157,8 @@ struct ScoreRing: View {
     private var isEarly: Bool { activeTime < 2 * 3600 }
 
     private var caption: String {
-        guard let score else { return "Collecting data" }
-        return isEarly ? "Early estimate" : score.label
+        guard let score else { return String(localized: "Collecting data") }
+        return isEarly ? String(localized: "Early estimate") : score.label
     }
 
     private var color: Color {
@@ -184,11 +184,11 @@ struct GoalBar: View {
         let other = max(0, metrics.activeTime - metrics.focusTime - metrics.meetingTime - metrics.distractingTime)
         // Distraction while agents worked shows as waiting, so nothing is counted twice.
         let parts: [(String, TimeInterval, Color)] = [
-            ("Focus", metrics.focusTime, Self.focusColor),
-            ("Meetings", metrics.meetingTime, Self.meetingColor),
-            ("Other", other, Self.otherColor),
-            ("Waiting on agents", metrics.agentWaitingTime, Self.waitingColor),
-            ("Distracted", max(0, metrics.distractingTime - metrics.distractingWhileWaiting), Self.distractedColor),
+            (String(localized: "Focus"), metrics.focusTime, Self.focusColor),
+            (String(localized: "Meetings"), metrics.meetingTime, Self.meetingColor),
+            (String(localized: "Other"), other, Self.otherColor),
+            (String(localized: "Waiting on agents"), metrics.agentWaitingTime, Self.waitingColor),
+            (String(localized: "Distracted"), max(0, metrics.distractingTime - metrics.distractingWhileWaiting), Self.distractedColor),
         ].filter { $0.1 > 0 }
         GeometryReader { proxy in
             HStack(spacing: 1) {
@@ -277,7 +277,7 @@ struct CategoryChip: View {
     let category: CategoryDefinition
 
     var body: some View {
-        Text(category.name)
+        Text(category.displayName)
             .font(.caption.weight(.medium))
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
@@ -419,7 +419,7 @@ struct SessionSummaryCard: View {
                 ScoreRing(score: summary.score, size: 40)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Focused \(summary.focusPercent.map(Format.percent) ?? "–") of the time")
-                    Text(summary.distractions == 0 ? "No distractions" : "\(summary.distractions) distraction\(summary.distractions == 1 ? "" : "s")")
+                    Text(summary.distractions == 0 ? String(localized: "No distractions") : summary.distractions == 1 ? String(localized: "1 distraction") : String(localized: "\(summary.distractions) distractions"))
                         .foregroundStyle(.secondary)
                 }
                 .font(.callout)

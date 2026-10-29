@@ -28,6 +28,7 @@ struct SettingsView: View {
 private struct GeneralSettings: View {
     @Environment(AppModel.self) private var model
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
+    @State private var language = AppLanguage.current
 
     var body: some View {
         @Bindable var prefs = model.preferences
@@ -36,6 +37,19 @@ private struct GeneralSettings: View {
                 Toggle("Launch Weft at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in LaunchAtLogin.set(enabled) }
                 Toggle("Pause tracking", isOn: $prefs.trackingPaused)
+            }
+            Section {
+                Picker("Language", selection: $language) {
+                    ForEach(AppLanguage.allCases) { Text($0.label).tag($0) }
+                }
+                .onChange(of: language) { _, value in value.apply() }
+                if language != AppLanguage.atLaunch {
+                    LabeledContent {
+                        Button("Relaunch") { AppLanguage.relaunch() }
+                    } label: {
+                        Text("Weft uses the new language after it relaunches.")
+                    }
+                }
             }
             Section("Work hours") {
                 Picker("Daily target", selection: $prefs.workHoursTarget) {
@@ -93,8 +107,8 @@ private struct NotificationsOffNote: View {
 }
 
 struct PermissionRow: View {
-    let title: String
-    let detail: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
     let granted: Bool
     let action: () -> Void
 
@@ -199,7 +213,7 @@ private struct ModelSettings: View {
     }
 
     private var host: String {
-        RemoteModelConfig(baseURL: model.preferences.remoteBaseURL, model: "", apiKey: "").endpoint?.host() ?? "the server"
+        RemoteModelConfig(baseURL: model.preferences.remoteBaseURL, model: "", apiKey: "").endpoint?.host() ?? String(localized: "the server")
     }
 
     /// Fills in the saved server, reading the keychain only once a remote model is chosen.
@@ -232,7 +246,7 @@ private struct ModelSettings: View {
         do {
             let xcode = ActivityContext(bundleID: "com.apple.dt.Xcode", appName: "Xcode")
             let result = try await model.ai.classify(xcode, categories: model.classifier.categories)
-            outcome = .success(model.classifier.category(result.categoryKey).name)
+            outcome = .success(model.classifier.category(result.categoryKey).displayName)
         } catch {
             outcome = .failure(error)
         }
@@ -409,7 +423,7 @@ private struct SessionSettings: View {
         .formStyle(.grouped)
     }
 
-    private func durationPicker(_ title: String, _ value: Binding<Int>, options: [Int]) -> some View {
+    private func durationPicker(_ title: LocalizedStringKey, _ value: Binding<Int>, options: [Int]) -> some View {
         Picker(title, selection: value) {
             ForEach(Array(Set(options + [value.wrappedValue])).sorted(), id: \.self) { minutes in
                 Text(Format.minutesLabel(minutes)).tag(minutes)
@@ -461,7 +475,7 @@ private struct AgentSettings: View {
                         }
                     } label: {
                         Text("hapi")
-                        Text(model.hapi.binary.map { ($0.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath } ?? "Not found")
+                        Text(model.hapi.binary.map { ($0.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath } ?? String(localized: "Not found"))
                     }
                 }
             } header: {
@@ -527,7 +541,7 @@ private struct AgentSettings: View {
         return Toggle(isOn: isOn) {
             Label {
                 Text(name)
-                Text(found ? "\((path as NSString).abbreviatingWithTildeInPath) · \(count) session\(count == 1 ? "" : "s")" : "Not found on this Mac")
+                Text(!found ? String(localized: "Not found on this Mac") : count == 1 ? String(localized: "\((path as NSString).abbreviatingWithTildeInPath) · 1 session") : String(localized: "\((path as NSString).abbreviatingWithTildeInPath) · \(count) sessions"))
             } icon: {
                 Image(systemName: AgentStyle.symbol(flavor)).foregroundStyle(AgentStyle.color(flavor)).frame(width: 22)
             }
@@ -537,21 +551,21 @@ private struct AgentSettings: View {
 
     private var hapiStatus: String {
         switch model.hapi.status {
-        case .off: "Off"
-        case .notInstalled: "hapi isn't installed, or isn't anywhere Weft looks. Choose it below."
-        case .cliTooOld(let version): "This hapi\(version.map { " (\($0))" } ?? "") can't report agent activity yet. Update HAPI."
-        case .hubTooOld: "Your HAPI hub doesn't report agent activity yet. Update the hub."
-        case .notSignedIn: "hapi isn't signed in to a hub. Run `hapi auth login`."
-        case .syncing: "Syncing…"
+        case .off: String(localized: "Off")
+        case .notInstalled: String(localized: "hapi isn't installed, or isn't anywhere Weft looks. Choose it below.")
+        case .cliTooOld(let version): String(localized: "This hapi\(version.map { " (\($0))" } ?? "") can't report agent activity yet. Update HAPI.")
+        case .hubTooOld: String(localized: "Your HAPI hub doesn't report agent activity yet. Update the hub.")
+        case .notSignedIn: String(localized: "hapi isn't signed in to a hub. Run `hapi auth login`.")
+        case .syncing: String(localized: "Syncing…")
         case .synced(let date):
-            "Synced \(date.formatted(.relative(presentation: .named)))\(model.hapi.hubURL.flatMap { URL(string: $0)?.host() }.map { " from \($0)" } ?? "")"
+            String(localized: "Synced \(date.formatted(.relative(presentation: .named)))\(model.hapi.hubURL.flatMap { URL(string: $0)?.host() }.map { String(localized: " from \($0)") } ?? "")")
         case .failed(let message): message
         }
     }
 
     private func chooseHAPI() {
         let panel = NSOpenPanel()
-        panel.message = "Choose the hapi executable"
+        panel.message = String(localized: "Choose the hapi executable")
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appending(path: ".bun/bin")
         panel.canChooseDirectories = false
         panel.showsHiddenFiles = true
@@ -561,9 +575,10 @@ private struct AgentSettings: View {
 
     private var status: String {
         let agents = model.agents
-        if agents.isScanning { return "Reading logs… \(agents.progress.done) of \(agents.progress.total)" }
-        guard let last = agents.lastScan else { return "Not read yet" }
-        return "\(sessions.count) session\(sessions.count == 1 ? "" : "s"), last read \(last.formatted(.relative(presentation: .named)))"
+        if agents.isScanning { return String(localized: "Reading logs… \(agents.progress.done) of \(agents.progress.total)") }
+        guard let last = agents.lastScan else { return String(localized: "Not read yet") }
+        let read = last.formatted(.relative(presentation: .named))
+        return sessions.count == 1 ? String(localized: "1 session, last read \(read)") : String(localized: "\(sessions.count) sessions, last read \(read)")
     }
 }
 
@@ -678,9 +693,9 @@ private struct DataSettings: View {
         }
         do {
             try csv.write(to: url, atomically: true, encoding: .utf8)
-            exportMessage = "Exported \(segments.count) entries."
+            exportMessage = String(localized: "Exported \(segments.count) entries.")
         } catch {
-            exportMessage = "Export failed: \(error.localizedDescription)"
+            exportMessage = String(localized: "Export failed: \(error.localizedDescription)")
         }
     }
 

@@ -59,11 +59,14 @@ private struct DayCategory: Identifiable {
 
 private struct WeekReport: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.liveness) private var liveness
     @Query private var segments: [ActivitySegment]
     @Query private var agentSpans: [AgentSpan]
     private let days: [Date]
 
     @State private var hoveredDay: Date?
+    /// Shown unchanged while not live (see `Liveness`).
+    @State private var shown = Memo<(stats: [DayStat], summary: PeriodSummary, last: PeriodSummary)>()
 
     /// Categories beyond this many share one grey "Other" in the chart.
     private let chartCategories = 5
@@ -81,16 +84,18 @@ private struct WeekReport: View {
     }
 
     var body: some View {
-        let stats = dailyStats(days)
-        let summary = PeriodSummary(stats.map(\.metrics))
-        let last = PeriodSummary(dailyStats(days.compactMap { Calendar.current.date(byAdding: .day, value: -7, to: $0) }).map(\.metrics))
+        let (stats, summary, last) = shown.value(liveness) {
+            let stats = dailyStats(days)
+            let last = dailyStats(days.compactMap { Calendar.current.date(byAdding: .day, value: -7, to: $0) })
+            return (stats, PeriodSummary(stats.map(\.metrics)), PeriodSummary(last.map(\.metrics)))
+        }
         let total = summary.total
         let average = summary.averageScore
         // Matches the score ring: short days aren't graded yet.
         let isEarly = stats.allSatisfy { $0.metrics.score == nil || $0.metrics.activeTime < 2 * 3600 }
         let trackedDetail = total.agentWaitingIdle > 0
-            ? "incl. \(Format.duration(total.agentWaitingIdle)) away while agents worked"
-            : "\(Format.duration(total.activeTime / Double(max(summary.activeDays, 1)))) a day over \(summary.activeDays) day\(summary.activeDays == 1 ? "" : "s")"
+            ? String(localized: "incl. \(Format.duration(total.agentWaitingIdle)) away while agents worked")
+            : summary.activeDays == 1 ? String(localized: "\(Format.duration(total.activeTime)) a day over 1 day") : String(localized: "\(Format.duration(total.activeTime / Double(max(summary.activeDays, 1)))) a day over \(summary.activeDays) days")
         // Only compare with a week that was tracked at all.
         let change = { (value: KeyPath<DayMetrics, TimeInterval>) -> Change? in
             last.activeDays > 0 ? Change(total[keyPath: value], baseline: last.total[keyPath: value]) : nil
@@ -105,14 +110,14 @@ private struct WeekReport: View {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack(spacing: 12) {
                         summaryTile("Tracked", total.trackedTime, change: change(\.trackedTime), trackedDetail)
-                        summaryTile("Focus", total.focusTime, change: change(\.focusTime), "\(Format.duration(total.deepWorkTime)) deep work")
+                        summaryTile("Focus", total.focusTime, change: change(\.focusTime), String(localized: "\(Format.duration(total.deepWorkTime)) deep work"))
                         summaryTile("Meetings", total.meetingTime, change: change(\.meetingTime), higherIsBetter: false,
                                     share(total.meetingTime, of: total.activeTime))
                         summaryTile("Distracted", total.distractingTime, change: change(\.distractingTime), higherIsBetter: false,
                                     share(total.distractingTime, of: total.activeTime))
                         tile("Avg. Focus Score", average.map(String.init) ?? "–", isEmpty: average == nil,
-                             change: average.flatMap { now in last.averageScore.map { ChangeLabel(change: Change(Double(now), baseline: Double($0)), unit: .points, help: "vs. last week") } },
-                             average.map { isEarly ? "Early estimate" : FocusScore.label(for: $0) } ?? "No score yet")
+                             change: average.flatMap { now in last.averageScore.map { ChangeLabel(change: Change(Double(now), baseline: Double($0)), unit: .points, help: String(localized: "vs. last week")) } },
+                             average.map { isEarly ? String(localized: "Early estimate") : FocusScore.label(for: $0) } ?? String(localized: "No score yet"))
                     }
                     Card("Time by category") { categoryChart(stats, total: total) }
                     Card("Focus Score") { scoreChart(stats) }
@@ -206,9 +211,9 @@ private struct WeekReport: View {
 
     private func name(_ key: String) -> String {
         switch key {
-        case Self.otherKey: "Other"
-        case Self.waitingKey: "Away, waiting on agents"
-        default: model.classifier.category(key).name
+        case Self.otherKey: String(localized: "Other")
+        case Self.waitingKey: String(localized: "Away, waiting on agents")
+        default: model.classifier.category(key).displayName
         }
     }
 
@@ -253,16 +258,16 @@ private struct WeekReport: View {
     }
 
     private func share(_ value: TimeInterval, of total: TimeInterval) -> String {
-        value == 0 ? "None" : "\(Format.percent(value / max(total, 1))) of tracked time"
+        value == 0 ? String(localized: "None") : String(localized: "\(Format.percent(value / max(total, 1))) of tracked time")
     }
 
-    private func summaryTile(_ title: String, _ value: TimeInterval, change: Change?, higherIsBetter: Bool = true,
+    private func summaryTile(_ title: LocalizedStringKey, _ value: TimeInterval, change: Change?, higherIsBetter: Bool = true,
                              _ detail: String) -> some View {
         tile(title, Format.duration(value), isEmpty: value == 0,
-             change: change.map { ChangeLabel(change: $0, higherIsBetter: higherIsBetter, help: "vs. last week") }, detail)
+             change: change.map { ChangeLabel(change: $0, higherIsBetter: higherIsBetter, help: String(localized: "vs. last week")) }, detail)
     }
 
-    private func tile(_ title: String, _ value: String, isEmpty: Bool, change: ChangeLabel?, _ detail: String) -> some View {
+    private func tile(_ title: LocalizedStringKey, _ value: String, isEmpty: Bool, change: ChangeLabel?, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 6) {

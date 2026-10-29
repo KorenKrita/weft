@@ -7,7 +7,10 @@ import SwiftUI
 /// takes it off this list.
 struct ReviewView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.liveness) private var liveness
     @Query private var segments: [ActivitySegment]
+    /// Shown unchanged while not live (see `Liveness`).
+    @State private var shown = Memo<[Item]>()
 
     init() {
         let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
@@ -33,7 +36,7 @@ struct ReviewView: View {
     }
 
     var body: some View {
-        let items = items()
+        let items = shown.value(liveness, items)
         VStack(spacing: 0) {
             statusBar
             Divider()
@@ -66,7 +69,7 @@ struct ReviewView: View {
                         switch item.source {
                         case .pending: Label("Waiting", systemImage: "hourglass").foregroundStyle(.secondary)
                         case .guess: Label("Guess", systemImage: "questionmark.circle").foregroundStyle(.secondary)
-                        default: Text("AI · \(item.confidence?.rawValue ?? "?") confidence").foregroundStyle(.secondary)
+                        default: Text("AI · \(item.confidence.map { String(localized: String.LocalizationValue($0.rawValue)) } ?? "?") confidence").foregroundStyle(.secondary)
                         }
                     }
                     .width(160)
@@ -76,7 +79,7 @@ struct ReviewView: View {
                             set: { assign(item, to: $0) }
                         )) {
                             ForEach(model.classifier.categories) { category in
-                                Text(category.name).tag(category.key)
+                                Text(category.displayName).tag(category.key)
                             }
                         }
                         .labelsHidden()
@@ -90,7 +93,7 @@ struct ReviewView: View {
                         }
                         .buttonStyle(.borderless)
                         .disabled(item.source == .pending)
-                        .help("Looks right — keep \(model.classifier.category(item.categoryKey).name) for this app/site")
+                        .help("Looks right — keep \(model.classifier.category(item.categoryKey).displayName) for this app/site")
                     }
                     .width(30)
                 }

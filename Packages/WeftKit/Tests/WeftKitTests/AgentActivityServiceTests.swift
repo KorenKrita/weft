@@ -1,4 +1,6 @@
 import Foundation
+import Observation
+import Synchronization
 import SwiftData
 import Testing
 @testable import WeftKit
@@ -207,5 +209,41 @@ struct AgentActivityServiceTests {
         try container.mainContext.save()
 
         #expect(service.waitingIdleToday(categories: categories, now: now) == 1200)
+    }
+}
+
+
+extension AgentActivityServiceTests {
+    @Test func piTitlesKeepRenamesWithoutPublishingUnchangedValues() async throws {
+        let folder = home.appending(path: ".pi/agent/sessions/--project--")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "session.jsonl")
+        // Only the old name fits in the scanner's 64 KiB metadata prefix.
+        try Fixture.lines([
+            Pi.header(), Pi.title("Old"), Pi.prompt(at: 0, id: "first"), Pi.assistant(at: 10, stop: "stop"),
+            Pi.line("custom", ["data": String(repeating: "x", count: 70_000)]), Pi.title("Renamed"),
+        ]).write(to: url)
+        await service.refresh()
+        let session = try #require(sessions.first)
+        #expect(session.title == "Renamed")
+        let changes = Mutex(0)
+        withObservationTracking { _ = session.title } onChange: { changes.withLock { $0 += 1 } }
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.seekToEnd()
+        for lines in [
+            [Pi.prompt(at: 20, id: "second"), Pi.assistant(at: 30, stop: "stop")],
+            [Pi.title("Renamed"), Pi.prompt(at: 40, id: "third"), Pi.assistant(at: 50, stop: "stop")],
+            [Pi.title("Renamed")],
+        ] {
+            try handle.write(contentsOf: Fixture.lines(lines))
+            await service.refresh()
+            #expect(session.title == "Renamed")
+            #expect(changes.withLock { $0 } == 0)
+        }
+        try handle.write(contentsOf: Fixture.lines([Pi.title("Latest")]))
+        await service.refresh()
+        #expect(session.title == "Latest")
+        #expect(changes.withLock { $0 } == 1)
     }
 }

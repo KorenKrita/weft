@@ -174,7 +174,7 @@ public final class HAPISync {
                 status = .cliTooOld(version: version)
             } else {
                 let line = stderr.split(separator: "\n").last { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-                status = .failed(line.map { String($0).replacingOccurrences(of: "hapi usage: ", with: "") } ?? "hapi exited with status \(output.status)")
+                status = .failed(line.map { String($0).replacingOccurrences(of: "hapi usage: ", with: "") } ?? String(localized: "hapi exited with status \(Int(output.status))", bundle: .module))
             }
         }
         return false
@@ -198,10 +198,10 @@ public final class HAPISync {
 
     private static func describe(_ error: any Error) -> String {
         switch error {
-        case ProcessRunnerError.timedOut: "hapi didn't answer within a minute."
-        case ProcessRunnerError.launchFailed(let reason): "Couldn't run hapi: \(reason)"
-        case HAPIReportError.unsupportedSchema(let schema): "This hapi reports \(schema), which Weft doesn't read yet."
-        case HAPIReportError.unreadable: "Couldn't read what hapi reported."
+        case ProcessRunnerError.timedOut: String(localized: "hapi didn't answer within a minute.", bundle: .module)
+        case ProcessRunnerError.launchFailed(let reason): String(localized: "Couldn't run hapi: \(reason)", bundle: .module)
+        case HAPIReportError.unsupportedSchema(let schema): String(localized: "This hapi reports \(schema), which Weft doesn't read yet.", bundle: .module)
+        case HAPIReportError.unreadable: String(localized: "Couldn't read what hapi reported.", bundle: .module)
         default: error.localizedDescription
         }
     }
@@ -258,7 +258,7 @@ public final class HAPISync {
         replaceSpans(retained, sessionKey: importedKey, turnIDs: Array(Set(imported.map(\.turnID))))
         if let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == importedKey })))?.first {
             if let last = retained.map(\.end).max() {
-                session.lastActivity = last
+                session.update(\.lastActivity, to: last)
             } else {
                 modelContext.delete(session)
             }
@@ -278,10 +278,10 @@ public final class HAPISync {
             indexByTurn[piece.turnID] = index + 1
             let key = "\(piece.turnID)#\(index)"
             if let span = stale.removeValue(forKey: key) {
-                span.start = piece.start
-                span.end = piece.end
-                span.isOpen = piece.isOpen
-                span.waitedOnUser = piece.waitedOnUser
+                span.update(\.start, to: piece.start)
+                span.update(\.end, to: piece.end)
+                span.update(\.isOpen, to: piece.isOpen)
+                span.update(\.waitedOnUser, to: piece.waitedOnUser)
             } else {
                 modelContext.insert(AgentSpan(key: key, sessionKey: sessionKey, turnID: piece.turnID, fileKey: fileKey,
                                               turnStart: piece.turnStart, start: piece.start, end: piece.end, isOpen: piece.isOpen,
@@ -301,11 +301,11 @@ public final class HAPISync {
             modelContext.insert(session)
             return session
         }()
-        session.flavor = imported.flavor
-        session.hapiSessionID = imported.hapiID
-        session.title = imported.title ?? session.title
-        session.projectPath = imported.projectPath ?? session.projectPath
-        session.host = imported.host
-        if let last { session.lastActivity = max(session.lastActivity, last) }
+        session.update(\.flavor, to: imported.flavor)
+        session.update(\.hapiSessionID, to: imported.hapiID)
+        session.update(\.title, to: imported.title ?? session.title)
+        session.update(\.projectPath, to: imported.projectPath ?? session.projectPath)
+        session.update(\.host, to: imported.host)
+        if let last { session.update(\.lastActivity, to: max(session.lastActivity, last)) }
     }
 }

@@ -1,0 +1,3559 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    " %lld distractions.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分心 %lld 次。"
+          }
+        }
+      }
+    },
+    " 1 distraction.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分心 1 次。"
+          }
+        }
+      }
+    },
+    " Focus Score %lld – %@.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注分 %1$lld，%2$@。"
+          }
+        }
+      }
+    },
+    " and ": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "和"
+          }
+        }
+      }
+    },
+    " from %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "，来自 %@"
+          }
+        }
+      }
+    },
+    " over %lld prompts": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "，共 %lld 次提问"
+          }
+        }
+      }
+    },
+    " over 1 prompt": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "，共 1 次提问"
+          }
+        }
+      }
+    },
+    " under 10 minutes not shown.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（不足 10 分钟）未显示。"
+          }
+        }
+      }
+    },
+    "%@ Until a model is available, Weft guesses from each app's App Store category and each site's name.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@在有可用模型之前，Weft 会根据应用的 App Store 类别和网站名称来猜测。"
+          }
+        }
+      }
+    },
+    "%@ Until it answers, Weft guesses instead.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@在它回应之前，Weft 会改为猜测。"
+          }
+        }
+      }
+    },
+    "%@ Weft can guess instead, or use an OpenAI-compatible API.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@Weft 可以改为猜测，或使用 OpenAI 兼容 API。"
+          }
+        }
+      }
+    },
+    "%@ Weft guesses from each app's App Store category and each site's name until a model is available.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@在有可用模型之前，Weft 会根据应用的 App Store 类别和网站名称来猜测。"
+          }
+        }
+      }
+    },
+    "%@ a day over %lld days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$lld 天，平均每天 %1$@"
+          }
+        }
+      }
+    },
+    "%@ a day over 1 day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 天，每天 %@"
+          }
+        }
+      }
+    },
+    "%@ deep work": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深度工作 %@"
+          }
+        }
+      }
+    },
+    "%@ left in your focus session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注时段还剩 %@。"
+          }
+        }
+      }
+    },
+    "%@ of tracked time": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占记录时间的 %@"
+          }
+        }
+      }
+    },
+    "%@ session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@时段"
+          }
+        }
+      }
+    },
+    "%@ session complete.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@时段已结束。"
+          }
+        }
+      }
+    },
+    "%@ session · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@时段 · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %lld sessions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld 个会话"
+          }
+        }
+      }
+    },
+    "%@ · 1 session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · 1 个会话"
+          }
+        }
+      }
+    },
+    "%@ – %@ · %@ active": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ – %2$@ · 活跃 %3$@"
+          }
+        }
+      }
+    },
+    "%@, up to %lld at once": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，最多同时 %2$lld 个"
+          }
+        }
+      }
+    },
+    "%@: %@ · %@ working": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@：%2$@ · 工作 %3$@"
+          }
+        }
+      }
+    },
+    "%lld brief switches · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短暂切换 %1$lld 次 · %2$@"
+          }
+        }
+      }
+    },
+    "%lld days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近 %lld 天"
+          }
+        }
+      }
+    },
+    "%lld distractions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分心 %lld 次"
+          }
+        }
+      }
+    },
+    "%lld h": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 小时"
+          }
+        }
+      }
+    },
+    "%lld h %lld min": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 小时 %2$lld 分钟"
+          }
+        }
+      }
+    },
+    "%lld min": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 分钟"
+          }
+        }
+      }
+    },
+    "%lld min without input": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 分钟无输入"
+          }
+        }
+      }
+    },
+    "%lld more · %@%@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另外 %1$lld 项 · %2$@%3$@"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld"
+          }
+        }
+      }
+    },
+    "%lld prompts": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次提问"
+          }
+        }
+      }
+    },
+    "%lld seconds": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 秒"
+          }
+        }
+      }
+    },
+    "%lld sessions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个会话"
+          }
+        }
+      }
+    },
+    "%lld sessions, last read %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 个会话，上次读取于%2$@"
+          }
+        }
+      }
+    },
+    "%lld short agent runs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次短智能体运行"
+          }
+        }
+      }
+    },
+    "%lld short streams": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个短工作流"
+          }
+        }
+      }
+    },
+    "%lld sites": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个网站"
+          }
+        }
+      }
+    },
+    "%lld switches": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换 %lld 次"
+          }
+        }
+      }
+    },
+    "%lld switches per hour": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每小时切换 %lld 次"
+          }
+        }
+      }
+    },
+    "**%@** is categorized as **%@**.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "**%1$@** 属于 **%2$@** 类别。"
+          }
+        }
+      }
+    },
+    "+5 min": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+5 分钟"
+          }
+        }
+      }
+    },
+    ", except up to %lld minutes away while agents worked for you (%@ today)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "，但智能体为你工作时，离开后最多 %1$lld 分钟仍计入（今天 %2$@）"
+          }
+        }
+      }
+    },
+    ", waited %@ for your answers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "，等待你回复 %@"
+          }
+        }
+      }
+    },
+    ".": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "。"
+          }
+        }
+      }
+    },
+    "1 brief switch · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短暂切换 1 次 · %@"
+          }
+        }
+      }
+    },
+    "1 distraction": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分心 1 次"
+          }
+        }
+      }
+    },
+    "1 prompt": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 次提问"
+          }
+        }
+      }
+    },
+    "1 session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 个会话"
+          }
+        }
+      }
+    },
+    "1 session, last read %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 个会话，上次读取于%@"
+          }
+        }
+      }
+    },
+    "1 short agent run": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 次短智能体运行"
+          }
+        }
+      }
+    },
+    "1 short stream": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 个短工作流"
+          }
+        }
+      }
+    },
+    "1 site": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 个网站"
+          }
+        }
+      }
+    },
+    "100 × (½ deep-work share + ½ focus share) − switching penalty − distraction penalty. Meetings are left out. Moving between focus apps, like the terminal and the docs in your browser, isn't a switch, and neither is a glance under 30 seconds. A detour of up to 3 minutes doesn't end a deep-work stretch, as long as three quarters of the stretch is focus work.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "100 ×（½ 深度工作占比 + ½ 专注占比）− 切换扣分 − 分心扣分。会议不计入。在专注类应用之间切换（比如终端和浏览器里的文档）不算切换，30 秒以内的短暂查看也不算。只要一段时间里有四分之三是专注工作，3 分钟以内的岔开不会打断深度工作。"
+          }
+        }
+      }
+    },
+    "A guess made without a model; choose the right category to fix it": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有模型时的猜测；选择正确的类别来修正"
+          }
+        }
+      }
+    },
+    "AI · %@ confidence": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI · 置信度%@"
+          }
+        }
+      }
+    },
+    "API key": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 密钥"
+          }
+        }
+      }
+    },
+    "Accessibility": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辅助功能"
+          }
+        }
+      }
+    },
+    "Activity is discarded and never stored.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动会被丢弃，不会保存。"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加"
+          }
+        }
+      }
+    },
+    "Add App": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加应用"
+          }
+        }
+      }
+    },
+    "Add Rule": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加规则"
+          }
+        }
+      }
+    },
+    "Add a rule": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加规则"
+          }
+        }
+      }
+    },
+    "After working for": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作多久后"
+          }
+        }
+      }
+    },
+    "Agent history": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "智能体历史记录"
+          }
+        }
+      }
+    },
+    "Agents": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "智能体"
+          }
+        }
+      }
+    },
+    "Agents HAPI runs on your other machines, and ones Weft can't read here, come from your HAPI hub through `hapi usage`. Sessions on this Mac whose logs Weft reads anyway aren't counted twice.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HAPI 在你其他机器上运行的智能体，以及 Weft 在这里读不到的智能体，会通过 `hapi usage` 从你的 HAPI hub 获取。Weft 本来就能读到日志的本机会话不会重复计算。"
+          }
+        }
+      }
+    },
+    "All categories": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有类别"
+          }
+        }
+      }
+    },
+    "Allow": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许"
+          }
+        }
+      }
+    },
+    "Always for %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以后 %@ 都归为"
+          }
+        }
+      }
+    },
+    "An agent works from your prompt until it answers. Time it spends waiting for your permission or your answer to a question is left out, and so is any longer stretch with nothing in its log.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "智能体从你发出提示开始工作，到它回答为止。它等待你授权或回答问题的时间不计入，日志中长时间没有内容的时段也不计入。"
+          }
+        }
+      }
+    },
+    "App / Site": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用 / 网站"
+          }
+        }
+      }
+    },
+    "App bundle ID": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用 Bundle ID"
+          }
+        }
+      }
+    },
+    "Apple Intelligence": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 智能"
+          }
+        }
+      }
+    },
+    "Apps & sites": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用与网站"
+          }
+        }
+      }
+    },
+    "Apps and sites you mark as “not a distraction” appear here.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你标记为「不算分心」的应用和网站会显示在这里。"
+          }
+        }
+      }
+    },
+    "Ask the model again about everything still waiting or guessed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让模型重新判断所有仍在等待或靠猜测的条目"
+          }
+        }
+      }
+    },
+    "Automatic time tracking that stays on your Mac.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动记录时间，数据只留在你的 Mac 上。"
+          }
+        }
+      }
+    },
+    "Available": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可用"
+          }
+        }
+      }
+    },
+    "Avg. Focus Score": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均专注分"
+          }
+        }
+      }
+    },
+    "Away": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "离开"
+          }
+        }
+      }
+    },
+    "Away from the Mac": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "离开 Mac"
+          }
+        }
+      }
+    },
+    "Away, waiting on agents": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "离开，等待智能体"
+          }
+        }
+      }
+    },
+    "Back to Work": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回到工作"
+          }
+        }
+      }
+    },
+    "Base URL": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base URL"
+          }
+        }
+      }
+    },
+    "Block distractions during focus sessions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注时段内拦截分心"
+          }
+        }
+      }
+    },
+    "Blocker": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拦截"
+          }
+        }
+      }
+    },
+    "Break": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "休息"
+          }
+        }
+      }
+    },
+    "Break is over": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "休息结束"
+          }
+        }
+      }
+    },
+    "Break reminders": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "休息提醒"
+          }
+        }
+      }
+    },
+    "Browsers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览器"
+          }
+        }
+      }
+    },
+    "Can't connect": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
+          }
+        }
+      }
+    },
+    "Categories": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "类别"
+          }
+        }
+      }
+    },
+    "Categories & Apps": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "类别与应用"
+          }
+        }
+      }
+    },
+    "Categories marked as distracting trigger the blocker. Change them under Categories.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标记为分心的类别会触发拦截。可以在「类别」中更改。"
+          }
+        }
+      }
+    },
+    "Categories this week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周类别"
+          }
+        }
+      }
+    },
+    "Categorize with": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分类模型"
+          }
+        }
+      }
+    },
+    "Category": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "类别"
+          }
+        }
+      }
+    },
+    "Change the category of this stream": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改这个工作流的类别"
+          }
+        }
+      }
+    },
+    "Checking %@…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查 %@…"
+          }
+        }
+      }
+    },
+    "Choose Another App…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择其他应用…"
+          }
+        }
+      }
+    },
+    "Choose another duration": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择其他时长"
+          }
+        }
+      }
+    },
+    "Choose the hapi executable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择 hapi 可执行文件"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择…"
+          }
+        }
+      }
+    },
+    "Classifying %lld app(s)/site(s) %@…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在由%2$@分类 %1$lld 个应用或网站…"
+          }
+        }
+      }
+    },
+    "Click to open": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按以打开"
+          }
+        }
+      }
+    },
+    "Click to pause tracking": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按以暂停记录"
+          }
+        }
+      }
+    },
+    "Click to resume tracking": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按以继续记录"
+          }
+        }
+      }
+    },
+    "Collecting data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在收集数据"
+          }
+        }
+      }
+    },
+    "Color": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "颜色"
+          }
+        }
+      }
+    },
+    "Confirm %lld High-Confidence": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认 %lld 个高置信度结果"
+          }
+        }
+      }
+    },
+    "Connected": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已连接"
+          }
+        }
+      }
+    },
+    "Continue anyway": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍然继续"
+          }
+        }
+      }
+    },
+    "Could not generate a review: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法生成回顾：%@"
+          }
+        }
+      }
+    },
+    "Count as away after": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "多久后算作离开"
+          }
+        }
+      }
+    },
+    "Count time away for up to": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "离开时间最多计入"
+          }
+        }
+      }
+    },
+    "Count time waiting on agents as work": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把等待智能体的时间算作工作"
+          }
+        }
+      }
+    },
+    "Counted separately; never marked as away while you listen.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单独统计；听讲时不会被算作离开。"
+          }
+        }
+      }
+    },
+    "Counts as focus time and raises your Focus Score.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计入专注时间，提高专注分。"
+          }
+        }
+      }
+    },
+    "Daily reviews need a model. %@ You can set one up in Settings → Model.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每日回顾需要模型。%@你可以在「设置 → 模型」中设置。"
+          }
+        }
+      }
+    },
+    "Daily target": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每日目标"
+          }
+        }
+      }
+    },
+    "Data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据"
+          }
+        }
+      }
+    },
+    "Data folder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据文件夹"
+          }
+        }
+      }
+    },
+    "Day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日期"
+          }
+        }
+      }
+    },
+    "Deep work": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深度工作"
+          }
+        }
+      }
+    },
+    "Deep-work share (≥ 25 min stretches)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深度工作占比（连续 ≥ 25 分钟）"
+          }
+        }
+      }
+    },
+    "Default durations": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认时长"
+          }
+        }
+      }
+    },
+    "Delete rule and reclassify matching activity": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除规则并重新分类匹配的活动"
+          }
+        }
+      }
+    },
+    "Description": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "描述"
+          }
+        }
+      }
+    },
+    "Disable for this session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本时段内停用"
+          }
+        }
+      }
+    },
+    "Distracted": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分心"
+          }
+        }
+      }
+    },
+    "Distracting": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分心"
+          }
+        }
+      }
+    },
+    "Distraction penalty": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分心扣分"
+          }
+        }
+      }
+    },
+    "Domain": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "域名"
+          }
+        }
+      }
+    },
+    "Don't Track": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不记录"
+          }
+        }
+      }
+    },
+    "Don't record window titles": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不记录窗口标题"
+          }
+        }
+      }
+    },
+    "Each browser asks once whether Weft may read the active tab's URL.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个浏览器会询问一次是否允许 Weft 读取当前标签页的网址。"
+          }
+        }
+      }
+    },
+    "Each browser will ask once for permission.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个浏览器会请求一次权限。"
+          }
+        }
+      }
+    },
+    "Early estimate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初步估计"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑"
+          }
+        }
+      }
+    },
+    "End Break": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束休息"
+          }
+        }
+      }
+    },
+    "Every app and site from the last 30 days is covered by a rule.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "过去 30 天的每个应用和网站都有规则覆盖。"
+          }
+        }
+      }
+    },
+    "Every tracked entry with app, title, URL and category.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每条记录，包含应用、标题、网址和类别。"
+          }
+        }
+      }
+    },
+    "Everything stays on this Mac, in %@.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有数据都留在这台 Mac 上，位于 %@。"
+          }
+        }
+      }
+    },
+    "Export CSV…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出 CSV…"
+          }
+        }
+      }
+    },
+    "Export all activity": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出所有活动"
+          }
+        }
+      }
+    },
+    "Export failed: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出失败：%@"
+          }
+        }
+      }
+    },
+    "Exported %lld entries.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导出 %lld 条记录。"
+          }
+        }
+      }
+    },
+    "Extend 5 min": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "延长 5 分钟"
+          }
+        }
+      }
+    },
+    "Filter by app, site or title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按应用、网站或标题筛选"
+          }
+        }
+      }
+    },
+    "Find Automatically": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动查找"
+          }
+        }
+      }
+    },
+    "Focus": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注"
+          }
+        }
+      }
+    },
+    "Focus Score": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注分"
+          }
+        }
+      }
+    },
+    "Focus share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注占比"
+          }
+        }
+      }
+    },
+    "Focused %@ of the time": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注时间占 %@"
+          }
+        }
+      }
+    },
+    "Fragmented": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "零散"
+          }
+        }
+      }
+    },
+    "Full-screen overlay": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全屏遮罩"
+          }
+        }
+      }
+    },
+    "General": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用"
+          }
+        }
+      }
+    },
+    "Get Started": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始使用"
+          }
+        }
+      }
+    },
+    "Get a short review of this day and a suggestion for tomorrow, written %@.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由%@生成今天的简短回顾和明天的建议。"
+          }
+        }
+      }
+    },
+    "Getting distracted?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分心了？"
+          }
+        }
+      }
+    },
+    "Go to a day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前往某一天"
+          }
+        }
+      }
+    },
+    "Grant Access": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授权"
+          }
+        }
+      }
+    },
+    "Grant Accessibility access to record window titles": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授予辅助功能权限以记录窗口标题"
+          }
+        }
+      }
+    },
+    "Granted": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已授权"
+          }
+        }
+      }
+    },
+    "Guess": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "猜测"
+          }
+        }
+      }
+    },
+    "History": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "历史记录"
+          }
+        }
+      }
+    },
+    "Hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小时"
+          }
+        }
+      }
+    },
+    "How focused did you feel?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你觉得自己有多专注？"
+          }
+        }
+      }
+    },
+    "How the Focus Score works": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注分如何计算"
+          }
+        }
+      }
+    },
+    "Immediately": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即"
+          }
+        }
+      }
+    },
+    "Include agents from HAPI": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包括来自 HAPI 的智能体"
+          }
+        }
+      }
+    },
+    "Interrupt after": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "多久后打断"
+          }
+        }
+      }
+    },
+    "Keep the model's category for every app and site it was sure about": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对模型有把握的每个应用和网站，保留它给的类别"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语言"
+          }
+        }
+      }
+    },
+    "Launch Weft at login": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录时启动 Weft"
+          }
+        }
+      }
+    },
+    "Leave out silences longer than": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不计入超过此时长的静默"
+          }
+        }
+      }
+    },
+    "Log": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志"
+          }
+        }
+      }
+    },
+    "Longest focus": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长专注"
+          }
+        }
+      }
+    },
+    "Looks right — keep %@ for this app/site": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "看起来没问题，这个应用或网站保持为%@"
+          }
+        }
+      }
+    },
+    "Lowers your Focus Score and triggers the blocker during focus sessions.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低专注分，并在专注时段触发拦截。"
+          }
+        }
+      }
+    },
+    "Match": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "匹配方式"
+          }
+        }
+      }
+    },
+    "Meanwhile you": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同时你在"
+          }
+        }
+      }
+    },
+    "Meeting": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会议"
+          }
+        }
+      }
+    },
+    "Meetings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会议"
+          }
+        }
+      }
+    },
+    "Meetings and video calls are never counted as away.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会议和视频通话从不算作离开。"
+          }
+        }
+      }
+    },
+    "Model": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型"
+          }
+        }
+      }
+    },
+    "Model Settings…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型设置…"
+          }
+        }
+      }
+    },
+    "Move to": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移到"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称"
+          }
+        }
+      }
+    },
+    "Needed for break reminders, work-hours alerts and session endings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "休息提醒、工作时长提醒和时段结束通知需要此权限。"
+          }
+        }
+      }
+    },
+    "Needed to read window titles.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取窗口标题需要此权限。"
+          }
+        }
+      }
+    },
+    "Needs at least 15 minutes of tracked time.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "至少需要 15 分钟的记录时间。"
+          }
+        }
+      }
+    },
+    "Neutral": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中性"
+          }
+        }
+      }
+    },
+    "Never block": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从不拦截"
+          }
+        }
+      }
+    },
+    "Never track these apps": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从不记录这些应用"
+          }
+        }
+      }
+    },
+    "Never track these websites": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从不记录这些网站"
+          }
+        }
+      }
+    },
+    "Next day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后一天"
+          }
+        }
+      }
+    },
+    "Next week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一周"
+          }
+        }
+      }
+    },
+    "No activity": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有活动"
+          }
+        }
+      }
+    },
+    "No activity this week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周没有活动"
+          }
+        }
+      }
+    },
+    "No activity · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有活动 · %@"
+          }
+        }
+      }
+    },
+    "No categories": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有类别"
+          }
+        }
+      }
+    },
+    "No distractions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有分心"
+          }
+        }
+      }
+    },
+    "No rules yet. Rules are also created when you recategorize an app or site.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有规则。你给应用或网站重新分类时也会创建规则。"
+          }
+        }
+      }
+    },
+    "No score yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无分数"
+          }
+        }
+      }
+    },
+    "No work streams yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有工作流"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无"
+          }
+        }
+      }
+    },
+    "Not found": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到"
+          }
+        }
+      }
+    },
+    "Not found on this Mac": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这台 Mac 上未找到"
+          }
+        }
+      }
+    },
+    "Not needed for local servers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地服务器无需填写"
+          }
+        }
+      }
+    },
+    "Not read yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未读取"
+          }
+        }
+      }
+    },
+    "Not set up": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未设置"
+          }
+        }
+      }
+    },
+    "Nothing matches.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有匹配项。"
+          }
+        }
+      }
+    },
+    "Nothing to review": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有需要审核的内容"
+          }
+        }
+      }
+    },
+    "Nothing was tracked between these dates.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这段日期内没有记录。"
+          }
+        }
+      }
+    },
+    "Nothing was tracked on this day.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这一天没有记录。"
+          }
+        }
+      }
+    },
+    "Notification": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知"
+          }
+        }
+      }
+    },
+    "Notifications": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知"
+          }
+        }
+      }
+    },
+    "Notifications are off for Weft, so these can't reach you.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weft 的通知已关闭，这些提醒无法送达。"
+          }
+        }
+      }
+    },
+    "Notify when I reach the target and when I'm overworking": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "达到目标和工作过度时通知我"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        }
+      }
+    },
+    "Only active time counts; being away from the Mac for 5 minutes or more resets the timer.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只计算活跃时间；离开 Mac 5 分钟或更久会重置计时。"
+          }
+        }
+      }
+    },
+    "Only record the domain of URLs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网址只记录域名"
+          }
+        }
+      }
+    },
+    "Only this entry": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅这一条"
+          }
+        }
+      }
+    },
+    "Open Dashboard": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开主窗口"
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设置"
+          }
+        }
+      }
+    },
+    "OpenAI-compatible API": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI 兼容 API"
+          }
+        }
+      }
+    },
+    "Other": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他"
+          }
+        }
+      }
+    },
+    "Pattern": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "匹配内容"
+          }
+        }
+      }
+    },
+    "Pause tracking": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停记录"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已暂停"
+          }
+        }
+      }
+    },
+    "Permissions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "权限"
+          }
+        }
+      }
+    },
+    "Previous day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前一天"
+          }
+        }
+      }
+    },
+    "Previous week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一周"
+          }
+        }
+      }
+    },
+    "Privacy": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐私"
+          }
+        }
+      }
+    },
+    "Quit Weft": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "退出 Weft"
+          }
+        }
+      }
+    },
+    "Read Again": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新读取"
+          }
+        }
+      }
+    },
+    "Read history from the last": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取历史记录的范围"
+          }
+        }
+      }
+    },
+    "Reading logs… %lld of %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取日志… %1$lld / %2$lld"
+          }
+        }
+      }
+    },
+    "Ready": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "就绪"
+          }
+        }
+      }
+    },
+    "Ready for on-device classification.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以在本机分类。"
+          }
+        }
+      }
+    },
+    "Ready to get back to it?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "准备好继续了吗？"
+          }
+        }
+      }
+    },
+    "Records the frontmost app, window title and browser URL — no screenshots, no keystrokes.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录最前面的应用、窗口标题和浏览器网址，不截屏，不记录按键。"
+          }
+        }
+      }
+    },
+    "Regenerate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新生成"
+          }
+        }
+      }
+    },
+    "Relaunch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新启动"
+          }
+        }
+      }
+    },
+    "Remind me to take breaks": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提醒我休息"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除"
+          }
+        }
+      }
+    },
+    "Reports": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "报告"
+          }
+        }
+      }
+    },
+    "Requests go to %@, which put Xcode in %@.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求发往 %1$@，它把 Xcode 归入了%2$@。"
+          }
+        }
+      }
+    },
+    "Requests go to %@.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求发往 %@。"
+          }
+        }
+      }
+    },
+    "Required to read window titles.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取窗口标题需要此权限。"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
+    "Review": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "审核"
+          }
+        }
+      }
+    },
+    "Review My Day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回顾今天"
+          }
+        }
+      }
+    },
+    "Rules": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "规则"
+          }
+        }
+      }
+    },
+    "Run": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连续段"
+          }
+        }
+      }
+    },
+    "Running apps": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在运行的应用"
+          }
+        }
+      }
+    },
+    "Runs on this Mac.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这台 Mac 上运行。"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    },
+    "Score": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分数"
+          }
+        }
+      }
+    },
+    "Server": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器"
+          }
+        }
+      }
+    },
+    "Session complete": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时段已结束"
+          }
+        }
+      }
+    },
+    "Sessions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时段"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置"
+          }
+        }
+      }
+    },
+    "Short visits folded into this entry:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "并入这一条的短暂访问："
+          }
+        }
+      }
+    },
+    "Show all %lld entries": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示全部 %lld 条"
+          }
+        }
+      }
+    },
+    "Show breaks full screen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全屏显示休息"
+          }
+        }
+      }
+    },
+    "Show in Finder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在访达中显示"
+          }
+        }
+      }
+    },
+    "Show in Log": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在日志中显示"
+          }
+        }
+      }
+    },
+    "Show less": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起"
+          }
+        }
+      }
+    },
+    "Show when coding agents work for me": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示编程智能体为我工作的时间"
+          }
+        }
+      }
+    },
+    "Snooze for": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稍后提醒"
+          }
+        }
+      }
+    },
+    "Some switching": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有些切换"
+          }
+        }
+      }
+    },
+    "Stand up, stretch, look at something far away.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "站起来，伸展一下，看看远处。"
+          }
+        }
+      }
+    },
+    "Start Focus, Meeting or Break sessions from the menu bar.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从菜单栏开始专注、会议或休息时段。"
+          }
+        }
+      }
+    },
+    "Start a %@ %@ session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始 %1$@%2$@时段"
+          }
+        }
+      }
+    },
+    "Start a %@ session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始%@时段"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态"
+          }
+        }
+      }
+    },
+    "Steady": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稳定"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止"
+          }
+        }
+      }
+    },
+    "Streams appear once you've spent 10 minutes or more on something.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在一件事上花费 10 分钟以上后，这里就会出现工作流。"
+          }
+        }
+      }
+    },
+    "Style": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "样式"
+          }
+        }
+      }
+    },
+    "Switching": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换"
+          }
+        }
+      }
+    },
+    "Switching penalty": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换扣分"
+          }
+        }
+      }
+    },
+    "Sync Now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即同步"
+          }
+        }
+      }
+    },
+    "Synced %@%@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@已同步%2$@"
+          }
+        }
+      }
+    },
+    "Syncing…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "System": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随系统"
+          }
+        }
+      }
+    },
+    "Take your break!": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "休息一下吧！"
+          }
+        }
+      }
+    },
+    "Target": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标"
+          }
+        }
+      }
+    },
+    "Target %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标 %@"
+          }
+        }
+      }
+    },
+    "The description helps the model decide what goes into this category.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "描述帮助模型判断哪些内容属于这个类别。"
+          }
+        }
+      }
+    },
+    "The model categorizes apps and sites no rule knows, describes your work streams and writes daily reviews.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型负责给没有规则的应用和网站分类、描述你的工作流，并撰写每日回顾。"
+          }
+        }
+      }
+    },
+    "This Mac": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台 Mac"
+          }
+        }
+      }
+    },
+    "This Week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周"
+          }
+        }
+      }
+    },
+    "This hapi%@ can't report agent activity yet. Update HAPI.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个 hapi%@ 还不能报告智能体活动。请更新 HAPI。"
+          }
+        }
+      }
+    },
+    "This is not a distraction": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这不算分心"
+          }
+        }
+      }
+    },
+    "Time (30 days)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间（30 天）"
+          }
+        }
+      }
+    },
+    "Time at least one coding agent was working for you. %@ across all sessions.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "至少有一个编程智能体在为你工作的时间。所有会话合计 %@。"
+          }
+        }
+      }
+    },
+    "Time at your Mac. Time away (%lld minutes without input), asleep or locked isn't counted": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Mac 前的时间。离开（%lld 分钟无输入）、睡眠或锁屏的时间不计入"
+          }
+        }
+      }
+    },
+    "Time by category": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "各类别时间"
+          }
+        }
+      }
+    },
+    "Timeline": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间线"
+          }
+        }
+      }
+    },
+    "Title contains": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标题包含"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天"
+          }
+        }
+      }
+    },
+    "Tracked": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已记录"
+          }
+        }
+      }
+    },
+    "Tracked time towards your %@ target": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已记录时间，目标为 %@"
+          }
+        }
+      }
+    },
+    "Tracked, but neither focus nor distraction.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会记录，但既不算专注也不算分心。"
+          }
+        }
+      }
+    },
+    "Tracking": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录"
+          }
+        }
+      }
+    },
+    "Tracking is paused": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录已暂停"
+          }
+        }
+      }
+    },
+    "URL contains": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网址包含"
+          }
+        }
+      }
+    },
+    "Unknown apps and sites are categorized by Apple's on-device model, so nothing is uploaded. You can pick another model in Settings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知的应用和网站由 Apple 的本机模型分类，不会上传任何内容。你可以在设置中选择其他模型。"
+          }
+        }
+      }
+    },
+    "Unknown apps and sites are classified %@.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知的应用和网站由%@分类。"
+          }
+        }
+      }
+    },
+    "Use Another Model…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用其他模型…"
+          }
+        }
+      }
+    },
+    "View": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "视图"
+          }
+        }
+      }
+    },
+    "Waited %@ for you": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待你 %@"
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待中"
+          }
+        }
+      }
+    },
+    "Waiting for the model": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待模型"
+          }
+        }
+      }
+    },
+    "Waiting on agents": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待智能体"
+          }
+        }
+      }
+    },
+    "Weft reads the session logs Claude Code, Codex and pi keep on this Mac to see when each agent was working. It keeps only session titles, project folders and times; prompts and replies are never stored or sent anywhere.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weft 读取 Claude Code、Codex 和 pi 在这台 Mac 上保存的会话日志，以了解每个智能体何时在工作。它只保留会话标题、项目文件夹和时间，从不保存或发送提示和回复。"
+          }
+        }
+      }
+    },
+    "Weft uses the new language after it relaunches.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weft 重新启动后会使用新的语言。"
+          }
+        }
+      }
+    },
+    "Welcome to Weft": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "欢迎使用 Weft"
+          }
+        }
+      }
+    },
+    "What belongs here": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哪些内容属于这里"
+          }
+        }
+      }
+    },
+    "While an agent works for you, time away from the Mac adds to tracked time, up to this long after you leave, and time in distracting categories shows as waiting instead of distracted. The Focus Score only ever looks at your own activity.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "智能体为你工作时，离开 Mac 的时间会计入记录时间（离开后最多这么久），处于分心类别的时间显示为等待而不是分心。专注分只看你自己的活动。"
+          }
+        }
+      }
+    },
+    "Work hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作时长"
+          }
+        }
+      }
+    },
+    "Worked %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作 %@"
+          }
+        }
+      }
+    },
+    "Working now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在工作"
+          }
+        }
+      }
+    },
+    "Works with OpenAI and any server with a compatible Chat Completions API, such as OpenRouter, DeepSeek, Ollama or LM Studio. Weft sends it the apps and sites it doesn't know with their window titles, the apps, sites and window titles behind each work stream, and your daily totals. The API key is kept in your keychain.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "支持 OpenAI 以及任何兼容 Chat Completions API 的服务器，例如 OpenRouter、DeepSeek、Ollama 或 LM Studio。Weft 会向它发送不认识的应用和网站及其窗口标题、每个工作流背后的应用、网站和窗口标题，以及你的每日合计。API 密钥保存在你的钥匙串中。"
+          }
+        }
+      }
+    },
+    "Your HAPI hub doesn't report agent activity yet. Update the hub.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 HAPI hub 还不能报告智能体活动。请更新 hub。"
+          }
+        }
+      }
+    },
+    "Your rules": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的规则"
+          }
+        }
+      }
+    },
+    "Your rules take priority over %lld built-in rules. More specific matches (title, URL) win over domains, which win over apps. Anything no rule matches is classified by the model chosen in Settings, or guessed when there is none.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的规则优先于 %lld 条内置规则。更具体的匹配（标题、网址）优先于域名，域名优先于应用。没有规则匹配的内容由设置中选择的模型分类；没有模型时则靠猜测。"
+          }
+        }
+      }
+    },
+    "between apps and sites": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在应用和网站之间"
+          }
+        }
+      }
+    },
+    "hapi isn't installed, or isn't anywhere Weft looks. Choose it below.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装 hapi，或不在 Weft 查找的位置。请在下方选择它。"
+          }
+        }
+      }
+    },
+    "hapi isn't signed in to a hub. Run `hapi auth login`.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hapi 尚未登录 hub。请运行 `hapi auth login`。"
+          }
+        }
+      }
+    },
+    "high": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高"
+          }
+        }
+      }
+    },
+    "hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小时"
+          }
+        }
+      }
+    },
+    "in stretches of 25 min or more": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连续 25 分钟以上"
+          }
+        }
+      }
+    },
+    "incl. %@ away while agents worked": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "含智能体工作时离开的 %@"
+          }
+        }
+      }
+    },
+    "low": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低"
+          }
+        }
+      }
+    },
+    "medium": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中"
+          }
+        }
+      }
+    },
+    "now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在"
+          }
+        }
+      }
+    },
+    "of %@ · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标 %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "on device": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机模型"
+          }
+        }
+      }
+    },
+    "the server": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器"
+          }
+        }
+      }
+    },
+    "tracked of %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已记录，目标 %@"
+          }
+        }
+      }
+    },
+    "vs. 7-day average": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与 7 天平均相比"
+          }
+        }
+      }
+    },
+    "vs. last week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与上周相比"
+          }
+        }
+      }
+    },
+    "vs. usual by now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与平时此刻相比"
+          }
+        }
+      }
+    },
+    "with %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        }
+      }
+    },
+    "without a real break": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中间没有真正休息"
+          }
+        }
+      }
+    },
+    "≈ same": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "≈ 持平"
+          }
+        }
+      }
+    }
+  }
+}

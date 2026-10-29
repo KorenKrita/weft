@@ -56,6 +56,13 @@ struct TimeEntriesTests {
         #expect(entries.allSatisfy { $0.end.timeIntervalSince($0.start) <= 2 * 3600 })
     }
 
+    @Test func streamEndsWithItsLatestSegmentNotItsLastStarted() {
+        let entry = TimeEntries.build([seg(0, 30, "zoom"), seg(5, 3, "xcode"), seg(40, 5, "xcode")])
+        #expect(entry.count == 1)
+        #expect(entry[0].end == t0 + 45 * 60)
+        #expect(TimeEntries.build([seg(0, 30, "zoom"), seg(5, 3, "xcode")])[0].end == t0 + 30 * 60)
+    }
+
     @Test func briefActivityIsNotSignificant() {
         let entries = TimeEntries.build([seg(0, 30, "xcode"), seg(5, 3, "tv", category: "entertainment")])
         #expect(entries.count == 2)
@@ -104,5 +111,20 @@ struct TimeEntriesTests {
         // A fresh service reads the stored description instead of asking again.
         let reloaded = TimeEntryService(modelContext: container.mainContext, ai: ai)
         #expect(reloaded.description(for: entries[0]) == "Worked on Weft.")
+    }
+
+    @MainActor
+    @Test func descriptionsSavedBeforeTheyHadALanguageStillCount() async throws {
+        let container = try WeftSchema.makeContainer(inMemory: true)
+        let entry = TimeEntries.build([seg(0, 20, "xcode")])[0]
+        container.mainContext.insert(TimeEntrySummary(key: entry.key, text: "Existing saved description"))
+        try container.mainContext.save()
+        let ai = DescribingAI()
+        let service = TimeEntryService(modelContext: container.mainContext, ai: ai)
+        #expect(service.description(for: entry) == "Existing saved description")
+        service.describe([entry], now: t0 + 90 * 60)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(ai.prompts.isEmpty)
+        #expect(service.description(for: entry) == "Existing saved description")
     }
 }

@@ -37,16 +37,16 @@ public final class Notifier: NSObject, NotificationPosting {
             UNNotificationCategory(
                 identifier: NotificationKind.breakReminder.rawValue,
                 actions: [
-                    UNNotificationAction(identifier: NotificationAction.startBreak.rawValue, title: "Start Break"),
-                    UNNotificationAction(identifier: NotificationAction.snooze.rawValue, title: "Snooze"),
+                    UNNotificationAction(identifier: NotificationAction.startBreak.rawValue, title: String(localized: "Start Break", bundle: .module)),
+                    UNNotificationAction(identifier: NotificationAction.snooze.rawValue, title: String(localized: "Snooze", bundle: .module)),
                 ],
                 intentIdentifiers: []
             ),
             UNNotificationCategory(
                 identifier: NotificationKind.distraction.rawValue,
                 actions: [
-                    UNNotificationAction(identifier: NotificationAction.backToWork.rawValue, title: "Back to Work"),
-                    UNNotificationAction(identifier: NotificationAction.notADistraction.rawValue, title: "Not a Distraction"),
+                    UNNotificationAction(identifier: NotificationAction.backToWork.rawValue, title: String(localized: "Back to Work", bundle: .module)),
+                    UNNotificationAction(identifier: NotificationAction.notADistraction.rawValue, title: String(localized: "Not a Distraction", bundle: .module)),
                 ],
                 intentIdentifiers: []
             ),

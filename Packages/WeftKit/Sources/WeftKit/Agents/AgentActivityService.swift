@@ -300,11 +300,12 @@ public final class AgentActivityService {
                 let isOpen = turn.endKind == .open && index == pieces.count - 1
                 let waited = index == 0 ? turn.waitedOnUser : 0
                 if let span = stale.removeValue(forKey: key) {
-                    span.start = piece.start
-                    span.end = piece.end
-                    span.turnStart = turn.start
-                    span.isOpen = isOpen
-                    span.waitedOnUser = waited
+                    // Most are read again unchanged.
+                    span.update(\.start, to: piece.start)
+                    span.update(\.end, to: piece.end)
+                    span.update(\.turnStart, to: turn.start)
+                    span.update(\.isOpen, to: isOpen)
+                    span.update(\.waitedOnUser, to: waited)
                 } else {
                     modelContext.insert(AgentSpan(key: key, sessionKey: result.sessionKey, turnID: turn.id, fileKey: path,
                                                   turnStart: turn.start, start: piece.start, end: piece.end, isOpen: isOpen,
@@ -320,7 +321,7 @@ public final class AgentActivityService {
             if let session {
                 if session.projectPath == nil { session.projectPath = result.meta.cwd }
                 if !result.meta.isSubagent, let title = result.meta.title,
-                   !result.meta.titleFromPrefix || session.title == nil { session.title = title }
+                   !result.meta.titleFromPrefix || session.title == nil { session.update(\.title, to: title) }
             }
             return
         }
@@ -338,10 +339,10 @@ public final class AgentActivityService {
             modelContext.insert(session)
             return session
         }()
-        record.lastActivity = max(record.lastActivity, last)
+        record.update(\.lastActivity, to: max(record.lastActivity, last))
         if record.projectPath == nil { record.projectPath = result.meta.cwd }
         if !result.meta.isSubagent, let title = result.meta.title,
-           !result.meta.titleFromPrefix || record.title == nil { record.title = title }
+           !result.meta.titleFromPrefix || record.title == nil { record.update(\.title, to: title) }
     }
 
     private func nameCodexSessions(_ keys: Set<String>) {
@@ -350,7 +351,7 @@ public final class AgentActivityService {
         let keys = Array(keys)
         let sessions = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { keys.contains($0.key) }))) ?? []
         for session in sessions {
-            if let name = names[session.agentSessionID] { session.title = name }
+            if let name = names[session.agentSessionID] { session.update(\.title, to: name) }
         }
     }
 

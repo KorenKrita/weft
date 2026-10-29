@@ -50,13 +50,13 @@ public struct FoundationModelsClassifier: AIClassifying {
             return .available
         case .unavailable(.deviceNotEligible):
             // Also what regions without Apple Intelligence may report.
-            return .unavailable("Apple Intelligence isn't available on this Mac or in your region.")
+            return .unavailable(String(localized: "Apple Intelligence isn't available on this Mac or in your region.", bundle: .module))
         case .unavailable(.appleIntelligenceNotEnabled):
-            return .unavailable("Apple Intelligence is turned off in System Settings.")
+            return .unavailable(String(localized: "Apple Intelligence is turned off in System Settings.", bundle: .module))
         case .unavailable(.modelNotReady):
-            return .unavailable("The on-device model is still downloading.")
+            return .unavailable(String(localized: "The on-device model is still downloading.", bundle: .module))
         case .unavailable:
-            return .unavailable("The on-device model is unavailable.")
+            return .unavailable(String(localized: "The on-device model is unavailable.", bundle: .module))
         }
     }
 
@@ -102,6 +102,17 @@ public struct FoundationModelsClassifier: AIClassifying {
     }
 }
 
+/// The language generated text should be in. Prompts are English, so it's named in English,
+/// with the script where it matters: "Chinese, Simplified (China)", "English (United States)".
+public enum OutputLanguage {
+    public static func name(for identifier: String = Locale.preferredLanguages.first ?? "en") -> String {
+        // "zh-HK" alone doesn't say Traditional; the maximal form "zh-Hant-HK" does.
+        let language = Locale.Language(identifier: identifier)
+        let full = language.languageCode == .chinese ? language.maximalIdentifier : identifier
+        return Locale(identifier: "en").localizedString(forIdentifier: full) ?? "English"
+    }
+}
+
 /// Instructions and prompts shared by every model backend.
 enum ModelPrompts {
     static func candidates(_ categories: [CategoryDefinition]) -> [CategoryDefinition] {
@@ -142,7 +153,7 @@ enum ModelPrompts {
 
     static func describeInstructions(language: String) -> String {
         // A native example per language keeps the output from reading like a translation.
-        let example = language.localizedCaseInsensitiveContains("Chinese")
+        let example = language.localizedCaseInsensitiveContains("Chinese") && !language.localizedCaseInsensitiveContains("Traditional")
             ? "在终端里开发 weft 应用，在 GitHub 上查看 ActivityWatch 仓库，并调研了时间追踪工具的替代方案。"
             : "Worked on the weft app in the terminal, reviewed the ActivityWatch repo on GitHub and researched time-tracking alternatives."
         return """

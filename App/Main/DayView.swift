@@ -52,16 +52,19 @@ enum DayTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .timeline: "Timeline"
-        case .breakdown: "Categories & Apps"
-        case .log: "Log"
+        case .timeline: String(localized: "Timeline")
+        case .breakdown: String(localized: "Categories & Apps")
+        case .log: String(localized: "Log")
         }
     }
 }
 
 private struct DayContent: View {
     @Environment(AppModel.self) private var model
-    @Query private var segments: [ActivitySegment]
+    @Environment(\.liveness) private var liveness
+    /// Unsorted, as `body` sorts them for less: the query is fetched again on every change to
+    /// today's activity.
+    @Query private var daySegments: [ActivitySegment]
     @Query private var sessions: [SessionRecord]
     /// The week before, to say how this day compares with a usual one.
     @Query private var previous: [ActivitySegment]
@@ -70,6 +73,13 @@ private struct DayContent: View {
     /// Sessions with spans on this day have worked since it began.
     @Query private var agentSessions: [AgentSession]
     @AppStorage("todayTab") private var tab: DayTab = .timeline
+    /// What the page needs from the week before, kept between renders: the page re-renders on
+    /// every change to today's activity, and converting a week of segments each time costs
+    /// more than the rest of it. At most a minute old, since a day still going is compared up
+    /// to the current time of day.
+    @State private var weekBefore = Memo<(baseline: PeriodSummary, lookback: [SegmentSample])>()
+    /// Shown unchanged while not live (see `Liveness`).
+    @State private var shown = Memo<Page>()
     private let day: Date
     private let dayEnd: Date
 
@@ -77,7 +87,7 @@ private struct DayContent: View {
         self.day = day
         let end = Calendar.current.date(byAdding: .day, value: 1, to: day) ?? day
         dayEnd = end
-        _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > day && $0.start < end }, sort: \.start)
+        _daySegments = Query(filter: #Predicate<ActivitySegment> { $0.end > day && $0.start < end })
         _sessions = Query(filter: #Predicate<SessionRecord> { $0.end > day && $0.start < end }, sort: \.start)
         let weekBefore = Calendar.current.date(byAdding: .day, value: -7, to: day) ?? day
         _previous = Query(filter: #Predicate<ActivitySegment> { $0.end > weekBefore && $0.start < day })
@@ -102,34 +112,64 @@ private struct DayContent: View {
                                               categories: model.classifier.categoryLookup))
     }
 
-    var body: some View {
-        let samples = segments.map { segment -> SegmentSample in
-            var sample = SegmentSample(segment)
+    /// What the page shows, worked out from the store.
+    private struct Page {
+        var segments: [ActivitySegment]
+        var samples: [SegmentSample]
+        var metrics: DayMetrics
+        var streams: [TimeEntry]
+        var entries: [TimeEntry]
+        var agentWork: [AgentSample]
+        var agentSummary: AgentDaySummary
+        var agentBlocks: [AgentBlock]
+        var agentSessions: [String: AgentSession]
+        var sessions: [SessionRecord]
+        var baseline: PeriodSummary
+        var target: TimeInterval
+    }
+
+    private func makePage() -> Page {
+        let segments = daySegments.sortedByStart()
+        let unclipped = segments.map(SegmentSample.init)
+        let samples = unclipped.map { sample -> SegmentSample in
+            var sample = sample
             sample.start = max(sample.start, day)
             sample.end = min(sample.end, dayEnd)
             return sample
         }
         let span = DateInterval(start: day, end: dayEnd)
         let agents = model.agentSamples(agentSpans)
-        // Activity just before midnight still makes the first minutes of the day waiting.
-        let present = previous.filter { $0.end > day.addingTimeInterval(-AppModel.waitingLookback) }.map(SegmentSample.init)
-            + segments.map(SegmentSample.init)
-        let waiting = model.waiting(user: present, agents: agents).compactMap { $0.clipped(to: span) }
-        let metrics = DayMetrics.compute(samples, waiting: waiting, categories: model.classifier.categoryLookup)
-        let entries = TimeEntries.significant(TimeEntries.build(segments))
+        let week = weekBefore.value(maxAge: 60) {
+            // Activity just before midnight still makes the first minutes of the day waiting.
+            (baseline(), previous.filter { $0.end > day.addingTimeInterval(-AppModel.waitingLookback) }.map(SegmentSample.init))
+        }
+        let waiting = model.waiting(user: week.lookback + unclipped, agents: agents).compactMap { $0.clipped(to: span) }
+        let streams = TimeEntries.build(segments)
         let agentWork = agents.compactMap { $0.clipped(to: span) }
-        let agentSummary = AgentDaySummary(agentWork)
+        return Page(segments: segments, samples: samples,
+                    metrics: DayMetrics.compute(samples, waiting: waiting, categories: model.classifier.categoryLookup),
+                    streams: streams, entries: TimeEntries.significant(streams),
+                    agentWork: agentWork, agentSummary: AgentDaySummary(agentWork), agentBlocks: AgentBlocks.build(agentWork),
+                    agentSessions: Dictionary(agentSessions.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first }),
+                    sessions: sessions, baseline: week.baseline, target: model.preferences.workHoursTarget * 3600)
+    }
+
+    var body: some View {
+        let page = shown.value(liveness, makePage)
+        let metrics = page.metrics
+        let samples = page.samples
+        let entries = page.entries
 
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if segments.isEmpty && agentWork.isEmpty {
+                if page.segments.isEmpty && page.agentWork.isEmpty {
                     ContentUnavailableView("No activity", systemImage: "clock",
                                            description: Text("Nothing was tracked on this day."))
                         .frame(maxWidth: .infinity, minHeight: 300)
                 } else {
-                    Overview(metrics: metrics, agents: agentSummary, target: model.preferences.workHoursTarget * 3600,
-                             baseline: baseline(), isToday: Calendar.current.isDateInToday(day))
-                    DailyReview(day: day, metrics: metrics, agents: agentSummary)
+                    Overview(metrics: metrics, agents: page.agentSummary, target: page.target,
+                             baseline: page.baseline, isToday: Calendar.current.isDateInToday(day))
+                    DailyReview(day: day, metrics: metrics, agents: page.agentSummary)
                     VStack(alignment: .leading, spacing: 14) {
                         Picker("View", selection: $tab) {
                             ForEach(DayTab.allCases) { Text($0.title).tag($0) }
@@ -139,9 +179,8 @@ private struct DayContent: View {
                         .fixedSize()
                         switch tab {
                         case .timeline:
-                            DayTimeline(day: day, segments: segments, sessions: sessions,
-                                        agents: AgentBlocks.build(agentWork),
-                                        agentSessions: Dictionary(agentSessions.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first }),
+                            DayTimeline(day: day, streams: page.streams, sessions: page.sessions,
+                                        agents: page.agentBlocks, agentSessions: page.agentSessions,
                                         userSamples: samples) { tab = .log }
                         case .breakdown:
                             HStack(alignment: .top, spacing: 16) {
@@ -149,7 +188,7 @@ private struct DayContent: View {
                                 Card("Apps & sites") { AppBreakdown(samples: samples, total: metrics.activeTime) }
                             }
                         case .log:
-                            ActivityList(segments: segments)
+                            ActivityList(segments: page.segments)
                         }
                     }
                     .padding(16)
@@ -168,10 +207,10 @@ private struct DayContent: View {
 }
 
 struct Card<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     @ViewBuilder let content: Content
 
-    init(_ title: String, @ViewBuilder content: () -> Content) {
+    init(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) {
         self.title = title
         self.content = content()
     }
@@ -200,7 +239,7 @@ private struct Overview: View {
     let isToday: Bool
     @State private var showScoreDetails = false
 
-    private var comparison: String { isToday ? "vs. usual by now" : "vs. 7-day average" }
+    private var comparison: String { isToday ? String(localized: "vs. usual by now") : String(localized: "vs. 7-day average") }
 
     /// Nil without a week of history to compare against.
     private func change(_ value: KeyPath<DayMetrics, TimeInterval>) -> Change? {
@@ -244,10 +283,10 @@ private struct Overview: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Fact(symbol: "brain.head.profile", title: "Deep work",
-                     value: Format.duration(metrics.deepWorkTime), detail: "in stretches of 25 min or more",
+                     value: Format.duration(metrics.deepWorkTime), detail: String(localized: "in stretches of 25 min or more"),
                      change: change(\.deepWorkTime), comparison: comparison)
                 Fact(symbol: "timer", title: "Longest focus",
-                     value: Format.duration(metrics.longestFocusStretch), detail: "without a real break")
+                     value: Format.duration(metrics.longestFocusStretch), detail: String(localized: "without a real break"))
                 Fact(symbol: "arrow.left.arrow.right", title: "Switching",
                      value: switching.0, detail: switching.1)
                 if agents.wallTime > 0 {
@@ -262,21 +301,21 @@ private struct Overview: View {
     }
 
     private var trackedHelp: String {
-        var text = "Time at your Mac. Time away (\(model.preferences.idleThresholdMinutes) minutes without input), asleep or locked isn't counted"
+        var text = String(localized: "Time at your Mac. Time away (\(model.preferences.idleThresholdMinutes) minutes without input), asleep or locked isn't counted")
         if metrics.agentWaitingIdle > 0 {
-            text += ", except up to \(model.preferences.agentWaitingCapMinutes) minutes away while agents worked for you (\(Format.duration(metrics.agentWaitingIdle)) today)"
+            text += String(localized: ", except up to \(model.preferences.agentWaitingCapMinutes) minutes away while agents worked for you (\(Format.duration(metrics.agentWaitingIdle)) today)")
         }
-        return text + "."
+        return text + String(localized: ".")
     }
 
     private var switching: (String, String) {
-        guard metrics.activeTime >= 15 * 60 else { return ("\(metrics.contextSwitches) switches", "between apps and sites") }
+        guard metrics.activeTime >= 15 * 60 else { return (String(localized: "\(metrics.contextSwitches) switches"), String(localized: "between apps and sites")) }
         let perHour = metrics.switchesPerHour
-        let label = perHour <= 12 ? "Steady" : perHour <= 25 ? "Some switching" : "Fragmented"
-        return (label, "\(Int(perHour.rounded())) switches per hour")
+        let label = perHour <= 12 ? String(localized: "Steady") : perHour <= 25 ? String(localized: "Some switching") : String(localized: "Fragmented")
+        return (label, String(localized: "\(Int(perHour.rounded())) switches per hour"))
     }
 
-    private func legend(_ color: Color, _ title: String, _ value: TimeInterval) -> some View {
+    private func legend(_ color: Color, _ title: LocalizedStringKey, _ value: TimeInterval) -> some View {
         HStack(spacing: 5) {
             Circle().fill(color).frame(width: 7, height: 7)
             Text(title).foregroundStyle(.secondary)
@@ -303,14 +342,14 @@ struct AgentDaySummary {
     }
 
     var detail: String {
-        let count = "\(sessions) session\(sessions == 1 ? "" : "s")"
-        return concurrency > 1 ? "\(count), up to \(concurrency) at once" : count
+        let count = sessions == 1 ? String(localized: "1 session") : String(localized: "\(sessions) sessions")
+        return concurrency > 1 ? String(localized: "\(count), up to \(concurrency) at once") : count
     }
 }
 
 private struct Fact: View {
     let symbol: String
-    let title: String
+    let title: LocalizedStringKey
     let value: String
     let detail: String
     var change: Change? = nil
@@ -420,7 +459,7 @@ private struct DailyReview: View {
             do {
                 text = try await model.ai.summarize(facts)
             } catch {
-                self.error = "Could not generate a review: \(error.localizedDescription)"
+                self.error = String(localized: "Could not generate a review: \(error.localizedDescription)")
             }
             isGenerating = false
         }
@@ -433,7 +472,7 @@ private struct DailyReview: View {
         let apps = metrics.byApp.sorted { $0.value > $1.value }.prefix(5).map { "\($0.key) \(Format.duration($0.value))" }
         let sites = metrics.byDomain.sorted { $0.value > $1.value }.prefix(5).map { "\($0.key) \(Format.duration($0.value))" }
         let busiest = metrics.byHour.sorted { $0.value > $1.value }.prefix(3).map { "\($0.key):00" }
-        let language = Locale.current.localizedString(forLanguageCode: Locale.preferredLanguages.first ?? "en") ?? "English"
+        let language = OutputLanguage.name()
         return """
             Respond in \(language).
             Day: \(day.formatted(date: .complete, time: .omitted))
@@ -441,7 +480,7 @@ private struct DailyReview: View {
             Focus time: \(Format.duration(metrics.focusTime)); deep work (25+ minute stretches): \(Format.duration(metrics.deepWorkTime)); longest focus stretch: \(Format.duration(metrics.longestFocusStretch))
             Meetings: \(Format.duration(metrics.meetingTime)); distracting: \(Format.duration(metrics.distractingTime))
             Context switches: \(metrics.contextSwitches) (\(String(format: "%.0f", metrics.switchesPerHour)) per hour)
-            Focus Score: \(metrics.score.map { "\($0.value)/100 (\($0.label))" } ?? "n/a")
+            Focus Score: \(metrics.score.map { "\($0.value)/100 (\($0.englishLabel))" } ?? "n/a")
             Top categories: \(categories.joined(separator: ", "))
             Top apps: \(apps.joined(separator: ", "))
             Top sites: \(sites.joined(separator: ", "))
@@ -470,7 +509,7 @@ struct CategoryBreakdown: View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(showAll ? sorted : main, id: \.key) { key, value in
                 let category = model.classifier.category(key)
-                BarRow(label: category.name, value: value, total: metrics.activeTime, color: category.color,
+                BarRow(label: category.displayName, value: value, total: metrics.activeTime, color: category.color,
                        detail: Format.percent(value / max(metrics.activeTime, 1)))
             }
             if !rest.isEmpty {
@@ -478,7 +517,7 @@ struct CategoryBreakdown: View {
                     withAnimation(.snappy) { showAll.toggle() }
                 } label: {
                     HStack {
-                        Text(showAll ? "Show less" : "\(rest.count) more · \(rest.map { model.classifier.category($0.key).name }.prefix(3).joined(separator: ", "))\(rest.count > 3 ? "…" : "")")
+                        Text(showAll ? "Show less" : "\(rest.count) more · \(rest.map { model.classifier.category($0.key).displayName }.prefix(3).joined(separator: ", "))\(rest.count > 3 ? "…" : "")")
                             .lineLimit(1)
                         Spacer()
                         if !showAll {
@@ -532,7 +571,7 @@ private struct AppBreakdown: View {
                                     Image(systemName: expanded.contains(app.bundleID) ? "chevron.up" : "chevron.down")
                                 }
                                 .buttonStyle(.borderless)
-                                .help("\(app.sites.count) site\(app.sites.count == 1 ? "" : "s")")
+                                .help(app.sites.count == 1 ? String(localized: "1 site") : String(localized: "\(app.sites.count) sites"))
                             }
                         }
                         .frame(width: 16)
@@ -584,7 +623,7 @@ struct ChangeLabel: View {
         let context = suffix ?? help ?? ""
         Group {
             if isFlat {
-                Text("≈ same" + (suffix.map { " \($0)" } ?? "")).foregroundStyle(.secondary)
+                Text(String(localized: "≈ same") + (suffix.map { " \($0)" } ?? "")).foregroundStyle(.secondary)
             } else {
                 let isUp = change.difference > 0
                 HStack(spacing: 2) {
