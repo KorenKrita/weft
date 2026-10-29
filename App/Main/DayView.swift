@@ -61,7 +61,10 @@ enum DayTab: String, CaseIterable, Identifiable {
 
 private struct DayContent: View {
     @Environment(AppModel.self) private var model
-    @Query private var segments: [ActivitySegment]
+    @Environment(\.liveness) private var liveness
+    /// Unsorted, as `body` sorts them for less: the query is fetched again on every change to
+    /// today's activity.
+    @Query private var daySegments: [ActivitySegment]
     @Query private var sessions: [SessionRecord]
     /// The week before, to say how this day compares with a usual one.
     @Query private var previous: [ActivitySegment]
@@ -70,6 +73,13 @@ private struct DayContent: View {
     /// Sessions with spans on this day have worked since it began.
     @Query private var agentSessions: [AgentSession]
     @AppStorage("todayTab") private var tab: DayTab = .timeline
+    /// What the page needs from the week before, kept between renders: the page re-renders on
+    /// every change to today's activity, and converting a week of segments each time costs
+    /// more than the rest of it. At most a minute old, since a day still going is compared up
+    /// to the current time of day.
+    @State private var weekBefore = Memo<(baseline: PeriodSummary, lookback: [SegmentSample])>()
+    /// Shown unchanged while not live (see `Liveness`).
+    @State private var shown = Memo<Page>()
     private let day: Date
     private let dayEnd: Date
 
@@ -77,7 +87,7 @@ private struct DayContent: View {
         self.day = day
         let end = Calendar.current.date(byAdding: .day, value: 1, to: day) ?? day
         dayEnd = end
-        _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > day && $0.start < end }, sort: \.start)
+        _daySegments = Query(filter: #Predicate<ActivitySegment> { $0.end > day && $0.start < end })
         _sessions = Query(filter: #Predicate<SessionRecord> { $0.end > day && $0.start < end }, sort: \.start)
         let weekBefore = Calendar.current.date(byAdding: .day, value: -7, to: day) ?? day
         _previous = Query(filter: #Predicate<ActivitySegment> { $0.end > weekBefore && $0.start < day })
@@ -102,34 +112,64 @@ private struct DayContent: View {
                                               categories: model.classifier.categoryLookup))
     }
 
-    var body: some View {
-        let samples = segments.map { segment -> SegmentSample in
-            var sample = SegmentSample(segment)
+    /// What the page shows, worked out from the store.
+    private struct Page {
+        var segments: [ActivitySegment]
+        var samples: [SegmentSample]
+        var metrics: DayMetrics
+        var streams: [TimeEntry]
+        var entries: [TimeEntry]
+        var agentWork: [AgentSample]
+        var agentSummary: AgentDaySummary
+        var agentBlocks: [AgentBlock]
+        var agentSessions: [String: AgentSession]
+        var sessions: [SessionRecord]
+        var baseline: PeriodSummary
+        var target: TimeInterval
+    }
+
+    private func makePage() -> Page {
+        let segments = daySegments.sortedByStart()
+        let unclipped = segments.map(SegmentSample.init)
+        let samples = unclipped.map { sample -> SegmentSample in
+            var sample = sample
             sample.start = max(sample.start, day)
             sample.end = min(sample.end, dayEnd)
             return sample
         }
         let span = DateInterval(start: day, end: dayEnd)
         let agents = model.agentSamples(agentSpans)
-        // Activity just before midnight still makes the first minutes of the day waiting.
-        let present = previous.filter { $0.end > day.addingTimeInterval(-AppModel.waitingLookback) }.map(SegmentSample.init)
-            + segments.map(SegmentSample.init)
-        let waiting = model.waiting(user: present, agents: agents).compactMap { $0.clipped(to: span) }
-        let metrics = DayMetrics.compute(samples, waiting: waiting, categories: model.classifier.categoryLookup)
-        let entries = TimeEntries.significant(TimeEntries.build(segments))
+        let week = weekBefore.value(maxAge: 60) {
+            // Activity just before midnight still makes the first minutes of the day waiting.
+            (baseline(), previous.filter { $0.end > day.addingTimeInterval(-AppModel.waitingLookback) }.map(SegmentSample.init))
+        }
+        let waiting = model.waiting(user: week.lookback + unclipped, agents: agents).compactMap { $0.clipped(to: span) }
+        let streams = TimeEntries.build(segments)
         let agentWork = agents.compactMap { $0.clipped(to: span) }
-        let agentSummary = AgentDaySummary(agentWork)
+        return Page(segments: segments, samples: samples,
+                    metrics: DayMetrics.compute(samples, waiting: waiting, categories: model.classifier.categoryLookup),
+                    streams: streams, entries: TimeEntries.significant(streams),
+                    agentWork: agentWork, agentSummary: AgentDaySummary(agentWork), agentBlocks: AgentBlocks.build(agentWork),
+                    agentSessions: Dictionary(agentSessions.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first }),
+                    sessions: sessions, baseline: week.baseline, target: model.preferences.workHoursTarget * 3600)
+    }
+
+    var body: some View {
+        let page = shown.value(liveness, makePage)
+        let metrics = page.metrics
+        let samples = page.samples
+        let entries = page.entries
 
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if segments.isEmpty && agentWork.isEmpty {
+                if page.segments.isEmpty && page.agentWork.isEmpty {
                     ContentUnavailableView("No activity", systemImage: "clock",
                                            description: Text("Nothing was tracked on this day."))
                         .frame(maxWidth: .infinity, minHeight: 300)
                 } else {
-                    Overview(metrics: metrics, agents: agentSummary, target: model.preferences.workHoursTarget * 3600,
-                             baseline: baseline(), isToday: Calendar.current.isDateInToday(day))
-                    DailyReview(day: day, metrics: metrics, agents: agentSummary)
+                    Overview(metrics: metrics, agents: page.agentSummary, target: page.target,
+                             baseline: page.baseline, isToday: Calendar.current.isDateInToday(day))
+                    DailyReview(day: day, metrics: metrics, agents: page.agentSummary)
                     VStack(alignment: .leading, spacing: 14) {
                         Picker("View", selection: $tab) {
                             ForEach(DayTab.allCases) { Text($0.title).tag($0) }
@@ -139,9 +179,8 @@ private struct DayContent: View {
                         .fixedSize()
                         switch tab {
                         case .timeline:
-                            DayTimeline(day: day, segments: segments, sessions: sessions,
-                                        agents: AgentBlocks.build(agentWork),
-                                        agentSessions: Dictionary(agentSessions.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first }),
+                            DayTimeline(day: day, streams: page.streams, sessions: page.sessions,
+                                        agents: page.agentBlocks, agentSessions: page.agentSessions,
                                         userSamples: samples) { tab = .log }
                         case .breakdown:
                             HStack(alignment: .top, spacing: 16) {
@@ -149,7 +188,7 @@ private struct DayContent: View {
                                 Card("Apps & sites") { AppBreakdown(samples: samples, total: metrics.activeTime) }
                             }
                         case .log:
-                            ActivityList(segments: segments)
+                            ActivityList(segments: page.segments)
                         }
                     }
                     .padding(16)

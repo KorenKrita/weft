@@ -59,11 +59,14 @@ private struct DayCategory: Identifiable {
 
 private struct WeekReport: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.liveness) private var liveness
     @Query private var segments: [ActivitySegment]
     @Query private var agentSpans: [AgentSpan]
     private let days: [Date]
 
     @State private var hoveredDay: Date?
+    /// Shown unchanged while not live (see `Liveness`).
+    @State private var shown = Memo<(stats: [DayStat], summary: PeriodSummary, last: PeriodSummary)>()
 
     /// Categories beyond this many share one grey "Other" in the chart.
     private let chartCategories = 5
@@ -81,9 +84,11 @@ private struct WeekReport: View {
     }
 
     var body: some View {
-        let stats = dailyStats(days)
-        let summary = PeriodSummary(stats.map(\.metrics))
-        let last = PeriodSummary(dailyStats(days.compactMap { Calendar.current.date(byAdding: .day, value: -7, to: $0) }).map(\.metrics))
+        let (stats, summary, last) = shown.value(liveness) {
+            let stats = dailyStats(days)
+            let last = dailyStats(days.compactMap { Calendar.current.date(byAdding: .day, value: -7, to: $0) })
+            return (stats, PeriodSummary(stats.map(\.metrics)), PeriodSummary(last.map(\.metrics)))
+        }
         let total = summary.total
         let average = summary.averageScore
         // Matches the score ring: short days aren't graded yet.

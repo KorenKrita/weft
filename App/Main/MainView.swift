@@ -6,8 +6,10 @@ struct MainView: View {
     static let windowID = "main"
 
     @Environment(AppModel.self) private var model
+    @Environment(\.liveness) private var liveness
     @State private var showOnboarding = false
     @Query private var unconfirmed: [ActivitySegment]
+    @State private var badge = Memo<Int>()
 
     init() {
         let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
@@ -20,10 +22,9 @@ struct MainView: View {
         })
     }
 
-    /// Apps and sites waiting in Review.
-    private var reviewCount: Int { Set(unconfirmed.map(\.classificationKey)).count }
-
     var body: some View {
+        // Apps and sites waiting in Review.
+        let reviewCount = badge.value(liveness) { Set(unconfirmed.map(\.classificationKey)).count }
         NavigationSplitView {
             List(Page.allCases, id: \.self, selection: Binding<Page?>(
                 get: { model.page },

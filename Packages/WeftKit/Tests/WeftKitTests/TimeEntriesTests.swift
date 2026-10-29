@@ -56,6 +56,13 @@ struct TimeEntriesTests {
         #expect(entries.allSatisfy { $0.end.timeIntervalSince($0.start) <= 2 * 3600 })
     }
 
+    @Test func streamEndsWithItsLatestSegmentNotItsLastStarted() {
+        let entry = TimeEntries.build([seg(0, 30, "zoom"), seg(5, 3, "xcode"), seg(40, 5, "xcode")])
+        #expect(entry.count == 1)
+        #expect(entry[0].end == t0 + 45 * 60)
+        #expect(TimeEntries.build([seg(0, 30, "zoom"), seg(5, 3, "xcode")])[0].end == t0 + 30 * 60)
+    }
+
     @Test func briefActivityIsNotSignificant() {
         let entries = TimeEntries.build([seg(0, 30, "xcode"), seg(5, 3, "tv", category: "entertainment")])
         #expect(entries.count == 2)

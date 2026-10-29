@@ -6,11 +6,28 @@ import Foundation
 public struct TimeEntry: Identifiable {
     public var categoryKey: String
     /// Segments in time order.
-    public var segments: [ActivitySegment]
+    public private(set) var segments: [ActivitySegment]
+    public let start: Date
+    /// `end` and `activeTime` are kept up as segments join instead of read from them again:
+    /// reading a model's properties is slow, and the timeline asks for these many times per
+    /// render. As of `TimeEntries.build`.
+    public private(set) var end: Date
+    public private(set) var activeTime: TimeInterval
 
-    public var start: Date { segments[0].start }
-    public var end: Date { segments.map(\.end).max() ?? start }
-    public var activeTime: TimeInterval { segments.reduce(0) { $0 + $1.duration } }
+    /// `start` and `end` are the segment's, read once by the caller.
+    init(categoryKey: String, segment: ActivitySegment, start: Date, end: Date) {
+        self.categoryKey = categoryKey
+        segments = [segment]
+        self.start = start
+        self.end = end
+        activeTime = end.timeIntervalSince(start)
+    }
+
+    mutating func append(_ segment: ActivitySegment, start: Date, end: Date) {
+        segments.append(segment)
+        self.end = max(self.end, end)
+        activeTime += end.timeIntervalSince(start)
+    }
 
     /// Stable as the stream grows, so descriptions can be cached by it.
     public var key: String { "\(categoryKey)-\(Int(start.timeIntervalSince1970))" }
@@ -82,20 +99,22 @@ public enum TimeEntries {
     /// All streams of the day, including ones below `minActiveTime`; see `significant`.
     public static func build(_ segments: [ActivitySegment], config: TimeEntryConfig = TimeEntryConfig()) -> [TimeEntry] {
         var entries: [TimeEntry] = []
-        for (category, members) in Dictionary(grouping: segments, by: \.categoryKey) {
-            var current: TimeEntry?
-            for segment in members.sorted(by: { $0.start < $1.start }) {
-                if var stream = current,
-                   segment.start.timeIntervalSince(stream.end) <= config.mergeGap,
-                   segment.end.timeIntervalSince(stream.start) <= config.maxSpan {
-                    stream.segments.append(segment)
-                    current = stream
+        // Each segment's properties are read once, as reading a model's is slow.
+        let spans = segments.map { (segment: $0, start: $0.start, end: $0.end, categoryKey: $0.categoryKey) }
+        for (category, members) in Dictionary(grouping: spans, by: \.categoryKey) {
+            // The category's stream still taking segments, grown in place so its segments
+            // aren't copied on every append.
+            var open: Int?
+            for member in members.sorted(by: { $0.start < $1.start }) {
+                if let index = open,
+                   member.start.timeIntervalSince(entries[index].end) <= config.mergeGap,
+                   member.end.timeIntervalSince(entries[index].start) <= config.maxSpan {
+                    entries[index].append(member.segment, start: member.start, end: member.end)
                 } else {
-                    if let stream = current { entries.append(stream) }
-                    current = TimeEntry(categoryKey: category, segments: [segment])
+                    entries.append(TimeEntry(categoryKey: category, segment: member.segment, start: member.start, end: member.end))
+                    open = entries.count - 1
                 }
             }
-            if let stream = current { entries.append(stream) }
         }
         return entries.sorted { $0.start < $1.start }
     }

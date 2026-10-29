@@ -4,16 +4,21 @@ import SwiftUI
 
 struct ActivityList: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.liveness) private var liveness
     let segments: [ActivitySegment]
     @State private var showAll = false
     @State private var search = ""
     @State private var category: String?
+    /// Held still while not live; the open segment changes with every sample.
+    @State private var blocks = Memo<(all: [ActivityBlock], categories: [CategoryDefinition])>()
 
     var body: some View {
-        let all = Array(ActivityBlocks.build(segments).filter { $0.duration >= 10 }.reversed())
+        let (all, categories) = blocks.value(liveness) {
+            let all = Array(ActivityBlocks.build(segments).filter { $0.duration >= 10 }.reversed())
+            return (all, Set(all.map(\.first.categoryKey)).map(model.classifier.category).sorted { $0.name < $1.name })
+        }
         let groups = all.filter(matches)
         let visible = showAll ? groups : Array(groups.prefix(40))
-        let categories = Set(all.map(\.first.categoryKey)).map(model.classifier.category).sorted { $0.name < $1.name }
         LazyVStack(alignment: .leading, spacing: 0) {
             HStack {
                 TextField("Filter by app, site or title", text: $search)

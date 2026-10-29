@@ -8,7 +8,7 @@ struct WeftApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            OnlyWhileVisible {
+            PausedWhileHidden {
                 MenuBarView()
                     .environment(model)
                     .modelContainer(model.container)
@@ -19,7 +19,7 @@ struct WeftApp: App {
         .menuBarExtraStyle(.window)
 
         Window("Weft", id: MainView.windowID) {
-            OnlyWhileVisible {
+            PausedWhileHidden {
                 MainView()
                     .environment(model)
                     .modelContainer(model.container)

@@ -7,7 +7,10 @@ import SwiftUI
 /// takes it off this list.
 struct ReviewView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.liveness) private var liveness
     @Query private var segments: [ActivitySegment]
+    /// Shown unchanged while not live (see `Liveness`).
+    @State private var shown = Memo<[Item]>()
 
     init() {
         let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
@@ -33,7 +36,7 @@ struct ReviewView: View {
     }
 
     var body: some View {
-        let items = items()
+        let items = shown.value(liveness, items)
         VStack(spacing: 0) {
             statusBar
             Divider()
