@@ -15,27 +15,14 @@ Weft takes after [Rize](https://rize.io) but works from a different idea: people
 
 ## What you get
 
-**A timeline of your day.** Time in the same category forms a *work stream* as long as you come back to it within 30 minutes. Streams of different categories overlap side by side, like events in a calendar. Each finished stream gets a one-sentence summary such as "Fixed the login redirect bug and reviewed two pull requests." Detours shorter than 10 minutes stay out of the way in the activity log below.
-
-**Tracking you don't have to think about.** Start Weft once and forget about it. It records when you switch apps, windows or browser tabs, and stops counting when you step away (after 5 minutes without input, adjustable), close the lid or lock the screen. Calls and meetings keep counting even when you don't touch the keyboard.
-
-**Categories that sort themselves.** Weft already knows a few hundred common apps and websites. Anything new is categorized by Apple Intelligence, or by another model if you set one up, once per app or site. If Weft gets one wrong, click the category in the log and choose:
-- **Always for …**: remembers your choice for that app or site, including your past activity.
-- **Only this entry**: fixes just that entry.
-
-The **Review** page collects the AI's guesses so you can confirm them in one go.
-
-**A Focus Score.** A 0–100 score for each day. It goes up with long stretches of focused work (25 minutes or more counts as deep work, and a detour of up to 3 minutes doesn't end a stretch) and down when you keep leaving focused work for other things, and with time spent on distractions. Going back and forth between focus apps, like a terminal and the docs in your browser, doesn't count against you. Meetings don't count either way. Click the score to see how it was calculated.
-
-**Your coding agents' work, too.** Claude Code and Codex sessions show up on the timeline next to your own work. Only the time an agent is actually working counts, not the hours a session sits waiting for your next prompt. Time you spend away or distracted while an agent works counts as waiting on it, towards your day. With [HAPI](https://github.com/tiann/hapi) 0.33 or later, agents on your other machines show up too. Adjust it in **Settings → Agents**.
-
-**Focus, meeting and break sessions.** Start a timed session from the menu bar. Breaks can take over the screen, so you actually step away. When a focus session ends, Weft shows how focused you were and asks how it felt to you.
-
-**A gentle distraction blocker.** During a focus session, if you stay on something distracting for 10 seconds (by default Social Media, Entertainment, Gaming, Shopping and Personal), Weft asks whether you meant to. You can go back to work, mark the app or site as *not a distraction*, or switch the blocker off for the rest of the session. You choose which categories count as distracting, and whether you get a full-screen prompt or just a notification.
-
-**Breaks and healthy hours.** Weft reminds you to take a break after an hour of continuous work. Stepping away for 5 minutes or more resets the timer, so it never nags you right after you get back, while a screen that locks for a moment doesn't. Set a daily target and Weft also lets you know when you reach it and when you're working too long.
-
-**Daily and weekly reviews.** For any day, ask for a short on-device review with a suggestion for tomorrow. The weekly report compares tracked, focus, meeting and distracted time with the previous week, and shows time by category and your Focus Score trend. Click a day to open it.
+- **A timeline of your day.** Your work forms parallel streams by category, each with a one-line summary of what you did.
+- **Tracking you don't think about.** Weft follows app, window and tab changes, and stops counting when you step away, close the lid or lock the screen.
+- **Categories that sort themselves.** A few hundred apps and sites are built in; new ones are categorized by Apple Intelligence or a model you choose, and you can correct any of them.
+- **A Focus Score.** A daily 0–100 score for deep work and distractions. Click it to see how it's calculated.
+- **Your coding agents, too.** Claude Code and Codex sessions appear on the timeline, and time spent waiting on them counts towards your day. With [HAPI](https://github.com/tiann/hapi) 0.33 or later, so do agents on your other machines.
+- **Focus, meeting and break sessions** from the menu bar, with an optional blocker that nudges you back when you drift to something distracting.
+- **Healthy hours.** Break reminders, and a daily target that tells you when you've done enough.
+- **Daily and weekly reviews**, with a suggestion for tomorrow and a comparison with last week.
 
 ## Privacy
 
