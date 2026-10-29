@@ -27,7 +27,7 @@ The **Review** page collects the AI's guesses so you can confirm them in one go.
 
 **A Focus Score.** A 0–100 score for each day. It goes up with long stretches of focused work (25 minutes or more counts as deep work, and a detour of up to 3 minutes doesn't end a stretch) and down when you keep leaving focused work for other things, and with time spent on distractions. Going back and forth between focus apps, like a terminal and the docs in your browser, doesn't count against you. Meetings don't count either way. Click the score to see how it was calculated.
 
-**Your coding agents' work, too.** If you use Claude Code or Codex, the timeline shows when each agent was working for you, next to your own activity, with the session's title and what you did meanwhile. Only the time from your prompt to the agent's answer counts, minus any time it spent waiting for your permission, so a session left open for days doesn't look like days of work. While an agent works, time you spend away or on something distracting counts as waiting on it, which adds to your tracked time (the Focus Score still only looks at you). If you run agents through [HAPI](https://github.com/tiann/hapi), Weft also shows the ones working on your other machines. Turn this off or adjust it in **Settings → Agents**.
+**Your coding agents' work, too.** Claude Code and Codex sessions show up on the timeline next to your own work. Only the time an agent is actually working counts, not the hours a session sits waiting for your next prompt. Time you spend away or distracted while an agent works counts as waiting on it, towards your day. With [HAPI](https://github.com/tiann/hapi) 0.33 or later, agents on your other machines show up too. Adjust it in **Settings → Agents**.
 
 **Focus, meeting and break sessions.** Start a timed session from the menu bar. Breaks can take over the screen, so you actually step away. When a focus session ends, Weft shows how focused you were and asks how it felt to you.
 
@@ -41,7 +41,7 @@ The **Review** page collects the AI's guesses so you can confirm them in one go.
 
 - **What Weft records:** the app in front, its window title and, in supported browsers, the address of the current tab.
 - **What it never records:** screenshots, keystrokes or the contents of your screen.
-- **Coding agents:** Weft reads the logs Claude Code and Codex keep on your Mac (`~/.claude/projects`, `~/.codex/sessions`) and keeps only each session's title, project folder and the times its agent worked. Prompts and replies are never stored. With HAPI installed, Weft also asks your own HAPI hub, through the `hapi` command, when agents on your other machines worked; nothing is sent to it.
+- **Coding agents:** Weft reads the logs Claude Code and Codex keep on your Mac and keeps only each session's title, project folder and working times, never prompts or replies. With HAPI, it asks your own hub when your other agents worked.
 - **Where it goes:** nowhere. Categories, summaries and reviews are all produced on your Mac. Your data lives in `~/Library/Application Support/Weft/`. The one exception is a remote model you set up yourself in **Settings → Model**: it receives the apps and sites Weft doesn't know with their window titles, the apps, sites and window titles behind each work stream, and your daily totals. A local server such as Ollama or LM Studio keeps even that on your Mac.
 - **What you control:** In **Settings → Tracking**, you can stop recording window titles, keep only the domain of URLs, and exclude specific apps and websites completely. Pause tracking any time from the menu bar or Settings.
 - **Your data is yours:** You can export everything to CSV from **Settings → Data**. To erase your history, quit Weft and delete the folder above.
@@ -96,6 +96,8 @@ For example, `open "weft://focus?minutes=25"` in Terminal.
 ## Troubleshooting
 
 **Lots of entries are "Uncategorized" or marked with a question mark.** No model is available, so those entries are waiting or only guessed. Apple Intelligence is probably off or still downloading: turn it on in System Settings, or set up another model in **Settings → Model**. Then open **Review** and click **Retry**. You can also categorize entries yourself from the log.
+
+**Agents from HAPI don't show up.** Update HAPI to 0.33 or later, on this Mac and on your hub. If `hapi --version` still shows the old version, reinstall it: `bun remove -g @twsxtd/hapi && bun add -g @twsxtd/hapi`.
 
 **Time I spent reading is missing.** Weft treats you as away after 5 minutes without keyboard or mouse input. If you often read or think for longer stretches, raise the threshold in **Settings → Tracking**.
 
