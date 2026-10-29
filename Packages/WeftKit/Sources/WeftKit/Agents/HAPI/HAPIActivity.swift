@@ -115,6 +115,24 @@ public enum HAPIImporter {
         }
     }
 
+    /// Keeps imported work outside the turns already read locally. A span crossing a
+    /// coverage boundary is split, not discarded; an open end belongs only to its last fragment.
+    static func excluding(_ coverage: [DateInterval], from pieces: [Piece]) -> [Piece] {
+        let covered = AgentMetrics.union(coverage)
+        return pieces.flatMap { piece in
+            let interval = DateInterval(start: piece.start, end: max(piece.start, piece.end))
+            return AgentMetrics.subtract(covered, from: interval).enumerated().map { index, interval in
+                var retained = piece
+                retained.start = interval.start
+                retained.end = interval.end
+                retained.isOpen = piece.isOpen && interval.end == piece.end
+                // The stored wait total has no timestamps; retain it once, never per fragment.
+                retained.waitedOnUser = index == 0 ? piece.waitedOnUser : 0
+                return retained
+            }
+        }
+    }
+
     private static func record(_ session: HAPIActivityReport.Session, flavor: String, isLocal: Bool, now: Date,
                                config: AgentTurnConfig) -> Session {
         func date(_ milliseconds: Double) -> Date { Date(timeIntervalSince1970: milliseconds / 1000) }

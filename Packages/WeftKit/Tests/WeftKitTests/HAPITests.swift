@@ -290,3 +290,184 @@ struct HAPISyncTests {
         #expect(fake.commands.isEmpty)
     }
 }
+
+extension HAPISyncTests {
+    @Test func linkingKeepsImportedPrefixBeforeNativeCoverage() async throws {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "p1", turns: [(0, 600)]),
+        ]))
+        await sync.sync(now: Fixture.date(1_000))
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 600)
+
+        // The available native history starts halfway through the HAPI span.
+        preferences.agentPiEnabled = true
+        container.mainContext.insert(AgentSession(key: "pi:p1", source: .pi, flavor: "pi", agentSessionID: "p1", lastActivity: Fixture.date(600)))
+        container.mainContext.insert(AgentSpan(key: "p1/t#0", sessionKey: "pi:p1", turnID: "p1/t", fileKey: "/p1",
+            turnStart: Fixture.date(300), start: Fixture.date(300), end: Fixture.date(600),
+            isOpen: false, trigger: .user, isSubagent: false, waitedOnUser: 0))
+        await sync.sync(now: Fixture.date(1_100))
+        let total = AgentMetrics.agentHours(agents.samples(spans))
+        let imported = spans.filter { $0.sessionKey == "hapi:h1" }.map { DateInterval(start: $0.start, end: $0.end) }
+        #expect(total == 600)
+        #expect(imported == [DateInterval(start: Fixture.date(0), end: Fixture.date(300))])
+    }
+
+    @Test func linkingKeepsImportedWorkMissingFromStaleLocalHistory() async throws {
+        // Native tracking previously read the first turn; later work was imported while disabled.
+        container.mainContext.insert(AgentSession(key: "pi:p1", source: .pi, flavor: "pi", agentSessionID: "p1", lastActivity: Fixture.date(300)))
+        container.mainContext.insert(AgentSpan(key: "p1/t#0", sessionKey: "pi:p1", turnID: "p1/t", fileKey: "/p1",
+            turnStart: Fixture.date(0), start: Fixture.date(0), end: Fixture.date(300),
+            isOpen: false, trigger: .user, isSubagent: false, waitedOnUser: 0))
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "p1", turns: [(0, 300), (900, 1_200)]),
+        ]))
+        await sync.sync(now: Fixture.date(2_000))
+
+        // Re-enable tracking, but its log is no longer available (or outside the backfill window).
+        preferences.agentPiEnabled = true
+        await agents.refresh()
+        await sync.sync(now: Fixture.date(2_100))
+        let total = AgentMetrics.agentHours(agents.samples(spans))
+        let imported = spans.filter { $0.sessionKey == "hapi:h1" }.map { DateInterval(start: $0.start, end: $0.end) }
+        #expect(total == 600)
+        #expect(imported == [DateInterval(start: Fixture.date(900), end: Fixture.date(1_200))])
+        agents.stop()
+    }
+}
+
+extension HAPIImporterTests {
+    @Test func coverageSplitsPiecesWithoutDuplicatingMetadata() {
+        let piece = HAPIImporter.Piece(turnID: "turn", turnStart: Fixture.date(0), start: Fixture.date(0),
+                                       end: Fixture.date(600), isOpen: true, trigger: .system, waitedOnUser: 60)
+        let coverage = [DateInterval(start: Fixture.date(300), end: Fixture.date(400)),
+                        DateInterval(start: Fixture.date(100), end: Fixture.date(200))]
+        let retained = HAPIImporter.excluding(coverage, from: [piece])
+        #expect(retained.map(\.start) == [Fixture.date(0), Fixture.date(200), Fixture.date(400)])
+        #expect(retained.map(\.end) == [Fixture.date(100), Fixture.date(300), Fixture.date(600)])
+        #expect(retained.map(\.isOpen) == [false, false, true])
+        #expect(retained.map(\.waitedOnUser) == [60, 0, 0])
+        #expect(retained.allSatisfy { $0.turnID == piece.turnID && $0.turnStart == piece.turnStart && $0.trigger == .system })
+        #expect(HAPIImporter.excluding(coverage, from: retained) == retained)
+        #expect(HAPIImporter.excluding([], from: [piece]) == [piece])
+        #expect(HAPIImporter.excluding([DateInterval(start: piece.start, end: piece.end)], from: [piece]).isEmpty)
+        let prefix = HAPIImporter.excluding([DateInterval(start: Fixture.date(300), end: piece.end)], from: [piece])
+        #expect(prefix.map(\.isOpen) == [false])
+    }
+}
+
+extension HAPISyncTests {
+    private func addLocalTurn(_ id: String, start: Double, end: Double) {
+        container.mainContext.insert(AgentSpan(key: "p1/\(id)#0", sessionKey: "pi:p1", turnID: "p1/\(id)", fileKey: "/p1",
+                                               turnStart: Fixture.date(start), start: Fixture.date(start), end: Fixture.date(end),
+                                               isOpen: false, trigger: .user, isSubagent: false, waitedOnUser: 0))
+    }
+
+    @Test func linkingSplitsHistoryIdempotentlyAsMoreTurnsAreRead() async throws {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "p1", turns: [(0, 1_200)]),
+        ]))
+        await sync.sync(now: Fixture.date(2_000))
+        preferences.agentPiEnabled = true
+        container.mainContext.insert(AgentSession(key: "pi:p1", source: .pi, flavor: "pi", agentSessionID: "p1", lastActivity: Fixture.date(600)))
+        addLocalTurn("first", start: 300, end: 600)
+        await sync.sync(now: Fixture.date(2_100))
+        var imported = spans.filter { $0.sessionKey == "hapi:h1" }
+        #expect(imported.map(\.start) == [Fixture.date(0), Fixture.date(600)])
+        #expect(imported.map(\.end) == [Fixture.date(300), Fixture.date(1_200)])
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 1_200)
+        #expect(AgentMetrics.maxConcurrency(agents.samples(spans)) == 1)
+        let keys = imported.map(\.key)
+        await sync.sync(now: Fixture.date(2_200))
+        #expect(spans.filter { $0.sessionKey == "hapi:h1" }.map(\.key) == keys)
+
+        addLocalTurn("next", start: 600, end: 900)
+        await sync.sync(now: Fixture.date(2_300))
+        imported = spans.filter { $0.sessionKey == "hapi:h1" }
+        #expect(imported.map(\.start) == [Fixture.date(0), Fixture.date(900)])
+        #expect(imported.map(\.end) == [Fixture.date(300), Fixture.date(1_200)])
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 1_200)
+        addLocalTurn("earlier", start: 0, end: 300)
+        addLocalTurn("later", start: 900, end: 1_200)
+        await sync.sync(now: Fixture.date(2_400))
+        #expect(spans.allSatisfy { $0.sessionKey == "pi:p1" })
+        #expect(sessions.map(\.key) == ["pi:p1"])
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 1_200)
+    }
+
+    @Test func linkingKeepsGapsBetweenLocallyReadTurns() async throws {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "p1", turns: [(0, 1_200)]),
+        ]))
+        await sync.sync(now: Fixture.date(2_000))
+        preferences.agentPiEnabled = true
+        container.mainContext.insert(AgentSession(key: "pi:p1", source: .pi, flavor: "pi", agentSessionID: "p1", lastActivity: Fixture.date(1_200)))
+        addLocalTurn("first", start: 0, end: 300)
+        addLocalTurn("last", start: 900, end: 1_200)
+        await sync.sync(now: Fixture.date(2_100))
+        let imported = spans.filter { $0.sessionKey == "hapi:h1" }
+        #expect(imported.map(\.start) == [Fixture.date(300)])
+        #expect(imported.map(\.end) == [Fixture.date(900)])
+        #expect(sessions.first { $0.key == "hapi:h1" }?.lastActivity == Fixture.date(900))
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 1_200)
+    }
+
+    @Test func subagentWaitsDoNotEraseTheParentsImportedWork() async throws {
+        preferences.agentClaudeEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "claude", machine: "local-machine", agentSessionID: "p1", turns: [(0, 400)]),
+        ]))
+        await sync.sync(now: Fixture.date(1_000))
+        preferences.agentClaudeEnabled = true
+        container.mainContext.insert(AgentSession(key: "claude:p1", source: .claudeCode, flavor: "claude", agentSessionID: "p1", lastActivity: Fixture.date(300)))
+        container.mainContext.insert(AgentSpan(key: "p1/child#0", sessionKey: "claude:p1", turnID: "p1/child", fileKey: "/child",
+                                               turnStart: Fixture.date(100), start: Fixture.date(100), end: Fixture.date(150),
+                                               isOpen: false, trigger: .user, isSubagent: true, waitedOnUser: 0))
+        container.mainContext.insert(AgentSpan(key: "p1/child#1", sessionKey: "claude:p1", turnID: "p1/child", fileKey: "/child",
+                                               turnStart: Fixture.date(100), start: Fixture.date(250), end: Fixture.date(300),
+                                               isOpen: false, trigger: .user, isSubagent: true, waitedOnUser: 0))
+        await sync.sync(now: Fixture.date(1_100))
+        let imported = spans.filter { $0.sessionKey == "hapi:h1" }
+        #expect(imported.map(\.start) == [Fixture.date(0), Fixture.date(150), Fixture.date(300)])
+        #expect(imported.map(\.end) == [Fixture.date(100), Fixture.date(250), Fixture.date(400)])
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 400)
+    }
+}
+
+extension HAPISyncTests {
+    @Test func mainTurnCoverageAlsoRemovesItsWaitsFromImportedTime() async throws {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "p1", turns: [(0, 100)]),
+        ]))
+        await sync.sync(now: Fixture.date(1_000))
+        preferences.agentPiEnabled = true
+        container.mainContext.insert(AgentSession(key: "pi:p1", source: .pi, flavor: "pi", agentSessionID: "p1", lastActivity: Fixture.date(100)))
+        for (index, start, end) in [(0, 0.0, 20.0), (1, 80.0, 100.0)] {
+            container.mainContext.insert(AgentSpan(key: "p1/t#\(index)", sessionKey: "pi:p1", turnID: "p1/t", fileKey: "/p1",
+                                                   turnStart: Fixture.date(0), start: Fixture.date(start), end: Fixture.date(end),
+                                                   isOpen: false, trigger: .user, isSubagent: false, waitedOnUser: index == 0 ? 60 : 0))
+        }
+        await sync.sync(now: Fixture.date(1_100))
+        #expect(spans.allSatisfy { $0.sessionKey == "pi:p1" })
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 40)
+        #expect(spans.reduce(0) { $0 + $1.waitedOnUser } == 60)
+    }
+
+    @Test func linkingWithoutLocalSpansLeavesImportedHistoryAlone() async throws {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "p1", turns: [(0, 600)]),
+        ]))
+        await sync.sync(now: Fixture.date(1_000))
+        preferences.agentPiEnabled = true
+        container.mainContext.insert(AgentSession(key: "pi:p1", source: .pi, flavor: "pi", agentSessionID: "p1", lastActivity: Fixture.date(600)))
+        await sync.sync(now: Fixture.date(1_100))
+        #expect(spans.map(\.sessionKey) == ["hapi:h1"])
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 600)
+        #expect(Set(sessions.map(\.key)) == ["hapi:h1", "pi:p1"])
+    }
+}

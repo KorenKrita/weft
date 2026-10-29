@@ -224,7 +224,7 @@ public final class HAPISync {
             case .link(let localKey, let hapiID):
                 let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == localKey })))?.first
                 session?.hapiSessionID = hapiID
-                if session != nil { dropImportedCopy(of: "hapi:\(hapiID)", readFrom: localKey) }
+                if session != nil { reconcileImportedCopy(of: "hapi:\(hapiID)", readFrom: localKey) }
             case .record(let imported):
                 store(imported)
                 if imported.isWorking { working.insert(imported.key) }
@@ -235,31 +235,45 @@ public final class HAPISync {
         agents.spansChanged()
     }
 
-    /// Removes what HAPI imported of a session before Weft read its log here, e.g. before
-    /// pi's logs were read. Spans from the time the log covers are the same work again; older
-    /// ones stay, since the log no longer has them.
-    private func dropImportedCopy(of importedKey: String, readFrom localKey: String) {
-        var firstLocal = FetchDescriptor<AgentSpan>(predicate: #Predicate { $0.sessionKey == localKey }, sortBy: [SortDescriptor(\.turnStart)])
-        firstLocal.fetchLimit = 1
-        guard let covered = (try? modelContext.fetch(firstLocal))?.first?.turnStart else { return }
-        let imported = (try? modelContext.fetch(FetchDescriptor<AgentSpan>(predicate: #Predicate { $0.sessionKey == importedKey }))) ?? []
-        let copies = imported.filter { $0.end > covered }
-        for span in copies { modelContext.delete(span) }
-        if copies.count == imported.count,
-           let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == importedKey })))?.first {
-            modelContext.delete(session)
+    /// Reconciles an earlier HAPI import only within turns actually read locally, not the
+    /// unbounded suffix after the first turn. Logs may be stale, missing, or only partly read.
+    private func reconcileImportedCopy(of importedKey: String, readFrom localKey: String) {
+        guard let imported = try? modelContext.fetch(FetchDescriptor<AgentSpan>(
+            predicate: #Predicate { $0.sessionKey == importedKey }, sortBy: [SortDescriptor(\.start)])),
+              !imported.isEmpty,
+              let local = try? modelContext.fetch(FetchDescriptor<AgentSpan>(predicate: #Predicate { $0.sessionKey == localKey }))
+        else { return }
+        let coverage = local.map { span in
+            // Main turns cover their waits and silences too. A subagent's wait says nothing
+            // about whether its parent was working, so use only its actual working pieces.
+            let start = span.isSubagent ? span.start : span.turnStart
+            return DateInterval(start: start, end: max(start, span.end))
+        }
+        let pieces = imported.map { span in
+            HAPIImporter.Piece(turnID: span.turnID, turnStart: span.turnStart, start: span.start, end: span.end,
+                               isOpen: span.isOpen, trigger: span.trigger, waitedOnUser: span.waitedOnUser)
+        }
+        let retained = HAPIImporter.excluding(coverage, from: pieces)
+        guard retained != pieces else { return }
+        replaceSpans(retained, sessionKey: importedKey, turnIDs: Array(Set(imported.map(\.turnID))))
+        if let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == importedKey })))?.first {
+            if let last = retained.map(\.end).max() {
+                session.lastActivity = last
+            } else {
+                modelContext.delete(session)
+            }
         }
     }
 
     /// Replaces the spans of the turns HAPI reported; older turns stay as they were.
-    private func store(_ imported: HAPIImporter.Session) {
-        let fileKey = imported.key
-        let ids = imported.turnIDs
+    private func replaceSpans(_ pieces: [HAPIImporter.Piece], sessionKey: String, turnIDs: [String]) {
+        let fileKey = sessionKey
+        let ids = turnIDs
         let existing = (try? modelContext.fetch(FetchDescriptor<AgentSpan>(
             predicate: #Predicate { $0.fileKey == fileKey && ids.contains($0.turnID) }))) ?? []
         var stale = Dictionary(existing.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
         var indexByTurn: [String: Int] = [:]
-        for piece in imported.pieces {
+        for piece in pieces {
             let index = indexByTurn[piece.turnID, default: 0]
             indexByTurn[piece.turnID] = index + 1
             let key = "\(piece.turnID)#\(index)"
@@ -269,13 +283,16 @@ public final class HAPISync {
                 span.isOpen = piece.isOpen
                 span.waitedOnUser = piece.waitedOnUser
             } else {
-                modelContext.insert(AgentSpan(key: key, sessionKey: imported.key, turnID: piece.turnID, fileKey: fileKey,
+                modelContext.insert(AgentSpan(key: key, sessionKey: sessionKey, turnID: piece.turnID, fileKey: fileKey,
                                               turnStart: piece.turnStart, start: piece.start, end: piece.end, isOpen: piece.isOpen,
                                               trigger: piece.trigger, isSubagent: false, waitedOnUser: piece.waitedOnUser))
             }
         }
         for span in stale.values { modelContext.delete(span) }
+    }
 
+    private func store(_ imported: HAPIImporter.Session) {
+        replaceSpans(imported.pieces, sessionKey: imported.key, turnIDs: imported.turnIDs)
         let key = imported.key
         let last = imported.pieces.map(\.end).max()
         let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == key })))?.first ?? {
