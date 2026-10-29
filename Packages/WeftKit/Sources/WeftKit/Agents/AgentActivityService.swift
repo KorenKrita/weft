@@ -13,6 +13,8 @@ public final class AgentActivityService {
     public private(set) var lastScan: Date?
     /// Sessions working right now; their open spans run up to the present.
     public private(set) var liveSessions: Set<String> = []
+    /// Called after native spans and turn coverage have been saved, including reimports.
+    @ObservationIgnored public var onScan: (() -> Void)?
 
     @ObservationIgnored private let modelContext: ModelContext
     @ObservationIgnored private let preferences: Preferences
@@ -34,6 +36,7 @@ public final class AgentActivityService {
     private let recentActivity: TimeInterval = 5 * 60
     /// FSEvents batches changes this long; an agent writes its log many times a second.
     private let watchLatency: TimeInterval = 15
+    private let coverageVersion = 1
 
     public init(modelContext: ModelContext, preferences: Preferences, roots: AgentLogRoots = .standard) {
         self.modelContext = modelContext
@@ -191,6 +194,7 @@ public final class AgentActivityService {
                 queuedReset = false
                 try? modelContext.delete(model: AgentSpan.self, where: #Predicate { $0.fileKey.starts(with: "/") })
                 try? modelContext.delete(model: AgentLogCursor.self)
+                try? modelContext.delete(model: AgentTurnCoverage.self)
                 try? modelContext.save()
                 waitingCache = nil
             }
@@ -224,8 +228,9 @@ public final class AgentActivityService {
                     return file.modified >= since ? AgentLogScanner.Job(file: file, offset: 0, sessionKey: nil) : nil
                 }
                 let replaced = cursor.fileID != file.fileID || file.size < cursor.resumeOffset
-                if !replaced, cursor.size == file.size || cursor.skipped { return nil }
-                return AgentLogScanner.Job(file: file, offset: replaced ? 0 : cursor.resumeOffset,
+                let needsCoverage = cursor.coverageVersion != coverageVersion
+                if !replaced, !needsCoverage, cursor.size == file.size || cursor.skipped { return nil }
+                return AgentLogScanner.Job(file: file, offset: replaced || needsCoverage ? 0 : cursor.resumeOffset,
                                            sessionKey: replaced ? nil : cursor.sessionKey)
             }
             // Newest first, so today fills in before last month.
@@ -251,6 +256,7 @@ public final class AgentActivityService {
             try? modelContext.save()
             waitingCache = nil
             isScanning = false
+            onScan?()
         }
         lastScan = .now
         refreshLive()
@@ -278,6 +284,7 @@ public final class AgentActivityService {
             cursor.sessionKey = result.sessionKey
             cursor.skipped = result.meta.skip
             cursor.scannedAt = .now
+            cursor.coverageVersion = coverageVersion
         }
 
         // From the start, everything this file gave before is replaced; otherwise only the
@@ -292,6 +299,7 @@ public final class AgentActivityService {
         }
         var stale = Dictionary(existing.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
 
+        storeCoverage(result)
         let turns = result.turns.filter(\.hasActivity)
         for turn in turns {
             let pieces = AgentTurnBuilder.pieces(turn, config: config)
@@ -343,6 +351,30 @@ public final class AgentActivityService {
         if record.projectPath == nil { record.projectPath = result.meta.cwd }
         if !result.meta.isSubagent, let title = result.meta.title,
            !result.meta.titleFromPrefix || record.title == nil { record.update(\.title, to: title) }
+    }
+
+    /// Replace the re-read part of the log, including turns with no surviving work pieces.
+    /// Subagents contribute only their working spans, never coverage of a parent's waits.
+    private func storeCoverage(_ result: AgentLogScanner.Result) {
+        let path = result.file.path
+        let offset = result.offset
+        let existing = (try? modelContext.fetch(FetchDescriptor<AgentTurnCoverage>(
+            predicate: #Predicate { $0.fileKey == path && $0.offset >= offset }))) ?? []
+        var stale = Dictionary(existing.map { ($0.turnID, $0) }, uniquingKeysWith: { first, _ in first })
+        if !result.meta.isSubagent {
+            for turn in result.turns where turn.hasActivity {
+                if let coverage = stale.removeValue(forKey: turn.id) {
+                    coverage.update(\.sessionKey, to: result.sessionKey)
+                    coverage.update(\.offset, to: turn.offset)
+                    coverage.update(\.start, to: turn.start)
+                    coverage.update(\.end, to: turn.end)
+                } else {
+                    modelContext.insert(AgentTurnCoverage(sessionKey: result.sessionKey, fileKey: path,
+                        turnID: turn.id, offset: turn.offset, start: turn.start, end: turn.end))
+                }
+            }
+        }
+        for coverage in stale.values { modelContext.delete(coverage) }
     }
 
     private func nameCodexSessions(_ keys: Set<String>) {

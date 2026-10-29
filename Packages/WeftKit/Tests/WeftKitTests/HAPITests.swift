@@ -193,6 +193,8 @@ struct HAPISyncTests {
         let fake = fake
         sync = HAPISync(modelContext: container.mainContext, preferences: preferences, agents: agents, home: home,
                         runner: { _, arguments in fake.run(arguments) })
+        let sync = sync
+        agents.onScan = { [weak sync] in sync?.reconcileLocalHistory() }
         fake.answer("--version", stdout: Data("hapi version: 0.32.0\n".utf8))
     }
 
@@ -469,5 +471,181 @@ extension HAPISyncTests {
         #expect(spans.map(\.sessionKey) == ["hapi:h1"])
         #expect(AgentMetrics.agentHours(agents.samples(spans)) == 600)
         #expect(Set(sessions.map(\.key)) == ["hapi:h1", "pi:p1"])
+    }
+}
+
+extension HAPISyncTests {
+    @Test func startupReconcilesHistoryReadAfterTheInitialHAPIReport() async throws {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("old-pi", flavor: "pi", machine: "local-machine", agentSessionID: "session-1", turns: [(0, 600)]),
+        ]))
+        await sync.sync(now: Fixture.date(10_000))
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 600)
+
+        // New process after upgrade: the first full HAPI query finishes before the native scan.
+        let fake = fake
+        let startup = HAPISync(modelContext: container.mainContext, preferences: preferences, agents: agents, home: home,
+                               runner: { _, arguments in fake.run(arguments) })
+        preferences.agentPiEnabled = true
+        await startup.sync(now: Fixture.date(10_300))
+        let folder = home.appending(path: ".pi/agent/sessions/--project--")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Fixture.lines([Pi.header(), Pi.prompt(at: 0, id: "prompt"), Pi.assistant(at: 600, stop: "stop")])
+            .write(to: folder.appending(path: "session.jsonl"))
+        await agents.refresh()
+
+        // Subsequent queries start at lastSuccess - 15 minutes, so the old session is absent.
+        fake.answer("usage", stdout: HAPIFixture.report([]))
+        await startup.sync(now: Fixture.date(10_600))
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 600)
+        #expect(spans.allSatisfy { $0.sessionKey == "pi:session-1" })
+        agents.stop()
+    }
+
+    @Test func terminalLocalWaitIsNotKeptAsImportedWork() async throws {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "session-1", turns: [(0, 600)]),
+        ]))
+        await sync.sync(now: Fixture.date(1_000))
+        preferences.agentPiEnabled = true
+        let folder = home.appending(path: ".pi/agent/sessions/--project--")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Fixture.lines([
+            Pi.header(), Pi.prompt(at: 0, id: "prompt"), Pi.assistant(at: 10, stop: "toolUse"),
+            Pi.question(at: 600, duration: 590), Pi.assistant(at: 600, stop: "aborted"),
+        ]).write(to: folder.appending(path: "session.jsonl"))
+        await agents.refresh()
+        let local = spans.filter { $0.sessionKey == "pi:session-1" }
+        #expect(AgentMetrics.agentHours(agents.samples(local)) == 10)
+        #expect(sessions.first { $0.key == "pi:session-1" }?.lastActivity == Fixture.date(600))
+        await sync.sync(now: Fixture.date(1_100))
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 10)
+        #expect(spans.allSatisfy { $0.sessionKey == "pi:session-1" })
+        agents.stop()
+    }
+}
+
+extension HAPISyncTests {
+    @discardableResult
+    private func writePi(_ lines: [String]) throws -> URL {
+        let folder = home.appending(path: ".pi/agent/sessions/--project--")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appending(path: "session.jsonl")
+        try Fixture.lines([Pi.header()] + lines).write(to: file)
+        return file
+    }
+
+    private func importPi(through end: Double) async {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "session-1", turns: [(0, end)]),
+        ]))
+        await sync.sync(now: Fixture.date(end + 1_000))
+        preferences.agentPiEnabled = true
+        // The native session does not exist yet; its association must survive this report.
+        await sync.sync(now: Fixture.date(end + 1_100))
+    }
+
+    @Test func nativeScanReconcilesWithoutAnotherHAPIRequest() async throws {
+        await importPi(through: 600)
+        preferences.agentHAPIEnabled = false
+        fake.answer("usage", status: 1, stderr: "offline")
+        try writePi([Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 600, stop: "stop")])
+        await agents.refresh()
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 600)
+        #expect(spans.allSatisfy { $0.sessionKey == "pi:session-1" })
+        #expect(sessions.first?.hapiSessionID == "h1")
+        #expect(fake.commands == ["--version", "usage", "usage"])
+        agents.stop()
+    }
+
+    @Test func pendingLinkSurvivesANewSyncInstanceAndAnEmptyReport() async throws {
+        await importPi(through: 600)
+        agents.onScan = nil
+        try writePi([Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 600, stop: "stop")])
+        await agents.refresh()
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 1_200)
+        let fake = fake
+        let restarted = HAPISync(modelContext: container.mainContext, preferences: preferences, agents: agents, home: home,
+                                 runner: { _, arguments in fake.run(arguments) })
+        fake.answer("usage", stdout: HAPIFixture.report([]))
+        await restarted.sync(now: Fixture.date(10_000))
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 600)
+        #expect(sessions.first?.hapiSessionID == "h1")
+        agents.stop()
+    }
+
+    @Test func scansReconcileAdditionalCoverageOutsideTheReportWindow() async throws {
+        await importPi(through: 1_200)
+        let file = try writePi([Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 300, stop: "stop")])
+        await agents.refresh()
+        #expect(spans.filter { $0.sessionKey == "hapi:h1" }.map(\.start) == [Fixture.date(300)])
+        fake.answer("usage", stdout: HAPIFixture.report([]))
+        let handle = try FileHandle(forWritingTo: file)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Fixture.lines([Pi.prompt(at: 900, id: "q"), Pi.assistant(at: 1_200, stop: "stop")]))
+        try handle.close()
+        await agents.refresh()
+        await sync.sync(now: Fixture.date(10_000))
+        let imported = spans.filter { $0.sessionKey == "hapi:h1" }
+        #expect(imported.map(\.start) == [Fixture.date(300)])
+        #expect(imported.map(\.end) == [Fixture.date(900)])
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 1_200)
+        #expect(AgentMetrics.maxConcurrency(agents.samples(spans)) == 1)
+        agents.stop()
+    }
+
+    @Test(arguments: [0.0, 0.5])
+    func trailingWaitCoverageIncludesDiscardedFinalPieces(finalPiece: Double) async throws {
+        await importPi(through: 600 + finalPiece)
+        try writePi([Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 10, stop: "toolUse"),
+                     Pi.question(at: 600, duration: 590), Pi.assistant(at: 600 + finalPiece, stop: "aborted")])
+        await agents.refresh()
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 10)
+        #expect(spans.allSatisfy { $0.sessionKey == "pi:session-1" })
+        agents.stop()
+    }
+
+    @Test func aTurnWithOnlyWaitsStillSupersedesImportedWork() async throws {
+        await importPi(through: 600)
+        try writePi([Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 0, stop: "toolUse"),
+                     Pi.question(at: 600, duration: 600), Pi.assistant(at: 600, stop: "aborted")])
+        await agents.refresh()
+        #expect(spans.isEmpty)
+        #expect(sessions.map(\.key) == ["pi:session-1"])
+        #expect(try container.mainContext.fetchCount(FetchDescriptor<AgentTurnCoverage>()) == 1)
+        agents.stop()
+    }
+
+    @Test func trailingSilenceIsCoveredButUnreadSuffixIsNot() async throws {
+        await importPi(through: 4_000)
+        try writePi([Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 10, stop: "toolUse"),
+                     Pi.assistant(at: 3_600, stop: "stop")])
+        await agents.refresh()
+        let imported = spans.filter { $0.sessionKey == "hapi:h1" }
+        #expect(imported.map(\.start) == [Fixture.date(3_600)])
+        #expect(imported.map(\.end) == [Fixture.date(4_000)])
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 410)
+        agents.stop()
+    }
+
+    @Test func legacyNativeAssociationsDoNotNeedAnotherReport() async throws {
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "session-1", turns: [(0, 600)]),
+        ]))
+        await sync.sync(now: Fixture.date(1_000))
+        let local = AgentSession(key: "pi:session-1", source: .pi, flavor: "pi", agentSessionID: "session-1", lastActivity: Fixture.date(600))
+        local.hapiSessionID = "h1"
+        container.mainContext.insert(local)
+        preferences.agentPiEnabled = true
+        try writePi([Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 600, stop: "stop")])
+        await agents.refresh()
+        #expect(spans.allSatisfy { $0.sessionKey == "pi:session-1" })
+        #expect(AgentMetrics.agentHours(agents.samples(spans)) == 600)
+        #expect(try container.mainContext.fetchCount(FetchDescriptor<HAPISessionLink>()) == 1)
+        agents.stop()
     }
 }

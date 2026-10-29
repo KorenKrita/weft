@@ -208,11 +208,16 @@ public final class HAPISync {
 
     // MARK: Storing
 
+    private var localFlavors: Set<String> {
+        guard preferences.agentTrackingEnabled else { return [] }
+        var flavors: Set<String> = []
+        if preferences.agentClaudeEnabled { flavors.insert("claude") }
+        if preferences.agentCodexEnabled { flavors.insert("codex") }
+        if preferences.agentPiEnabled { flavors.insert("pi") }
+        return flavors
+    }
+
     private func apply(_ report: HAPIActivityReport, now: Date) {
-        var localFlavors: Set<String> = []
-        if preferences.agentClaudeEnabled { localFlavors.insert("claude") }
-        if preferences.agentCodexEnabled { localFlavors.insert("codex") }
-        if preferences.agentPiEnabled { localFlavors.insert("pi") }
         let host = ProcessInfo.processInfo.hostName.lowercased()
         let localHosts: Set<String> = [host, host.hasSuffix(".local") ? String(host.dropLast(6)) : host + ".local"]
         let decisions = HAPIImporter.plan(report, localFlavors: localFlavors, localHosts: localHosts, now: now,
@@ -223,15 +228,56 @@ public final class HAPISync {
             switch decision {
             case .link(let localKey, let hapiID):
                 let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == localKey })))?.first
-                session?.hapiSessionID = hapiID
-                if session != nil { reconcileImportedCopy(of: "hapi:\(hapiID)", readFrom: localKey) }
+                session?.update(\.hapiSessionID, to: hapiID)
+                rememberLink(hapiID: hapiID, localKey: localKey)
             case .record(let imported):
                 store(imported)
                 if imported.isWorking { working.insert(imported.key) }
             }
         }
-        try? modelContext.save()
+        reconcileLocalHistory()
         agents.setRemoteLive(working)
+    }
+
+    private func rememberLink(hapiID: String, localKey: String) {
+        if let link = (try? modelContext.fetch(FetchDescriptor<HAPISessionLink>(
+            predicate: #Predicate { $0.hapiID == hapiID })))?.first {
+            link.update(\.localKey, to: localKey)
+        } else {
+            modelContext.insert(HAPISessionLink(hapiID: hapiID, localKey: localKey))
+        }
+    }
+
+    /// Called after native scans as well as reports. A completed session may never appear
+    /// in another incremental report, and the hub need not be reachable to finish cleanup.
+    public func reconcileLocalHistory() {
+        let stored = (try? modelContext.fetch(FetchDescriptor<HAPISessionLink>())) ?? []
+        var links = Dictionary(stored.map { ($0.hapiID, $0) }, uniquingKeysWith: { first, _ in first })
+        // Preserve associations made by versions that stored them only on native sessions.
+        let hapiSource = AgentSource.hapi.rawValue
+        let legacy = (try? modelContext.fetch(FetchDescriptor<AgentSession>(
+            predicate: #Predicate { $0.sourceRaw != hapiSource && $0.hapiSessionID != nil }))) ?? []
+        for session in legacy {
+            if let id = session.hapiSessionID, links[id] == nil {
+                let link = HAPISessionLink(hapiID: id, localKey: session.key)
+                modelContext.insert(link)
+                links[id] = link
+            }
+        }
+        let enabled = localFlavors
+        let activeLinks = links.values.filter { enabled.contains(String($0.localKey.prefix { $0 != ":" })) }
+        let keys = Array(Set(activeLinks.flatMap { [$0.localKey, "hapi:\($0.hapiID)"] }))
+        // Most scans have no HAPI work to reconcile; avoid loading unrelated session history.
+        let sessions = keys.isEmpty ? [] : (try? modelContext.fetch(FetchDescriptor<AgentSession>(
+            predicate: #Predicate { keys.contains($0.key) }))) ?? []
+        let byKey = Dictionary(sessions.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
+        for link in activeLinks {
+            guard let session = byKey[link.localKey] else { continue }
+            if session.hapiSessionID == nil { session.update(\.hapiSessionID, to: link.hapiID) }
+            let importedKey = "hapi:\(link.hapiID)"
+            if byKey[importedKey] != nil { reconcileImportedCopy(of: importedKey, readFrom: link.localKey) }
+        }
+        try? modelContext.save()
         agents.spansChanged()
     }
 
@@ -243,9 +289,12 @@ public final class HAPISync {
               !imported.isEmpty,
               let local = try? modelContext.fetch(FetchDescriptor<AgentSpan>(predicate: #Predicate { $0.sessionKey == localKey }))
         else { return }
-        let coverage = local.map { span in
-            // Main turns cover their waits and silences too. A subagent's wait says nothing
-            // about whether its parent was working, so use only its actual working pieces.
+        let turns = (try? modelContext.fetch(FetchDescriptor<AgentTurnCoverage>(
+            predicate: #Predicate { $0.sessionKey == localKey }))) ?? []
+        let coverage = turns.map { DateInterval(start: $0.start, end: max($0.start, $0.end)) } + local.map { span in
+            // Older, unavailable logs may have spans but no saved turn boundaries. Keep the
+            // conservative span-based coverage for those; never extend it to a session's end.
+            // Subagent waits say nothing about their parent's work, so only their pieces count.
             let start = span.isSubagent ? span.start : span.turnStart
             return DateInterval(start: start, end: max(start, span.end))
         }
