@@ -174,7 +174,7 @@ public final class HAPISync {
                 status = .cliTooOld(version: version)
             } else {
                 let line = stderr.split(separator: "\n").last { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-                status = .failed(line.map { String($0).replacingOccurrences(of: "hapi usage: ", with: "") } ?? "hapi exited with status \(output.status)")
+                status = .failed(line.map { String($0).replacingOccurrences(of: "hapi usage: ", with: "") } ?? String(localized: "hapi exited with status \(Int(output.status))", bundle: .module))
             }
         }
         return false
@@ -198,10 +198,10 @@ public final class HAPISync {
 
     private static func describe(_ error: any Error) -> String {
         switch error {
-        case ProcessRunnerError.timedOut: "hapi didn't answer within a minute."
-        case ProcessRunnerError.launchFailed(let reason): "Couldn't run hapi: \(reason)"
-        case HAPIReportError.unsupportedSchema(let schema): "This hapi reports \(schema), which Weft doesn't read yet."
-        case HAPIReportError.unreadable: "Couldn't read what hapi reported."
+        case ProcessRunnerError.timedOut: String(localized: "hapi didn't answer within a minute.", bundle: .module)
+        case ProcessRunnerError.launchFailed(let reason): String(localized: "Couldn't run hapi: \(reason)", bundle: .module)
+        case HAPIReportError.unsupportedSchema(let schema): String(localized: "This hapi reports \(schema), which Weft doesn't read yet.", bundle: .module)
+        case HAPIReportError.unreadable: String(localized: "Couldn't read what hapi reported.", bundle: .module)
         default: error.localizedDescription
         }
     }

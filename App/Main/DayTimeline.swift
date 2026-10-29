@@ -270,9 +270,9 @@ struct DayTimeline: View {
 
     private func hiddenText(streams: Int, agents: Int) -> String {
         var parts: [String] = []
-        if streams > 0 { parts.append("\(streams) short stream\(streams == 1 ? "" : "s")") }
-        if agents > 0 { parts.append("\(agents) short agent run\(agents == 1 ? "" : "s")") }
-        return parts.joined(separator: " and ") + " under 10 minutes not shown."
+        if streams > 0 { parts.append(streams == 1 ? String(localized: "1 short stream") : String(localized: "\(streams) short streams")) }
+        if agents > 0 { parts.append(agents == 1 ? String(localized: "1 short agent run") : String(localized: "\(agents) short agent runs")) }
+        return parts.joined(separator: String(localized: " and ")) + String(localized: " under 10 minutes not shown.")
     }
 
     /// The agent is working now, so its block runs up to the present. Like streams, a block
@@ -367,7 +367,7 @@ private struct StreamView: View {
                     if height < 44 {
                         // One line: there's no room for the description underneath.
                         HStack(spacing: 6) {
-                            Text(category.name).fontWeight(.semibold).foregroundStyle(category.color)
+                            Text(category.displayName).fontWeight(.semibold).foregroundStyle(category.color)
                             Text(text.body).foregroundStyle(text.isPlaceholder ? .secondary : .primary)
                             Spacer(minLength: 4)
                             Text(timeLabel).foregroundStyle(.secondary).layoutPriority(1)
@@ -377,7 +377,7 @@ private struct StreamView: View {
                     } else {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 6) {
-                                Text(category.name).fontWeight(.semibold).foregroundStyle(category.color)
+                                Text(category.displayName).fontWeight(.semibold).foregroundStyle(category.color)
                                 Text(timeLabel).foregroundStyle(.secondary)
                             }
                             .font(.caption)
@@ -423,7 +423,7 @@ private struct StreamView: View {
     }
 
     private var timeLabel: String {
-        let end = isLive ? "now" : entry.end.formatted(date: .omitted, time: .shortened)
+        let end = isLive ? String(localized: "now") : entry.end.formatted(date: .omitted, time: .shortened)
         return "\(entry.start.formatted(date: .omitted, time: .shortened))–\(end) · \(Format.duration(entry.activeTime))"
     }
 
@@ -449,7 +449,7 @@ private struct StreamDetail: View {
                 // Fixes this stream only; rules for an app or site live in the log.
                 Menu {
                     ForEach(model.classifier.categories.filter { $0.key != CategoryDefinition.uncategorizedKey }) { option in
-                        Button(option.name) {
+                        Button(option.displayName) {
                             for segment in entry.segments { model.classifier.setManualCategory(option.key, for: segment) }
                         }
                     }

@@ -103,7 +103,7 @@ struct BlockerOverlayView: View {
                         .resizable().frame(width: 56, height: 56)
                     Text("Getting distracted?")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                    Text("**\(incident.displayName)** is categorized as **\(incident.category.name)**.")
+                    Text("**\(incident.displayName)** is categorized as **\(incident.category.displayName)**.")
                         .foregroundStyle(.secondary)
                     if let session = model.sessions.active {
                         Text("\(Format.countdown(session.remaining(at: model.sessions.now))) left in your focus session.")

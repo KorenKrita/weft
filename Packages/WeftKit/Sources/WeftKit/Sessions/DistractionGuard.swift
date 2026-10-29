@@ -79,8 +79,8 @@ public final class DistractionGuard {
         case .overlay:
             self.incident = incident
         case .notification:
-            notifier.post(.distraction, title: "Getting distracted?",
-                          body: "\(incident.displayName) is \(category.name). You're in a focus session.")
+            notifier.post(.distraction, title: String(localized: "Getting distracted?", bundle: .module),
+                          body: String(localized: "\(incident.displayName) is \(category.displayName). You're in a focus session.", bundle: .module))
         }
     }
 

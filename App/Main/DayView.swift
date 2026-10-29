@@ -52,9 +52,9 @@ enum DayTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .timeline: "Timeline"
-        case .breakdown: "Categories & Apps"
-        case .log: "Log"
+        case .timeline: String(localized: "Timeline")
+        case .breakdown: String(localized: "Categories & Apps")
+        case .log: String(localized: "Log")
         }
     }
 }
@@ -207,10 +207,10 @@ private struct DayContent: View {
 }
 
 struct Card<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     @ViewBuilder let content: Content
 
-    init(_ title: String, @ViewBuilder content: () -> Content) {
+    init(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) {
         self.title = title
         self.content = content()
     }
@@ -239,7 +239,7 @@ private struct Overview: View {
     let isToday: Bool
     @State private var showScoreDetails = false
 
-    private var comparison: String { isToday ? "vs. usual by now" : "vs. 7-day average" }
+    private var comparison: String { isToday ? String(localized: "vs. usual by now") : String(localized: "vs. 7-day average") }
 
     /// Nil without a week of history to compare against.
     private func change(_ value: KeyPath<DayMetrics, TimeInterval>) -> Change? {
@@ -283,10 +283,10 @@ private struct Overview: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Fact(symbol: "brain.head.profile", title: "Deep work",
-                     value: Format.duration(metrics.deepWorkTime), detail: "in stretches of 25 min or more",
+                     value: Format.duration(metrics.deepWorkTime), detail: String(localized: "in stretches of 25 min or more"),
                      change: change(\.deepWorkTime), comparison: comparison)
                 Fact(symbol: "timer", title: "Longest focus",
-                     value: Format.duration(metrics.longestFocusStretch), detail: "without a real break")
+                     value: Format.duration(metrics.longestFocusStretch), detail: String(localized: "without a real break"))
                 Fact(symbol: "arrow.left.arrow.right", title: "Switching",
                      value: switching.0, detail: switching.1)
                 if agents.wallTime > 0 {
@@ -301,21 +301,21 @@ private struct Overview: View {
     }
 
     private var trackedHelp: String {
-        var text = "Time at your Mac. Time away (\(model.preferences.idleThresholdMinutes) minutes without input), asleep or locked isn't counted"
+        var text = String(localized: "Time at your Mac. Time away (\(model.preferences.idleThresholdMinutes) minutes without input), asleep or locked isn't counted")
         if metrics.agentWaitingIdle > 0 {
-            text += ", except up to \(model.preferences.agentWaitingCapMinutes) minutes away while agents worked for you (\(Format.duration(metrics.agentWaitingIdle)) today)"
+            text += String(localized: ", except up to \(model.preferences.agentWaitingCapMinutes) minutes away while agents worked for you (\(Format.duration(metrics.agentWaitingIdle)) today)")
         }
-        return text + "."
+        return text + String(localized: ".")
     }
 
     private var switching: (String, String) {
-        guard metrics.activeTime >= 15 * 60 else { return ("\(metrics.contextSwitches) switches", "between apps and sites") }
+        guard metrics.activeTime >= 15 * 60 else { return (String(localized: "\(metrics.contextSwitches) switches"), String(localized: "between apps and sites")) }
         let perHour = metrics.switchesPerHour
-        let label = perHour <= 12 ? "Steady" : perHour <= 25 ? "Some switching" : "Fragmented"
-        return (label, "\(Int(perHour.rounded())) switches per hour")
+        let label = perHour <= 12 ? String(localized: "Steady") : perHour <= 25 ? String(localized: "Some switching") : String(localized: "Fragmented")
+        return (label, String(localized: "\(Int(perHour.rounded())) switches per hour"))
     }
 
-    private func legend(_ color: Color, _ title: String, _ value: TimeInterval) -> some View {
+    private func legend(_ color: Color, _ title: LocalizedStringKey, _ value: TimeInterval) -> some View {
         HStack(spacing: 5) {
             Circle().fill(color).frame(width: 7, height: 7)
             Text(title).foregroundStyle(.secondary)
@@ -342,14 +342,14 @@ struct AgentDaySummary {
     }
 
     var detail: String {
-        let count = "\(sessions) session\(sessions == 1 ? "" : "s")"
-        return concurrency > 1 ? "\(count), up to \(concurrency) at once" : count
+        let count = sessions == 1 ? String(localized: "1 session") : String(localized: "\(sessions) sessions")
+        return concurrency > 1 ? String(localized: "\(count), up to \(concurrency) at once") : count
     }
 }
 
 private struct Fact: View {
     let symbol: String
-    let title: String
+    let title: LocalizedStringKey
     let value: String
     let detail: String
     var change: Change? = nil
@@ -459,7 +459,7 @@ private struct DailyReview: View {
             do {
                 text = try await model.ai.summarize(facts)
             } catch {
-                self.error = "Could not generate a review: \(error.localizedDescription)"
+                self.error = String(localized: "Could not generate a review: \(error.localizedDescription)")
             }
             isGenerating = false
         }
@@ -472,7 +472,7 @@ private struct DailyReview: View {
         let apps = metrics.byApp.sorted { $0.value > $1.value }.prefix(5).map { "\($0.key) \(Format.duration($0.value))" }
         let sites = metrics.byDomain.sorted { $0.value > $1.value }.prefix(5).map { "\($0.key) \(Format.duration($0.value))" }
         let busiest = metrics.byHour.sorted { $0.value > $1.value }.prefix(3).map { "\($0.key):00" }
-        let language = Locale.current.localizedString(forLanguageCode: Locale.preferredLanguages.first ?? "en") ?? "English"
+        let language = OutputLanguage.name()
         return """
             Respond in \(language).
             Day: \(day.formatted(date: .complete, time: .omitted))
@@ -480,7 +480,7 @@ private struct DailyReview: View {
             Focus time: \(Format.duration(metrics.focusTime)); deep work (25+ minute stretches): \(Format.duration(metrics.deepWorkTime)); longest focus stretch: \(Format.duration(metrics.longestFocusStretch))
             Meetings: \(Format.duration(metrics.meetingTime)); distracting: \(Format.duration(metrics.distractingTime))
             Context switches: \(metrics.contextSwitches) (\(String(format: "%.0f", metrics.switchesPerHour)) per hour)
-            Focus Score: \(metrics.score.map { "\($0.value)/100 (\($0.label))" } ?? "n/a")
+            Focus Score: \(metrics.score.map { "\($0.value)/100 (\($0.englishLabel))" } ?? "n/a")
             Top categories: \(categories.joined(separator: ", "))
             Top apps: \(apps.joined(separator: ", "))
             Top sites: \(sites.joined(separator: ", "))
@@ -509,7 +509,7 @@ struct CategoryBreakdown: View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(showAll ? sorted : main, id: \.key) { key, value in
                 let category = model.classifier.category(key)
-                BarRow(label: category.name, value: value, total: metrics.activeTime, color: category.color,
+                BarRow(label: category.displayName, value: value, total: metrics.activeTime, color: category.color,
                        detail: Format.percent(value / max(metrics.activeTime, 1)))
             }
             if !rest.isEmpty {
@@ -517,7 +517,7 @@ struct CategoryBreakdown: View {
                     withAnimation(.snappy) { showAll.toggle() }
                 } label: {
                     HStack {
-                        Text(showAll ? "Show less" : "\(rest.count) more · \(rest.map { model.classifier.category($0.key).name }.prefix(3).joined(separator: ", "))\(rest.count > 3 ? "…" : "")")
+                        Text(showAll ? "Show less" : "\(rest.count) more · \(rest.map { model.classifier.category($0.key).displayName }.prefix(3).joined(separator: ", "))\(rest.count > 3 ? "…" : "")")
                             .lineLimit(1)
                         Spacer()
                         if !showAll {
@@ -571,7 +571,7 @@ private struct AppBreakdown: View {
                                     Image(systemName: expanded.contains(app.bundleID) ? "chevron.up" : "chevron.down")
                                 }
                                 .buttonStyle(.borderless)
-                                .help("\(app.sites.count) site\(app.sites.count == 1 ? "" : "s")")
+                                .help(app.sites.count == 1 ? String(localized: "1 site") : String(localized: "\(app.sites.count) sites"))
                             }
                         }
                         .frame(width: 16)
@@ -623,7 +623,7 @@ struct ChangeLabel: View {
         let context = suffix ?? help ?? ""
         Group {
             if isFlat {
-                Text("≈ same" + (suffix.map { " \($0)" } ?? "")).foregroundStyle(.secondary)
+                Text(String(localized: "≈ same") + (suffix.map { " \($0)" } ?? "")).foregroundStyle(.secondary)
             } else {
                 let isUp = change.difference > 0
                 HStack(spacing: 2) {

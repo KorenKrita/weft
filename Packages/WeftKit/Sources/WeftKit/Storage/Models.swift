@@ -152,9 +152,9 @@ public enum SessionKind: String, Codable, Sendable, CaseIterable, Identifiable {
 
     public var title: String {
         switch self {
-        case .focus: "Focus"
-        case .meeting: "Meeting"
-        case .breakTime: "Break"
+        case .focus: String(localized: "Focus", bundle: .module)
+        case .meeting: String(localized: "Meeting", bundle: .module)
+        case .breakTime: String(localized: "Break", bundle: .module)
         }
     }
 }
@@ -183,7 +183,7 @@ public final class SessionRecord {
     public var kind: SessionKind { SessionKind(rawValue: kindRaw) ?? .focus }
 }
 
-/// A generated description of a time entry, keyed by `TimeEntry.key`.
+/// A generated description of a time entry, keyed by `TimeEntry.key` and the language it is in.
 @Model
 public final class TimeEntrySummary {
     @Attribute(.unique) public var key: String

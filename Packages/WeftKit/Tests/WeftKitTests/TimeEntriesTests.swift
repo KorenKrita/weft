@@ -112,4 +112,19 @@ struct TimeEntriesTests {
         let reloaded = TimeEntryService(modelContext: container.mainContext, ai: ai)
         #expect(reloaded.description(for: entries[0]) == "Worked on Weft.")
     }
+
+    @MainActor
+    @Test func descriptionsSavedBeforeTheyHadALanguageStillCount() async throws {
+        let container = try WeftSchema.makeContainer(inMemory: true)
+        let entry = TimeEntries.build([seg(0, 20, "xcode")])[0]
+        container.mainContext.insert(TimeEntrySummary(key: entry.key, text: "Existing saved description"))
+        try container.mainContext.save()
+        let ai = DescribingAI()
+        let service = TimeEntryService(modelContext: container.mainContext, ai: ai)
+        #expect(service.description(for: entry) == "Existing saved description")
+        service.describe([entry], now: t0 + 90 * 60)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(ai.prompts.isEmpty)
+        #expect(service.description(for: entry) == "Existing saved description")
+    }
 }

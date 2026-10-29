@@ -25,6 +25,7 @@ Weft takes after [Rize](https://rize.io) but works from a different idea: people
 - **Focus, meeting and break sessions** from the menu bar, with an optional blocker that nudges you back when you drift to something distracting.
 - **Healthy hours.** Break reminders, and a daily target that tells you when you've done enough.
 - **Daily and weekly reviews**, with a suggestion for tomorrow and a comparison with last week.
+- **English and Simplified Chinese.** Weft follows your system language, or pick one in **Settings → General**.
 
 ## Privacy
 

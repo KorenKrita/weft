@@ -16,7 +16,7 @@ struct RulesView: View {
                 TextField("Pattern", text: $pattern, prompt: Text(Self.placeholder(for: field)))
                     .onSubmit(add)
                 Picker("Category", selection: $categoryKey) {
-                    ForEach(model.classifier.categories) { Text($0.name).tag($0.key) }
+                    ForEach(model.classifier.categories) { Text($0.displayName).tag($0.key) }
                 }
                 HStack {
                     Spacer()
@@ -63,10 +63,10 @@ struct RulesView: View {
 
     static func label(for field: RuleField) -> String {
         switch field {
-        case .bundleID: "App bundle ID"
-        case .domain: "Domain"
-        case .titleContains: "Title contains"
-        case .urlContains: "URL contains"
+        case .bundleID: String(localized: "App bundle ID")
+        case .domain: String(localized: "Domain")
+        case .titleContains: String(localized: "Title contains")
+        case .urlContains: String(localized: "URL contains")
         }
     }
 

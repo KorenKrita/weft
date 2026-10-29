@@ -57,9 +57,11 @@ public struct TimeEntry: Identifiable {
     public var fallbackDescription: String {
         let names = usage.prefix(3).map(\.name)
         switch names.count {
-        case 0: return "Activity"
+        case 0: return String(localized: "Activity", bundle: .module)
         case 1: return names[0]
-        default: return names.dropLast().joined(separator: ", ") + " and " + names[names.count - 1]
+        default:
+            let head = names.dropLast().joined(separator: ", "), last = names[names.count - 1]
+            return String(localized: "\(head) and \(last)", bundle: .module)
         }
     }
 

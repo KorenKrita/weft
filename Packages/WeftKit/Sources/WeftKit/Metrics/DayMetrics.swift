@@ -205,9 +205,15 @@ public struct FocusScore: Sendable, Equatable {
     public var distractionPenalty: Double
 
     public var label: String { Self.label(for: value) }
+    /// The label in English, for model prompts.
+    public var englishLabel: String { Self.englishLabel(for: value) }
 
     /// Same wording as Rize.
     public static func label(for value: Int) -> String {
+        String(localized: String.LocalizationValue(englishLabel(for: value)), bundle: .module)
+    }
+
+    public static func englishLabel(for value: Int) -> String {
         switch value {
         case 97...: "Exceptional"
         case 94...: "Excellent"

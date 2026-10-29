@@ -69,7 +69,7 @@ struct ReviewView: View {
                         switch item.source {
                         case .pending: Label("Waiting", systemImage: "hourglass").foregroundStyle(.secondary)
                         case .guess: Label("Guess", systemImage: "questionmark.circle").foregroundStyle(.secondary)
-                        default: Text("AI · \(item.confidence?.rawValue ?? "?") confidence").foregroundStyle(.secondary)
+                        default: Text("AI · \(item.confidence.map { String(localized: String.LocalizationValue($0.rawValue)) } ?? "?") confidence").foregroundStyle(.secondary)
                         }
                     }
                     .width(160)
@@ -79,7 +79,7 @@ struct ReviewView: View {
                             set: { assign(item, to: $0) }
                         )) {
                             ForEach(model.classifier.categories) { category in
-                                Text(category.name).tag(category.key)
+                                Text(category.displayName).tag(category.key)
                             }
                         }
                         .labelsHidden()
@@ -93,7 +93,7 @@ struct ReviewView: View {
                         }
                         .buttonStyle(.borderless)
                         .disabled(item.source == .pending)
-                        .help("Looks right — keep \(model.classifier.category(item.categoryKey).name) for this app/site")
+                        .help("Looks right — keep \(model.classifier.category(item.categoryKey).displayName) for this app/site")
                     }
                     .width(30)
                 }
