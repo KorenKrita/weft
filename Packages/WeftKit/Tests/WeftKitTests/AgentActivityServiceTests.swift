@@ -8,6 +8,7 @@ struct AgentActivityServiceTests {
     let home: URL
     let container: ModelContainer
     let service: AgentActivityService
+    let preferences: Preferences
     let log: URL
 
     init() throws {
@@ -17,6 +18,7 @@ struct AgentActivityServiceTests {
         log = project.appending(path: "session-1.jsonl")
         container = try WeftSchema.makeContainer(inMemory: true)
         let preferences = Preferences(defaults: UserDefaults(suiteName: "weft-agents-\(UUID().uuidString)")!)
+        self.preferences = preferences
         service = AgentActivityService(modelContext: container.mainContext, preferences: preferences, roots: AgentLogRoots(home: home))
     }
 
@@ -148,6 +150,43 @@ struct AgentActivityServiceTests {
         #expect(session.flavor == "codex")
         #expect(session.title == "Look into the runner")
         #expect(spans.map(\.key) == ["turn-1#0"])
+    }
+
+    @Test func piSessionsAndSettingsGate() async throws {
+        let folder = home.appending(path: ".pi/agent/sessions/--project--")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "2026-10-01T00-00-00-000Z_00000000-0000-0000-0000-000000000000.jsonl")
+        try Fixture.lines([Pi.header(), Pi.title("First"), Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 10, stop: "stop")]).write(to: url)
+        await service.refresh()
+        let session = try #require(sessions.first)
+        #expect(session.key == "pi:session-1")
+        #expect(session.source == .pi)
+        #expect(session.flavor == "pi")
+        #expect(session.projectPath == "/Users/me/project")
+        #expect(session.title == "First")
+        #expect(!spans.isEmpty && spans.allSatisfy { $0.sessionKey == "pi:session-1" })
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Fixture.lines([Pi.title("Renamed")]))
+        await service.refresh()
+        #expect(session.title == "Renamed")
+        let keys = spans.map(\.key)
+        preferences.agentPiEnabled = false
+        try handle.write(contentsOf: Fixture.lines([Pi.prompt(at: 20, id: "q"), Pi.assistant(at: 30, stop: "stop")]))
+        try handle.close()
+        await service.refresh()
+        #expect(spans.map(\.key) == keys)
+    }
+
+    @Test func piTokenLimitStopClosesItsSpan() async throws {
+        let folder = home.appending(path: ".pi/agent/sessions/--project--")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "2026-10-01T00-00-00-000Z_00000000-0000-0000-0000-000000000000.jsonl")
+        try Fixture.lines([Pi.header(), Pi.prompt(at: 0, id: "p"), Pi.assistant(at: 10, stop: "length")]).write(to: url)
+        await service.refresh()
+        #expect(!spans.isEmpty)
+        #expect(spans.allSatisfy { !$0.isOpen })
+        #expect(spans.last?.end == Fixture.date(10))
     }
 
     @Test func waitingIdleCountsTimeAwayWhileAnAgentWorks() async throws {

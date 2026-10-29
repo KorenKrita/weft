@@ -430,12 +430,13 @@ private struct AgentSettings: View {
             Section {
                 Toggle("Show when coding agents work for me", isOn: $prefs.agentTrackingEnabled)
             } footer: {
-                Text("Weft reads the session logs Claude Code and Codex keep on this Mac to see when each agent was working. It keeps only session titles, project folders and times; prompts and replies are never stored or sent anywhere.")
+                Text("Weft reads the session logs Claude Code, Codex and pi keep on this Mac to see when each agent was working. It keeps only session titles, project folders and times; prompts and replies are never stored or sent anywhere.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             Section("Agents") {
                 source("Claude Code", flavor: "claude", folder: AgentLogRoots.standard.claudeProjects, isOn: $prefs.agentClaudeEnabled)
                 source("Codex", flavor: "codex", folder: AgentLogRoots.standard.codexSessions, isOn: $prefs.agentCodexEnabled)
+                source("pi", flavor: "pi", folder: AgentLogRoots.standard.piSessions, isOn: $prefs.agentPiEnabled)
             }
             .disabled(!prefs.agentTrackingEnabled)
             Section {

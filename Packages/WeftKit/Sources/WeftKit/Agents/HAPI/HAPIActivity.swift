@@ -96,7 +96,7 @@ public enum HAPIImporter {
     }
 
     /// Prefixes of the session keys of agents whose logs Weft reads itself.
-    static let localPrefixes = ["claude": "claude", "codex": "codex"]
+    static let localPrefixes = ["claude": "claude", "codex": "codex", "pi": "pi"]
 
     /// - Parameters:
     ///   - localFlavors: agents whose logs Weft reads on this Mac.

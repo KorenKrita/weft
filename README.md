@@ -2,8 +2,6 @@
 
 **See where your day actually went, without sending it anywhere.**
 
-[weftapp.org](https://weftapp.org) · [中文](https://weftapp.org/zh/)
-
 Weft is a free, open-source time tracker that lives in your Mac's menu bar. It notices which app, window and website you're using, sorts the time into categories like Code, Meetings or Social Media, and draws your day as a few parallel streams of work.
 
 Weft takes after [Rize](https://rize.io) but works from a different idea: people rarely do one thing at a time. You write code, check a doc, answer a message and go back to the code. So instead of a log of app switches, Weft shows the threads of work you kept coming back to.
@@ -21,7 +19,7 @@ Weft takes after [Rize](https://rize.io) but works from a different idea: people
 - **Tracking you don't think about.** Weft follows app, window and tab changes, and stops counting when you step away, close the lid or lock the screen.
 - **Categories that sort themselves.** A few hundred apps and sites are built in; new ones are categorized by Apple Intelligence or a model you choose, and you can correct any of them.
 - **A Focus Score.** A daily 0–100 score for deep work and distractions. Click it to see how it's calculated.
-- **Your coding agents, too.** Claude Code and Codex sessions appear on the timeline, and time spent waiting on them counts towards your day. With [HAPI](https://github.com/tiann/hapi) 0.33 or later, so do agents on your other machines.
+- **Your coding agents, too.** Claude Code, Codex and pi sessions appear on the timeline, and time spent waiting on them counts towards your day. With [HAPI](https://github.com/tiann/hapi) 0.33 or later, so do agents on your other machines.
 - **Focus, meeting and break sessions** from the menu bar, with an optional blocker that nudges you back when you drift to something distracting.
 - **Healthy hours.** Break reminders, and a daily target that tells you when you've done enough.
 - **Daily and weekly reviews**, with a suggestion for tomorrow and a comparison with last week.
@@ -30,7 +28,7 @@ Weft takes after [Rize](https://rize.io) but works from a different idea: people
 
 - **What Weft records:** the app in front, its window title and, in supported browsers, the address of the current tab.
 - **What it never records:** screenshots, keystrokes or the contents of your screen.
-- **Coding agents:** Weft reads the logs Claude Code and Codex keep on your Mac and keeps only each session's title, project folder and working times, never prompts or replies. With HAPI, it asks your own hub when your other agents worked.
+- **Coding agents:** Weft reads the logs Claude Code, Codex and pi keep on your Mac and keeps only each session's title, project folder and working times, never prompts or replies. With HAPI, it asks your own hub when your other agents worked.
 - **Where it goes:** nowhere. Categories, summaries and reviews are all produced on your Mac. Your data lives in `~/Library/Application Support/Weft/`. The one exception is a remote model you set up yourself in **Settings → Model**: it receives the apps and sites Weft doesn't know with their window titles, the apps, sites and window titles behind each work stream, and your daily totals. A local server such as Ollama or LM Studio keeps even that on your Mac.
 - **What you control:** In **Settings → Tracking**, you can stop recording window titles, keep only the domain of URLs, and exclude specific apps and websites completely. Pause tracking any time from the menu bar or Settings.
 - **Your data is yours:** You can export everything to CSV from **Settings → Data**. To erase your history, quit Weft and delete the folder above.

@@ -56,6 +56,14 @@ struct HAPIImporterTests {
         #expect(decisions == [.link(localKey: "claude:abc", hapiID: "local-claude"), .link(localKey: "codex:t2", hapiID: "by-host")])
     }
 
+    @Test func localPiIsLinkedOnlyWhenEnabled() throws {
+        let data = HAPIFixture.report([HAPIFixture.session("local-pi", flavor: "pi", machine: "local-machine", agentSessionID: "abc", turns: [(0, 60)])])
+        #expect(try plan(data, localFlavors: ["pi"]) == [.link(localKey: "pi:abc", hapiID: "local-pi")])
+        guard case .record = try plan(data, localFlavors: []).first else { Issue.record("expected record"); return }
+        let remote = HAPIFixture.report([HAPIFixture.session("remote-pi", flavor: "pi", turns: [(0, 60)])])
+        guard case .record = try plan(remote, localFlavors: ["pi"]).first else { Issue.record("expected remote record"); return }
+    }
+
     @Test func localAgentsWeftCantReadAreRecordedAsThisMac() throws {
         let decisions = try plan(HAPIFixture.report([
             HAPIFixture.session("cursor", flavor: "cursor", machine: "local-machine", turns: [(0, 60)]),
@@ -226,6 +234,33 @@ struct HAPISyncTests {
         await sync.sync(now: Fixture.date(1_000))
         #expect(spans.isEmpty)
         #expect(sessions.first?.hapiSessionID == "h1")
+    }
+
+    @Test func linkingDropsWhatHAPIImportedBeforeTheLocalLogWasRead() async throws {
+        // Before the upgrade, HAPI recorded this Mac's pi sessions itself.
+        preferences.agentPiEnabled = false
+        fake.answer("usage", stdout: HAPIFixture.report([
+            HAPIFixture.session("h1", flavor: "pi", machine: "local-machine", agentSessionID: "p1", turns: [(0, 300), (1_000, 1_600)]),
+            HAPIFixture.session("h2", flavor: "pi", machine: "local-machine", agentSessionID: "p2", turns: [(2_000, 2_100)]),
+        ]))
+        await sync.sync(now: Fixture.date(3_000))
+        #expect(Set(spans.map(\.sessionKey)) == ["hapi:h1", "hapi:h2"])
+
+        // Then Weft reads the logs: p1's no longer has the first turn, p2's has everything.
+        preferences.agentPiEnabled = true
+        for (key, start, end) in [("p1", 1_000.0, 1_600.0), ("p2", 2_000.0, 2_100.0)] {
+            container.mainContext.insert(AgentSession(key: "pi:\(key)", source: .pi, flavor: "pi", agentSessionID: key, lastActivity: Fixture.date(end)))
+            container.mainContext.insert(AgentSpan(key: "\(key)/t#0", sessionKey: "pi:\(key)", turnID: "\(key)/t", fileKey: "/\(key)",
+                                                   turnStart: Fixture.date(start), start: Fixture.date(start), end: Fixture.date(end),
+                                                   isOpen: false, trigger: .user, isSubagent: false, waitedOnUser: 0))
+        }
+        await sync.sync(now: Fixture.date(3_100))
+        let imported = spans.filter { $0.sessionKey.hasPrefix("hapi:") }
+        #expect(imported.map(\.sessionKey) == ["hapi:h1"])
+        #expect(imported.map(\.end) == [Fixture.date(300)])
+        #expect(spans.filter { $0.sessionKey.hasPrefix("pi:") }.count == 2)
+        #expect(Set(sessions.map(\.key)) == ["hapi:h1", "pi:p1", "pi:p2"])
+        #expect(sessions.first { $0.key == "pi:p2" }?.hapiSessionID == "h2")
     }
 
     @Test func saysWhatNeedsUpdating() async {

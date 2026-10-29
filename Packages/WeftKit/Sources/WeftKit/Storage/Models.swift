@@ -180,14 +180,14 @@ public final class TimeEntrySummary {
     }
 }
 
-/// A coding agent's session: Claude Code, Codex, or one HAPI manages. Only what identifies
+/// A coding agent's session: Claude Code, Codex, pi, or one HAPI manages. Only what identifies
 /// it is kept; prompts and replies never are.
 @Model
 public final class AgentSession {
-    /// `claude:<session id>`, `codex:<root thread id>` or `hapi:<session id>`.
+    /// `claude:<session id>`, `codex:<root thread id>`, `pi:<session id>` or `hapi:<session id>`.
     @Attribute(.unique) public var key: String
     public var sourceRaw: String
-    /// `claude`, `codex`, or whichever agent HAPI reports.
+    /// `claude`, `codex`, `pi`, or whichever agent HAPI reports.
     public var flavor: String
     public var agentSessionID: String
     public var hapiSessionID: String?

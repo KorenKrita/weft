@@ -120,9 +120,9 @@ public final class AgentActivityService {
 
     // MARK: Settings
 
-    private var sources: (claude: Bool, codex: Bool) {
-        guard preferences.agentTrackingEnabled else { return (false, false) }
-        return (preferences.agentClaudeEnabled, preferences.agentCodexEnabled)
+    private var sources: (claude: Bool, codex: Bool, pi: Bool) {
+        guard preferences.agentTrackingEnabled else { return (false, false, false) }
+        return (preferences.agentClaudeEnabled, preferences.agentCodexEnabled, preferences.agentPiEnabled)
     }
 
     private var config: AgentTurnConfig {
@@ -134,6 +134,7 @@ public final class AgentActivityService {
             _ = preferences.agentTrackingEnabled
             _ = preferences.agentClaudeEnabled
             _ = preferences.agentCodexEnabled
+            _ = preferences.agentPiEnabled
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.applySettings()
@@ -143,8 +144,8 @@ public final class AgentActivityService {
     }
 
     private func applySettings() {
-        let (claude, codex) = sources
-        if claude || codex {
+        let (claude, codex, pi) = sources
+        if claude || codex || pi {
             watch()
             requestScan()
         } else {
@@ -154,10 +155,11 @@ public final class AgentActivityService {
     }
 
     private func watch() {
-        let (claude, codex) = sources
+        let (claude, codex, pi) = sources
         var paths: [String] = []
         if claude { paths += [roots.claudeProjects, roots.claudeSessions].map { $0.path(percentEncoded: false) } }
         if codex { paths.append(roots.codexSessions.path(percentEncoded: false)) }
+        if pi { paths.append(roots.piSessions.path(percentEncoded: false)) }
         let existing = paths.filter { FileManager.default.fileExists(atPath: $0) }
         guard existing != watchedPaths || watcher == nil else { return }
         watcher?.stop()
@@ -199,18 +201,24 @@ public final class AgentActivityService {
     }
 
     private func scan(_ paths: Set<String>?) async {
-        let (claude, codex) = sources
-        guard claude || codex else { return }
+        let (claude, codex, pi) = sources
+        guard claude || codex || pi else { return }
         let scanner = AgentLogScanner(roots: roots, config: config)
         let since = Date.now.addingTimeInterval(-TimeInterval(max(1, preferences.agentBackfillDays)) * 86400)
 
         let files = await Task.detached(priority: .utility) {
             if let paths { return paths.sorted().compactMap(scanner.file(at:)) }
-            return scanner.discover(claude: claude, codex: codex, modifiedSince: since)
+            return scanner.discover(claude: claude, codex: codex, pi: pi, modifiedSince: since)
         }.value
         let cursors = fetchCursors(paths.map { Array($0) })
         let jobs = files
-            .filter { $0.kind == .codex ? codex : claude }
+            .filter { file in
+                switch file.kind {
+                case .claudeMain, .claudeSubagent: claude
+                case .codex: codex
+                case .pi: pi
+                }
+            }
             .compactMap { file -> AgentLogScanner.Job? in
                 guard let cursor = cursors[file.path] else {
                     return file.modified >= since ? AgentLogScanner.Job(file: file, offset: 0, sessionKey: nil) : nil
@@ -308,18 +316,32 @@ public final class AgentActivityService {
 
         let key = result.sessionKey
         let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == key })))?.first
-        guard let last = turns.map(\.end).max() else { return }
+        guard let last = turns.map(\.end).max() else {
+            if let session {
+                if session.projectPath == nil { session.projectPath = result.meta.cwd }
+                if !result.meta.isSubagent, let title = result.meta.title,
+                   !result.meta.titleFromPrefix || session.title == nil { session.title = title }
+            }
+            return
+        }
         let record = session ?? {
-            let isCodex = result.file.kind == .codex
+            let source: AgentSource
+            let flavor: String
+            switch result.file.kind {
+            case .claudeMain, .claudeSubagent: (source, flavor) = (.claudeCode, "claude")
+            case .codex: (source, flavor) = (.codex, "codex")
+            case .pi: (source, flavor) = (.pi, "pi")
+            }
             let id = String(key.drop { $0 != ":" }.dropFirst())
-            let session = AgentSession(key: key, source: isCodex ? .codex : .claudeCode, flavor: isCodex ? "codex" : "claude",
+            let session = AgentSession(key: key, source: source, flavor: flavor,
                                        agentSessionID: id, lastActivity: last)
             modelContext.insert(session)
             return session
         }()
         record.lastActivity = max(record.lastActivity, last)
         if record.projectPath == nil { record.projectPath = result.meta.cwd }
-        if !result.meta.isSubagent, let title = result.meta.title { record.title = title }
+        if !result.meta.isSubagent, let title = result.meta.title,
+           !result.meta.titleFromPrefix || record.title == nil { record.title = title }
     }
 
     private func nameCodexSessions(_ keys: Set<String>) {
@@ -337,7 +359,7 @@ public final class AgentActivityService {
     /// Which sessions are working now: Claude Code says so in its status files; for the rest,
     /// an open turn with recent activity. Checked again when that activity gets too old.
     private func refreshLive() {
-        let (claude, codex) = sources
+        let (claude, codex, pi) = sources
         let statuses = claude ? ClaudeLiveRegistry.read(roots.claudeSessions) : [:]
         var live = Set(statuses.filter { $0.value == "busy" }.map { "claude:" + $0.key })
 
@@ -347,7 +369,8 @@ public final class AgentActivityService {
         var nextCheck: Date?
         for span in open {
             let isClaude = span.sessionKey.hasPrefix("claude:")
-            guard isClaude ? claude : codex else { continue }
+            let enabled = isClaude ? claude : (span.sessionKey.hasPrefix("pi:") ? pi : codex)
+            guard enabled else { continue }
             // A status file is better evidence than the clock.
             if isClaude, statuses[String(span.sessionKey.dropFirst("claude:".count))] != nil { continue }
             live.insert(span.sessionKey)

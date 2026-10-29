@@ -212,6 +212,7 @@ public final class HAPISync {
         var localFlavors: Set<String> = []
         if preferences.agentClaudeEnabled { localFlavors.insert("claude") }
         if preferences.agentCodexEnabled { localFlavors.insert("codex") }
+        if preferences.agentPiEnabled { localFlavors.insert("pi") }
         let host = ProcessInfo.processInfo.hostName.lowercased()
         let localHosts: Set<String> = [host, host.hasSuffix(".local") ? String(host.dropLast(6)) : host + ".local"]
         let decisions = HAPIImporter.plan(report, localFlavors: localFlavors, localHosts: localHosts, now: now,
@@ -223,6 +224,7 @@ public final class HAPISync {
             case .link(let localKey, let hapiID):
                 let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == localKey })))?.first
                 session?.hapiSessionID = hapiID
+                if session != nil { dropImportedCopy(of: "hapi:\(hapiID)", readFrom: localKey) }
             case .record(let imported):
                 store(imported)
                 if imported.isWorking { working.insert(imported.key) }
@@ -231,6 +233,22 @@ public final class HAPISync {
         try? modelContext.save()
         agents.setRemoteLive(working)
         agents.spansChanged()
+    }
+
+    /// Removes what HAPI imported of a session before Weft read its log here, e.g. before
+    /// pi's logs were read. Spans from the time the log covers are the same work again; older
+    /// ones stay, since the log no longer has them.
+    private func dropImportedCopy(of importedKey: String, readFrom localKey: String) {
+        var firstLocal = FetchDescriptor<AgentSpan>(predicate: #Predicate { $0.sessionKey == localKey }, sortBy: [SortDescriptor(\.turnStart)])
+        firstLocal.fetchLimit = 1
+        guard let covered = (try? modelContext.fetch(firstLocal))?.first?.turnStart else { return }
+        let imported = (try? modelContext.fetch(FetchDescriptor<AgentSpan>(predicate: #Predicate { $0.sessionKey == importedKey }))) ?? []
+        let copies = imported.filter { $0.end > covered }
+        for span in copies { modelContext.delete(span) }
+        if copies.count == imported.count,
+           let session = (try? modelContext.fetch(FetchDescriptor<AgentSession>(predicate: #Predicate { $0.key == importedKey })))?.first {
+            modelContext.delete(session)
+        }
     }
 
     /// Replaces the spans of the turns HAPI reported; older turns stay as they were.
