@@ -107,14 +107,21 @@ private struct TodayCard: View {
                 ScoreRing(score: metrics.score, activeTime: metrics.activeTime)
             }
             GoalBar(metrics: metrics, target: target)
-            HStack(spacing: 14) {
-                LegendItem(color: GoalBar.focusColor, title: "Focus", value: metrics.focusTime)
-                LegendItem(color: GoalBar.meetingColor, title: "Meetings", value: metrics.meetingTime)
-                if metrics.agentWaitingTime > 0 {
-                    LegendItem(color: GoalBar.waitingColor, title: "Waiting", value: metrics.agentWaitingTime)
-                }
-                LegendItem(color: GoalBar.distractedColor, title: "Distracted", value: max(0, metrics.distractingTime - metrics.distractingWhileWaiting))
+            legend(metrics)
+        }
+    }
+
+    /// The time behind each color of the bar. There's no room for names in the menu, so
+    /// they show on hover.
+    private func legend(_ metrics: DayMetrics) -> some View {
+        HStack(spacing: 16) {
+            LegendItem(color: GoalBar.focusColor, title: "Focus", value: metrics.focusTime)
+            LegendItem(color: GoalBar.meetingColor, title: "Meetings", value: metrics.meetingTime)
+            if metrics.agentWaitingTime > 0 {
+                LegendItem(color: GoalBar.waitingColor, title: "Waiting on agents", value: metrics.agentWaitingTime)
             }
+            LegendItem(color: GoalBar.distractedColor, title: "Distracted",
+                       value: max(0, metrics.distractingTime - metrics.distractingWhileWaiting))
         }
     }
 }
@@ -208,11 +215,14 @@ private struct LegendItem: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(title).foregroundStyle(.secondary)
+            Circle().fill(color).frame(width: 7, height: 7)
             Text(Format.duration(value)).monospacedDigit()
         }
         .font(.caption)
+        .lineLimit(1)
+        .fixedSize()
+        .contentShape(Rectangle())
+        .help("\(title): \(Format.duration(value))")
     }
 }
 
