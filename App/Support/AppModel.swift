@@ -42,6 +42,7 @@ final class AppModel {
     let distractionGuard: DistractionGuard
     let timeEntries: TimeEntryService
     let agents: AgentActivityService
+    let hapi: HAPISync
 
     var page: Page = .today
     /// The day the Today page shows; Reports sets it to drill into a day.
@@ -72,6 +73,7 @@ final class AppModel {
         distractionGuard = DistractionGuard(preferences: preferences, sessions: sessions, notifier: notifier)
         timeEntries = TimeEntryService(modelContext: context, ai: ai)
         agents = AgentActivityService(modelContext: context, preferences: preferences)
+        hapi = HAPISync(modelContext: context, preferences: preferences, agents: agents)
         breakReminder = BreakReminder(preferences: preferences, sessions: sessions, notifier: notifier, modelContext: context)
         workHours = WorkHoursMonitor(preferences: preferences, notifier: notifier, modelContext: context)
 
@@ -82,6 +84,7 @@ final class AppModel {
         }
         tracker.start()
         agents.start()
+        hapi.start()
         reaskBrowsingSitesOnce()
         classifier.retryPending()
         describeTimeEntriesPeriodically()

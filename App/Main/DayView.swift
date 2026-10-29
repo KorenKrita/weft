@@ -162,6 +162,8 @@ private struct DayContent: View {
         .task(id: "\(entries.count)-\(entries.last?.key ?? "")") {
             model.timeEntries.describe(entries)
         }
+        // Agents on other machines only show up when asked for.
+        .task { model.hapi.requestSync() }
     }
 }
 

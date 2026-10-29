@@ -64,6 +64,8 @@ There are two layers:
 
    While a turn is open, its cursor stays at the turn's first line, so the whole turn is read again once it ends and no parser state is persisted. `AgentActivityService` re-reads logs when FSEvents reports a change (no polling). It treats a session as working right now when Claude Code's `~/.claude/sessions/<pid>.json` says `busy`, or, for other agents, when an open turn had activity in the last 5 min.
 
+   `HAPISync` (`Agents/HAPI/`) adds agents the user runs through HAPI on other machines, or that Weft can't read here. Every 5 min it runs `hapi usage --json`, which the hub builds from its persisted turns, and stores the turns minus permission waits as `AgentSpan`s keyed `hapi:<id>`. `HAPIBinaryLocator` finds the native `hapi` binary behind the Node launcher. `ProcessRunner` drains both pipes as output arrives. HAPI before 0.30 started Claude for unknown commands, so `HAPISync` checks `hapi --version` first. Sessions on this Mac whose logs Weft reads anyway are only linked (`hapiSessionID`), never counted twice.
+
    `AgentMetrics.waiting` finds time the user spent waiting on agents: away (up to `agentWaitingCapMinutes` after their last activity) or in a distracting category while an agent worked. `DayMetrics.trackedTime` adds the away part to `activeTime`, and the work-hours target counts it. The Focus Score never sees agent time.
 
 ### Storage

@@ -439,6 +439,38 @@ private struct AgentSettings: View {
             }
             .disabled(!prefs.agentTrackingEnabled)
             Section {
+                Toggle("Include agents from HAPI", isOn: $prefs.agentHAPIEnabled)
+                if prefs.agentHAPIEnabled {
+                    LabeledContent {
+                        if model.hapi.status == .syncing {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Button("Sync Now") { Task { await model.hapi.sync() } }
+                        }
+                    } label: {
+                        Text("Status")
+                        Text(hapiStatus)
+                    }
+                    LabeledContent {
+                        HStack {
+                            if !prefs.agentHAPIPath.isEmpty {
+                                Button("Find Automatically") { prefs.agentHAPIPath = "" }
+                            }
+                            Button("Choose…", action: chooseHAPI)
+                        }
+                    } label: {
+                        Text("hapi")
+                        Text(model.hapi.binary.map { ($0.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath } ?? "Not found")
+                    }
+                }
+            } header: {
+                Text("HAPI")
+            } footer: {
+                Text("Agents HAPI runs on your other machines, and ones Weft can't read here, come from your HAPI hub through `hapi usage`. Sessions on this Mac whose logs Weft reads anyway aren't counted twice.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            .disabled(!prefs.agentTrackingEnabled)
+            Section {
                 Toggle("Count time waiting on agents as work", isOn: $prefs.countAgentWaiting)
                 Picker("Count time away for up to", selection: $prefs.agentWaitingCapMinutes) {
                     ForEach(Array(Set([15, 30, 60, 90, 120, prefs.agentWaitingCapMinutes])).sorted(), id: \.self) {
@@ -496,10 +528,34 @@ private struct AgentSettings: View {
                 Text(name)
                 Text(found ? "\((path as NSString).abbreviatingWithTildeInPath) · \(count) session\(count == 1 ? "" : "s")" : "Not found on this Mac")
             } icon: {
-                Image(systemName: AgentStyle.symbol(flavor)).foregroundStyle(AgentStyle.color(flavor))
+                Image(systemName: AgentStyle.symbol(flavor)).foregroundStyle(AgentStyle.color(flavor)).frame(width: 22)
             }
         }
         .disabled(!found && !isOn.wrappedValue)
+    }
+
+    private var hapiStatus: String {
+        switch model.hapi.status {
+        case .off: "Off"
+        case .notInstalled: "hapi isn't installed, or isn't anywhere Weft looks. Choose it below."
+        case .cliTooOld(let version): "This hapi\(version.map { " (\($0))" } ?? "") can't report agent activity yet. Update HAPI."
+        case .hubTooOld: "Your HAPI hub doesn't report agent activity yet. Update the hub."
+        case .notSignedIn: "hapi isn't signed in to a hub. Run `hapi auth login`."
+        case .syncing: "Syncing…"
+        case .synced(let date):
+            "Synced \(date.formatted(.relative(presentation: .named)))\(model.hapi.hubURL.flatMap { URL(string: $0)?.host() }.map { " from \($0)" } ?? "")"
+        case .failed(let message): message
+        }
+    }
+
+    private func chooseHAPI() {
+        let panel = NSOpenPanel()
+        panel.message = "Choose the hapi executable"
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appending(path: ".bun/bin")
+        panel.canChooseDirectories = false
+        panel.showsHiddenFiles = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        model.preferences.agentHAPIPath = url.path(percentEncoded: false)
     }
 
     private var status: String {

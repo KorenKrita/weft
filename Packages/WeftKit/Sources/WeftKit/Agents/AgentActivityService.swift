@@ -25,6 +25,10 @@ public final class AgentActivityService {
     @ObservationIgnored private var scanTask: Task<Void, Never>?
     @ObservationIgnored private var liveCheck: Task<Void, Never>?
     @ObservationIgnored private var waitingCache: (at: Date, value: TimeInterval)?
+    /// Sessions working now according to a source without logs here, i.e. HAPI.
+    @ObservationIgnored private var remoteLive: Set<String> = []
+    /// Working now according to the logs on this Mac.
+    @ObservationIgnored private var localLive: Set<String> = []
 
     /// How long after its last activity an open turn without a status file still counts as working.
     private let recentActivity: TimeInterval = 5 * 60
@@ -75,6 +79,24 @@ public final class AgentActivityService {
     }
 
     public var isWorking: Bool { !liveSessions.isEmpty }
+
+    /// Sessions another source says are working now, so their open spans run up to the present.
+    public func setRemoteLive(_ keys: Set<String>) {
+        remoteLive = keys
+        publishLive()
+    }
+
+    private func publishLive() {
+        let live = localLive.union(remoteLive)
+        guard live != liveSessions else { return }
+        liveSessions = live
+        waitingCache = nil
+    }
+
+    /// Forgets the cached waiting time, after spans changed outside a scan.
+    public func spansChanged() {
+        waitingCache = nil
+    }
 
     /// Today's idle time spent waiting on agents, for the work-hours target. Cached for a
     /// minute: it's asked on every tracker sample.
@@ -332,10 +354,8 @@ public final class AgentActivityService {
             let expiry = span.end.addingTimeInterval(recentActivity)
             nextCheck = min(nextCheck ?? expiry, expiry)
         }
-        if live != liveSessions {
-            liveSessions = live
-            waitingCache = nil
-        }
+        localLive = live
+        publishLive()
 
         liveCheck?.cancel()
         liveCheck = nil

@@ -73,6 +73,10 @@ public final class Preferences {
     public var countAgentWaiting: Bool { didSet { save(countAgentWaiting, "countAgentWaiting") } }
     /// Being away counts as waiting only this long after the last activity.
     public var agentWaitingCapMinutes: Int { didSet { save(agentWaitingCapMinutes, "agentWaitingCapMinutes") } }
+    /// Import agent work from the user's HAPI hub, including other machines.
+    public var agentHAPIEnabled: Bool { didSet { save(agentHAPIEnabled, "agentHAPIEnabled") } }
+    /// Where `hapi` is, when it isn't somewhere `HAPIBinaryLocator` looks.
+    public var agentHAPIPath: String { didSet { save(agentHAPIPath, "agentHAPIPath") } }
 
     public var hasCompletedOnboarding: Bool { didSet { save(hasCompletedOnboarding, "hasCompletedOnboarding") } }
 
@@ -101,6 +105,7 @@ public final class Preferences {
             "agentSilentGapMinutes": 30,
             "countAgentWaiting": true,
             "agentWaitingCapMinutes": 60,
+            "agentHAPIEnabled": true,
         ])
         trackingPaused = defaults.bool(forKey: "trackingPaused")
         idleThresholdMinutes = defaults.integer(forKey: "idleThresholdMinutes")
@@ -133,6 +138,8 @@ public final class Preferences {
         agentSilentGapMinutes = defaults.integer(forKey: "agentSilentGapMinutes")
         countAgentWaiting = defaults.bool(forKey: "countAgentWaiting")
         agentWaitingCapMinutes = defaults.integer(forKey: "agentWaitingCapMinutes")
+        agentHAPIEnabled = defaults.bool(forKey: "agentHAPIEnabled")
+        agentHAPIPath = defaults.string(forKey: "agentHAPIPath") ?? ""
         hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
     }
 
