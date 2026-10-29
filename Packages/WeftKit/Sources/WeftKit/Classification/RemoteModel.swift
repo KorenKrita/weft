@@ -34,10 +34,10 @@ public enum RemoteModelError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .http(let status, let message?): "The server answered \(status): \(message)"
-        case .http(let status, nil): "The server answered \(status)."
-        case .emptyReply: "The model sent an empty reply."
-        case .unreadableReply: "The model's reply wasn't in the expected format."
+        case .http(let status, let message?): String(localized: "The server answered \(status): \(message)", bundle: .module)
+        case .http(let status, nil): String(localized: "The server answered \(status).", bundle: .module)
+        case .emptyReply: String(localized: "The model sent an empty reply.", bundle: .module)
+        case .unreadableReply: String(localized: "The model's reply wasn't in the expected format.", bundle: .module)
         }
     }
 }
@@ -55,8 +55,8 @@ public struct OpenAICompatibleClassifier: AIClassifying {
     }
 
     public func availability() -> AIAvailability {
-        if config.endpoint == nil { return .unavailable("The API base URL isn't valid.") }
-        if config.model.trimmingCharacters(in: .whitespaces).isEmpty { return .unavailable("No model is set.") }
+        if config.endpoint == nil { return .unavailable(String(localized: "The API base URL isn't valid.", bundle: .module)) }
+        if config.model.trimmingCharacters(in: .whitespaces).isEmpty { return .unavailable(String(localized: "No model is set.", bundle: .module)) }
         return .available
     }
 

@@ -33,6 +33,47 @@ public struct CategoryDefinition: Hashable, Sendable, Identifiable {
         self.hint = hint
     }
 
+    /// The default description in the user's language while it is unchanged; edited ones stay as written.
+    /// The stored English `hint` is what the model sees.
+    public var displayHint: String {
+        guard Self.defaults.contains(where: { $0.key == key && $0.hint == hint }) else { return hint }
+        return String(localized: String.LocalizationValue(hint), bundle: .module)
+    }
+
+    /// Localize only unchanged defaults; user-supplied names must remain intact.
+    public var displayName: String {
+        guard Self.defaults.contains(where: { $0.key == key && $0.name == name }) else { return name }
+        return switch key {
+        case "code": String(localized: "Code", bundle: .module)
+        case "design": String(localized: "Design", bundle: .module)
+        case "writing": String(localized: "Writing", bundle: .module)
+        case "documenting": String(localized: "Documenting", bundle: .module)
+        case "research": String(localized: "Research", bundle: .module)
+        case "learning": String(localized: "Learning", bundle: .module)
+        case "product": String(localized: "Product", bundle: .module)
+        case "productivity": String(localized: "Productivity", bundle: .module)
+        case "admin": String(localized: "Admin", bundle: .module)
+        case "finance": String(localized: "Finance", bundle: .module)
+        case "marketing": String(localized: "Marketing", bundle: .module)
+        case "sales": String(localized: "Sales", bundle: .module)
+        case "customer_support": String(localized: "Customer Support", bundle: .module)
+        case "email": String(localized: "Email", bundle: .module)
+        case "messaging": String(localized: "Messaging", bundle: .module)
+        case "meetings": String(localized: "Meetings", bundle: .module)
+        case "video_conferencing": String(localized: "Video Conferencing", bundle: .module)
+        case "browsing": String(localized: "Browsing", bundle: .module)
+        case "utility": String(localized: "Utility", bundle: .module)
+        case "entertainment": String(localized: "Entertainment", bundle: .module)
+        case "gaming": String(localized: "Gaming", bundle: .module)
+        case "shopping": String(localized: "Shopping", bundle: .module)
+        case "social_media": String(localized: "Social Media", bundle: .module)
+        case "personal": String(localized: "Personal", bundle: .module)
+        case "miscellaneous": String(localized: "Miscellaneous", bundle: .module)
+        case "uncategorized": String(localized: "Uncategorized", bundle: .module)
+        default: name
+        }
+    }
+
     /// True for categories that should be avoided during focus — used for the distraction metric.
     public var isDistracting: Bool { blockInFocus }
 }

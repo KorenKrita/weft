@@ -50,7 +50,7 @@ enum Format {
     }
 
     static func minutesLabel(_ minutes: Int) -> String {
-        minutes < 60 ? "\(minutes) min" : (minutes % 60 == 0 ? "\(minutes / 60) h" : "\(minutes / 60) h \(minutes % 60) min")
+        minutes < 60 ? String(localized: "\(minutes) min") : (minutes % 60 == 0 ? String(localized: "\(minutes / 60) h") : String(localized: "\(minutes / 60) h \(minutes % 60) min"))
     }
 }
 
@@ -80,6 +80,56 @@ enum LaunchAtLogin {
         } catch {
             NSLog("Weft: launch at login change failed: \(error)")
         }
+    }
+}
+
+/// Weft's own language, kept apart from the system's. macOS reads `AppleLanguages` from the
+/// app's defaults at launch, so a change applies after a relaunch.
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system
+    case english = "en"
+    case simplifiedChinese = "zh-Hans"
+
+    var id: Self { self }
+
+    /// Language names stay in their own language, so anyone can find theirs.
+    var label: String {
+        switch self {
+        case .system: String(localized: "System")
+        case .english: "English"
+        case .simplifiedChinese: "简体中文"
+        }
+    }
+
+    static var current: AppLanguage {
+        // Only this app's domain: the global one always holds the system's languages.
+        let domain = UserDefaults.standard.persistentDomain(forName: Bundle.main.bundleIdentifier ?? "")
+        let first = (domain?["AppleLanguages"] as? [String])?.first
+        // System Settings writes regional variants such as "zh-Hans-CN" for a per-app language.
+        guard let first else { return .system }
+        return allCases.first { $0 != .system && (first == $0.rawValue || first.hasPrefix($0.rawValue + "-")) } ?? .system
+    }
+
+    /// The language this process runs in; reading it first is enough, since it only changes at launch.
+    static let atLaunch = current
+
+    func apply() {
+        if self == .system {
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        } else {
+            UserDefaults.standard.set([rawValue], forKey: "AppleLanguages")
+        }
+    }
+
+    /// Quits, then opens Weft again once this instance is gone, so two never share the store.
+    @MainActor
+    static func relaunch() {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"$0\"",
+                          Bundle.main.bundlePath, String(ProcessInfo.processInfo.processIdentifier)]
+        guard (try? task.run()) != nil else { return }
+        NSApp.terminate(nil)
     }
 }
 

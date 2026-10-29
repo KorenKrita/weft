@@ -55,8 +55,8 @@ public final class BreakReminder {
         let due = nextReminder ?? streakStart.addingTimeInterval(TimeInterval(preferences.breakReminderMinutes * 60))
         guard sample.date >= due else { return }
         let minutes = Int(sample.date.timeIntervalSince(streakStart) / 60)
-        notifier.post(.breakReminder, title: "Time for a break",
-                      body: "You've been working for \(minutes) minutes without a pause.")
+        notifier.post(.breakReminder, title: String(localized: "Time for a break", bundle: .module),
+                      body: String(localized: "You've been working for \(minutes) minutes without a pause.", bundle: .module))
         snooze(from: sample.date)
     }
 
@@ -124,18 +124,18 @@ public final class WorkHoursMonitor {
         if !notifiedTarget, worked >= target {
             notifiedTarget = true
             preferences.workHoursTargetNotifiedAt = sample.date
-            notifier.post(.workHours, title: "Work hours target reached",
-                          body: "You've tracked \(Self.format(worked)) today. Consider wrapping up.")
+            notifier.post(.workHours, title: String(localized: "Work hours target reached", bundle: .module),
+                          body: String(localized: "You've tracked \(Self.format(worked)) today. Consider wrapping up.", bundle: .module))
         } else if !notifiedOvertime, worked >= target + 3600 {
             notifiedOvertime = true
             preferences.overtimeNotifiedAt = sample.date
-            notifier.post(.workHours, title: "You're overworking",
-                          body: "\(Self.format(worked)) tracked today — an hour past your target.")
+            notifier.post(.workHours, title: String(localized: "You're overworking", bundle: .module),
+                          body: String(localized: "\(Self.format(worked)) tracked today — an hour past your target.", bundle: .module))
         }
     }
 
     private static func format(_ interval: TimeInterval) -> String {
         let minutes = Int(interval / 60)
-        return "\(minutes / 60)h \(minutes % 60)m"
+        return String(localized: "\(minutes / 60)h \(minutes % 60)m", bundle: .module)
     }
 }

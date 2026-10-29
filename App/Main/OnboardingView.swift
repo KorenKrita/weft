@@ -74,7 +74,7 @@ struct OnboardingView: View {
         }
     }
 
-    private func bullet(_ symbol: String, _ text: String) -> some View {
+    private func bullet(_ symbol: String, _ text: LocalizedStringKey) -> some View {
         Label {
             Text(text).fixedSize(horizontal: false, vertical: true)
         } icon: {

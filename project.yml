@@ -5,6 +5,7 @@ options:
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
+  developmentLanguage: en
 
 configFiles:
   Debug: Config/Base.xcconfig
@@ -32,6 +33,7 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Weft
+        CFBundleLocalizations: [en, zh-Hans]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true

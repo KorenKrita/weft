@@ -13,7 +13,7 @@ struct ActivityList: View {
         let all = Array(ActivityBlocks.build(segments).filter { $0.duration >= 10 }.reversed())
         let groups = all.filter(matches)
         let visible = showAll ? groups : Array(groups.prefix(40))
-        let categories = Set(all.map(\.first.categoryKey)).map(model.classifier.category).sorted { $0.name < $1.name }
+        let categories = Set(all.map(\.first.categoryKey)).map(model.classifier.category).sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
         LazyVStack(alignment: .leading, spacing: 0) {
             HStack {
                 TextField("Filter by app, site or title", text: $search)
@@ -22,7 +22,7 @@ struct ActivityList: View {
                 Picker("Category", selection: $category) {
                     Text("All categories").tag(String?.none)
                     Divider()
-                    ForEach(categories) { Text($0.name).tag(Optional($0.key)) }
+                    ForEach(categories) { Text($0.displayName).tag(Optional($0.key)) }
                 }
                 .labelsHidden()
                 .fixedSize()
@@ -80,10 +80,12 @@ private struct ActivityRow: View {
                 }
                 if !group.interruptions.isEmpty {
                     let names = group.interruptionNames
-                    Label("\(group.interruptions.count) brief switch\(group.interruptions.count == 1 ? "" : "es") · \(names.prefix(3).joined(separator: ", "))\(names.count > 3 ? "…" : "")",
+                    let list = names.prefix(3).joined(separator: ", ") + (names.count > 3 ? "…" : "")
+                    Label(group.interruptions.count == 1 ? String(localized: "1 brief switch · \(list)")
+                              : String(localized: "\(group.interruptions.count) brief switches · \(list)"),
                           systemImage: "arrow.triangle.branch")
                         .font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
-                        .help("Short visits folded into this entry:\n" + names.joined(separator: "\n"))
+                        .help(String(localized: "Short visits folded into this entry:") + "\n" + names.joined(separator: "\n"))
                 }
             }
             Spacer()
@@ -129,7 +131,7 @@ struct CategoryMenu: View {
                     }
                 }
             } label: {
-                Text(category.name)
+                Text(category.displayName)
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
@@ -148,7 +150,7 @@ struct CategoryMenu: View {
     @ViewBuilder
     private func categoryButtons(_ action: @escaping (String) -> Void) -> some View {
         ForEach(model.classifier.categories.filter { $0.key != CategoryDefinition.uncategorizedKey }) { category in
-            Button(category.name) { action(category.key) }
+            Button(category.displayName) { action(category.key) }
         }
     }
 }
