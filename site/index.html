@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weft: see where your day actually went</title>
+  <meta name="description" content="A free, open-source time tracker for your Mac's menu bar. Weft weaves your apps, windows and sites into threads of work, measures how long your coding agents work for you, and keeps everything on your Mac.">
+  <meta name="theme-color" content="#05061a">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <link rel="alternate" hreflang="en" href="https://weftapp.org/">
+  <link rel="alternate" hreflang="zh-Hans" href="https://weftapp.org/zh/">
+  <link rel="alternate" hreflang="x-default" href="https://weftapp.org/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Weft: see where your day actually went">
+  <meta property="og:description" content="Free, open-source time tracking for macOS. Threads of work instead of app-switch logs, coding-agent time on the same timeline, and nothing ever leaves your Mac.">
+  <meta property="og:url" content="https://weftapp.org/">
+  <meta property="og:image" content="https://weftapp.org/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="assets/style.css">
+  <script>document.documentElement.classList.add('js')</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="./"><img src="assets/icon.svg" alt="" width="30" height="30">Weft</a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#threads">How it works</a>
+        <a href="#agents">Agents</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#features">Features</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="nav-right">
+        <a class="nav-lang" href="zh/" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+        <a class="nav-gh" href="https://github.com/tiann/weft" aria-label="Weft on GitHub"><svg class="i"><use href="assets/icons.svg#github"/></svg></a>
+        <a class="btn btn-primary btn-small" href="https://github.com/tiann/weft/releases/latest"><svg class="i"><use href="assets/icons.svg#download"/></svg>Download</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <svg class="hero-threads" data-hero-threads viewBox="0 0 1600 420" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="wrap hero-copy">
+        <a class="eyebrow news" href="#agents"><span class="tag">NEW</span>Now measures how long Claude Code and Codex work for you<svg class="i"><use href="assets/icons.svg#arrow"/></svg></a>
+        <h1>See where your day<br><span class="woven">actually went.</span></h1>
+        <p class="lede">Weft lives in your menu bar and weaves the apps, windows and sites you use into the few threads of work you kept coming back to. Your coding agents' hours go on the same timeline. Everything is sorted on your Mac by Apple Intelligence, and none of it is ever sent anywhere.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/tiann/weft/releases/latest"><svg class="i"><use href="assets/icons.svg#download"/></svg>Download for Mac</a>
+          <a class="btn btn-ghost" href="https://github.com/tiann/weft"><svg class="i"><use href="assets/icons.svg#github"/></svg>View on GitHub</a>
+        </div>
+        <p class="fine"><span>Free and open source</span><span>macOS 26 or later</span><span>Signed and notarized by Apple</span></p>
+      </div>
+      <div class="wrap hero-stage">
+        <div data-mock="hero" role="img" aria-label="Weft's Today page, with a Focus Score of 84, 6 hours 24 minutes tracked, and a timeline of overlapping work streams and coding-agent sessions, next to the menu bar popover."></div>
+      </div>
+      <div class="wrap">
+        <div class="pillars reveal">
+          <div class="pillar"><b>7 MB</b><span>A native SwiftUI app. No Electron, no bundled browser.</span></div>
+          <div class="pillar"><b>0 servers</b><span>No account, no cloud and no analytics.</span></div>
+          <div class="pillar"><b>On-device AI</b><span>Categories and summaries come from Apple Intelligence.</span></div>
+          <div class="pillar"><b>Free, MIT</b><span>Open source, with no subscription and no paid tier.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="threads">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">The idea</div>
+          <h2>You don't do one thing at a time. Your time tracker shouldn't pretend you do.</h2>
+          <p>You write code, check the docs, answer a message and go back to the code. Most trackers file that as a long list of app switches. Weft finds the thread running through it: the same kind of work within 30 minutes becomes one stream, short detours fold in, and streams that overlap sit side by side like events in a calendar.</p>
+        </div>
+
+        <div class="card weave reveal" data-weave>
+          <div class="weave-grid">
+            <div class="weave-label"><strong>What happened</strong><b data-switches>70</b>app switches</div>
+            <div class="weave-lane"><span class="weave-name"></span><div class="weave-track weave-barcode" data-barcode></div></div>
+            <div class="weave-arrow"><svg class="i"><use href="assets/icons.svg#arrow-down"/></svg>woven into</div>
+            <div class="weave-label"><strong>What Weft shows</strong><b>5</b>threads of work</div>
+            <div class="weave-threads" data-threads></div>
+            <div class="weave-lane weave-axis-lane"><span></span><div class="weave-axis"><span style="left:0">09:00</span><span style="left:33.33%">10:00</span><span style="left:66.67%">11:00</span><span style="left:100%">12:00</span></div></div>
+          </div>
+        </div>
+
+        <div class="points">
+          <div class="card point reveal"><div class="swatch"><i style="--c:var(--code);width:46px"></i><i style="--c:var(--code);width:14px;opacity:.5"></i></div><h3>A sentence for every stream</h3><p>Each stream gets a one-line summary of what you actually did, written on your Mac by the on-device model.</p></div>
+          <div class="card point reveal"><div class="swatch"><i style="--c:var(--writing);width:30px"></i><i style="--c:var(--design);width:30px"></i></div><h3>Overlaps, side by side</h3><p>A meeting in the middle of a coding session? Both show, in columns, the way your calendar does it.</p></div>
+          <div class="card point reveal"><div class="swatch"><i style="--c:var(--productivity);width:60px"></i><i style="--c:var(--entertainment);width:6px"></i></div><h3>Noise folded away</h3><p>Streams under 10 minutes move to the Log, and idle stretches fold to a thin line, so the day stays readable.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="agents">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Coding agents</div>
+          <h2>Know how long your agents really worked.</h2>
+          <p>Weft reads the logs Claude Code and Codex already keep on your Mac and measures each session's real working time. You see how long agents worked for you today, how many hours that adds up to across sessions, and how many ran at once. Every session sits on your timeline next to your own work.</p>
+        </div>
+
+        <div class="agent-stats">
+          <div class="card stat reveal"><b>2h 50m</b><h3>Agent time today</h3><p>When at least one agent was working for you.</p><div class="bar"><i style="--c:var(--claude);flex:5"></i><i style="--c:var(--codex);flex:3"></i><i style="--c:rgba(255,255,255,.1);flex:2"></i></div></div>
+          <div class="card stat reveal"><b>4h 5m</b><h3>Across all sessions</h3><p>Two agents working in parallel for an hour add up to two hours.</p><div class="bar"><i style="--c:var(--claude);flex:1"></i><i style="--c:var(--codex);flex:1"></i></div></div>
+          <div class="card stat reveal"><b>2<small>at once</small></b><h3>Running in parallel</h3><p>The most sessions working at the same time, out of 3 today.</p><div class="bar"><i style="--c:var(--claude);flex:1"></i><i style="--c:var(--codex);flex:1"></i><i style="--c:rgba(255,255,255,.1);flex:1"></i></div></div>
+          <div class="card stat reveal"><b>24m</b><h3>Waiting on agents</h3><p>Time away while they worked, added to your day.</p><div class="bar"><i style="--c:var(--waiting);flex:1"></i><i style="--c:rgba(255,255,255,.1);flex:6"></i></div></div>
+        </div>
+
+        <div class="card agent-visual agents-card reveal">
+          <div data-mock="agents" role="img" aria-label="A timeline where a Claude Code session and a Codex session on another Mac run next to the user's own Code and Messaging streams. A dashed block marks 24 minutes away, counted as waiting on agents."></div>
+          <div class="agent-detail">
+            <div class="agent-detail-caption"><h3>Click any session</h3><p>See how long it worked, over how many prompts, how long it waited for you, and what you did in the meantime.</p></div>
+            <div data-mock="agentDetail" role="img" aria-label="Session details: Claude Code worked 1 hour 25 minutes over 5 prompts and waited 6 minutes for answers. Meanwhile the user spent 48 minutes in Code, 20 in Messaging, and was away for 24."></div>
+          </div>
+        </div>
+
+        <ol class="agent-points">
+          <li class="card reveal"><span class="n">1</span><h3>Working time, not open sessions</h3><p>A turn runs from your prompt to the agent's reply. The hours a session sits waiting for you never count, and neither do its pauses for your permission or answers. The bar is solid where the agent worked and faint where it waited.</p></li>
+          <li class="card reveal"><span class="n">2</span><h3>Waiting on agents counts</h3><p>Step away while an agent works and that time still counts towards your daily target, up to a limit you set. Your Focus Score stays about you alone.</p></li>
+          <li class="card reveal"><span class="n">3</span><h3>Every machine you use</h3><p>With <a href="https://github.com/tiann/hapi">HAPI</a>, agents on your other machines show up too, and sessions Weft can already read here are never counted twice.</p></li>
+        </ol>
+
+        <div class="agent-foot reveal">
+          <div class="agent-logos">
+            <span style="--c:var(--claude)"><i></i>Claude Code</span>
+            <span style="--c:var(--codex)"><i></i>Codex</span>
+            <span style="--c:#8fa8ff"><i></i>More via HAPI</span>
+          </div>
+          <p class="note"><svg class="i"><use href="assets/icons.svg#info"/></svg><span>Weft keeps each session's title, project folder and working times. It never stores your prompts or the agent's replies.</span></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="privacy">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Private by design</div>
+          <h2>Your day stays on your Mac. All of it.</h2>
+          <p>There's no account to create, no server to sync with and no analytics to opt out of. Weft categorizes, summarizes and reviews your day with Apple's on-device model, and keeps your history in a folder you can open in Finder.</p>
+        </div>
+
+        <div class="card privacy-flow reveal">
+          <div class="mac">
+            <div class="mac-label"><svg class="i"><use href="assets/icons.svg#laptop"/></svg>Your Mac</div>
+            <div class="flow">
+              <div class="flow-node"><svg class="i"><use href="assets/icons.svg#window"/></svg><b>What you use</b><span>App, window title, tab address</span></div>
+              <div class="flow-link"></div>
+              <div class="flow-node"><svg class="i"><use href="assets/icons.svg#chip"/></svg><b>Apple Intelligence</b><span>Sorts and summarizes, on device</span></div>
+              <div class="flow-link"></div>
+              <div class="flow-node"><svg class="i"><use href="assets/icons.svg#database"/></svg><b>Your history</b><span>A folder in <code>~/Library</code> that you can open, export or delete</span></div>
+            </div>
+          </div>
+          <div class="cloud"><svg class="i"><use href="assets/icons.svg#cloud-off"/></svg><span>No account, no server, no analytics. Nothing to sync, nothing to leak.</span></div>
+        </div>
+
+        <div class="lists">
+          <div class="card list yes reveal"><h3>What Weft records</h3><ul>
+            <li><svg class="i"><use href="assets/icons.svg#check"/></svg>The app in front</li>
+            <li><svg class="i"><use href="assets/icons.svg#check"/></svg>Its window title</li>
+            <li><svg class="i"><use href="assets/icons.svg#check"/></svg>The current tab's address, in supported browsers</li>
+            <li><svg class="i"><use href="assets/icons.svg#check"/></svg>When your coding agents worked</li>
+          </ul></div>
+          <div class="card list no reveal"><h3>What it never records</h3><ul>
+            <li><svg class="i"><use href="assets/icons.svg#x"/></svg>Screenshots</li>
+            <li><svg class="i"><use href="assets/icons.svg#x"/></svg>Keystrokes</li>
+            <li><svg class="i"><use href="assets/icons.svg#x"/></svg>What's on your screen</li>
+            <li><svg class="i"><use href="assets/icons.svg#x"/></svg>Your prompts, or what agents reply</li>
+          </ul></div>
+          <div class="card list you reveal"><h3>What you control</h3><ul>
+            <li><svg class="i"><use href="assets/icons.svg#sliders"/></svg>Stop recording window titles</li>
+            <li><svg class="i"><use href="assets/icons.svg#sliders"/></svg>Keep only the domain of each URL</li>
+            <li><svg class="i"><use href="assets/icons.svg#sliders"/></svg>Leave out apps and sites entirely</li>
+            <li><svg class="i"><use href="assets/icons.svg#sliders"/></svg>Pause any time, export everything to CSV</li>
+          </ul></div>
+        </div>
+        <p class="aside reveal">Prefer a different model? Connect any OpenAI-compatible API in <b>Settings → Model</b>: OpenAI, OpenRouter, DeepSeek and others. A remote model receives the apps, sites and window titles Weft asks it to sort, and your daily totals for reviews. Point Weft at Ollama or LM Studio and even that stays on your Mac.</p>
+      </div>
+    </section>
+
+    <section class="section" id="native">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Native, through and through</div>
+          <h2>Feels like macOS. Barely touches your battery.</h2>
+          <p>Weft is written in Swift and SwiftUI, so it looks, scrolls and behaves like the rest of your Mac. It doesn't poll your windows several times a second. It waits for macOS to say something changed, takes one look and goes back to sleep.</p>
+        </div>
+        <div class="tiles">
+          <div class="card tile reveal"><div class="big">7<small>MB</small></div><h3>The whole app</h3><p>No Electron and no bundled browser. The download is about 4 MB.</p></div>
+          <div class="card tile reveal">
+            <div class="pulse" aria-hidden="true"><i></i><i></i><i class="hit"></i><i></i><i></i><i></i><i></i><i class="beat"></i><i></i><i></i><i class="hit"></i><i></i><i></i><i></i><i></i><i></i><i class="beat"></i><i></i><i></i><i class="hit"></i><i></i><i></i></div>
+            <h3>Event-driven</h3><p>No polling loop. Weft wakes when the app, window or title changes, plus a quiet heartbeat once a minute.</p></div>
+          <div class="card tile reveal">
+            <div class="idle" aria-hidden="true"><span></span></div>
+            <h3>Knows when you're away</h3><p>It stops counting after 5 idle minutes, when the lid closes and when the screen locks. Meetings are the exception.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">Everything else</div>
+          <h2>A small app that does a lot.</h2>
+        </div>
+        <div class="features">
+          <div class="card feature reveal" style="--c:#30d158"><div class="ico"><svg class="i"><use href="assets/icons.svg#gauge"/></svg></div><h3>Focus Score</h3><p>A daily 0–100 for deep work and distraction. Click it to see exactly how it's calculated.</p></div>
+          <div class="card feature reveal" style="--c:#4f7cff"><div class="ico"><svg class="i"><use href="assets/icons.svg#tag"/></svg></div><h3>Categories that sort themselves</h3><p>About 360 apps and sites are built in. The rest go to Apple Intelligence, and you can correct any of them.</p></div>
+          <div class="card feature reveal" style="--c:#f44336"><div class="ico"><svg class="i"><use href="assets/icons.svg#target"/></svg></div><h3>Focus sessions and a blocker</h3><p>Start focus, meeting and break sessions from the menu bar. Drift somewhere distracting and Weft nudges you back.</p></div>
+          <div class="card feature reveal" style="--c:#2bb8a4"><div class="ico"><svg class="i"><use href="assets/icons.svg#cup"/></svg></div><h3>Healthy hours</h3><p>Break reminders, and a daily target that tells you when you've done enough.</p></div>
+          <div class="card feature reveal" style="--c:#e2b93b"><div class="ico"><svg class="i"><use href="assets/icons.svg#calendar"/></svg></div><h3>Daily and weekly reviews</h3><p>A short review of your day with a suggestion for tomorrow, and how this week compares with last week.</p></div>
+          <div class="card feature reveal" style="--c:#c356f0"><div class="ico"><svg class="i"><use href="assets/icons.svg#chart"/></svg></div><h3>Reports</h3><p>Days and weeks by category and app, compared with your recent past.</p></div>
+          <div class="card feature reveal" style="--c:#9a8c7a"><div class="ico"><svg class="i"><use href="assets/icons.svg#sliders"/></svg></div><h3>Rules of your own</h3><p>Match an app, a site or a window title, and Weft files it your way, past entries included.</p></div>
+          <div class="card feature reveal" style="--c:#10a37f"><div class="ico"><svg class="i"><use href="assets/icons.svg#chip"/></svg></div><h3>Bring your own model</h3><p>No Apple Intelligence where you live? Use any OpenAI-compatible API, or a local Ollama or LM Studio.</p></div>
+          <div class="card feature reveal" style="--c:#36a3d9"><div class="ico"><svg class="i"><use href="assets/icons.svg#export"/></svg></div><h3>Your data, your way</h3><p>Export everything to CSV whenever you like. To erase your history, delete one folder.</p></div>
+          <div class="card feature reveal" style="--c:#e58a2e"><div class="ico"><svg class="i"><use href="assets/icons.svg#globe"/></svg></div><h3>Your browser, understood</h3><p>Reads the current tab in Safari, Chrome, Arc, Edge, Brave, Vivaldi, Opera, Dia and Comet.</p></div>
+          <div class="card feature wide reveal" style="--c:#8fa8ff">
+            <div><div class="ico"><svg class="i"><use href="assets/icons.svg#terminal"/></svg></div><h3>Automate it</h3><p>Control Weft from Raycast, Alfred, Shortcuts or a script with <code>weft://</code> links: start a session, pause tracking or open today.</p></div>
+            <div class="terminal">
+              <div class="terminal-bar"><i></i><i></i><i></i><button class="copy" type="button" data-copy='open "weft://focus?minutes=25"'><span class="idle-label">Copy</span><span class="done">Copied</span></button></div>
+              <pre><span class="p">$ </span>open <span class="s">"weft://focus?minutes=25"</span>
+<span class="p">$ </span>open <span class="s">"weft://meeting"</span>
+<span class="p">$ </span>open <span class="s">"weft://pause"</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="compare">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">The difference</div>
+          <h2>How Weft compares</h2>
+        </div>
+        <div class="card compare reveal">
+          <table>
+            <thead><tr><th scope="col"><span class="sr">&nbsp;</span></th><th scope="col" class="weft"><span><img src="assets/icon.svg" alt="">Weft</span></th><th scope="col">Typical cloud trackers</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Price</th><td class="weft"><svg class="i"><use href="assets/icons.svg#check"/></svg>Free, MIT license</td><td class="them">Monthly subscription</td></tr>
+              <tr><th scope="row">Account</th><td class="weft"><svg class="i"><use href="assets/icons.svg#check"/></svg>None</td><td class="them">Required</td></tr>
+              <tr><th scope="row">Where your history lives</th><td class="weft"><svg class="i"><use href="assets/icons.svg#check"/></svg>On your Mac</td><td class="them">On their servers</td></tr>
+              <tr><th scope="row">Categorization</th><td class="weft"><svg class="i"><use href="assets/icons.svg#check"/></svg>On-device AI</td><td class="them">In the cloud</td></tr>
+              <tr><th scope="row">How your day is shown</th><td class="weft"><svg class="i"><use href="assets/icons.svg#check"/></svg>Threads of work</td><td class="them">A log of app switches</td></tr>
+              <tr><th scope="row">Coding-agent time</th><td class="weft"><svg class="i"><use href="assets/icons.svg#check"/></svg>Measured per session</td><td class="them">—</td></tr>
+              <tr><th scope="row">The app</th><td class="weft"><svg class="i"><use href="assets/icons.svg#check"/></svg>Native, 7 MB</td><td class="them">Often Electron</td></tr>
+              <tr><th scope="row">Source code</th><td class="weft"><svg class="i"><use href="assets/icons.svg#check"/></svg>Open</td><td class="them">Closed</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="download">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">Get started</div>
+          <h2>Up and running in a minute.</h2>
+        </div>
+        <div class="start">
+          <div class="card reveal">
+            <h3>Install</h3>
+            <ol class="steps">
+              <li><span class="n">1</span><div><h3>Download</h3><p>Get the latest <code>Weft-&lt;version&gt;.dmg</code> from <a href="https://github.com/tiann/weft/releases/latest">GitHub Releases</a>.</p></div></li>
+              <li><span class="n">2</span><div><h3>Drag it into Applications</h3><p>It's signed and notarized by Apple, so macOS opens it without warnings.</p></div></li>
+              <li><span class="n">3</span><div><h3>Allow Accessibility</h3><p>So the timeline can show which document or project you were in, not just the app.</p></div></li>
+            </ol>
+            <p class="note"><svg class="i"><use href="assets/icons.svg#info"/></svg><span>Weft needs macOS 26 or later. Apple Intelligence is recommended but optional: without it, Weft still knows a few hundred apps and sites, and guesses the rest for you to confirm later. You can also connect an OpenAI-compatible API or a local Ollama.</span></p>
+          </div>
+          <div class="card build reveal">
+            <h3>Or build it yourself</h3>
+            <p>You'll need Xcode and <a href="https://brew.sh">Homebrew</a>.</p>
+            <div class="terminal" style="margin-top:18px">
+              <div class="terminal-bar"><i></i><i></i><i></i><button class="copy" type="button" data-copy="brew install xcodegen
+git clone https://github.com/tiann/weft.git
+cd weft
+xcodegen generate
+xcodebuild -project Weft.xcodeproj -scheme Weft -derivedDataPath build/DerivedData build
+open build/DerivedData/Build/Products/Debug/Weft.app"><span class="idle-label">Copy</span><span class="done">Copied</span></button></div>
+              <pre><span class="p">$ </span>brew install xcodegen
+<span class="p">$ </span>git clone https://github.com/tiann/weft.git
+<span class="p">$ </span>cd weft &amp;&amp; xcodegen generate
+<span class="p">$ </span>xcodebuild -project Weft.xcodeproj \
+    -scheme Weft -derivedDataPath build/DerivedData build</pre>
+            </div>
+            <p style="margin-top:18px">Bug reports and pull requests are welcome. <a href="https://github.com/tiann/weft/blob/main/AGENTS.md">AGENTS.md</a> covers the architecture and the tests.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">FAQ</div>
+          <h2>Questions, answered</h2>
+        </div>
+        <div class="faq">
+          <details><summary>Is Weft really free?</summary><div class="answer">Yes. Weft is MIT-licensed, with no subscription, no paid tier and no account. You can read the code, change it and build it yourself.</div></details>
+          <details><summary>How does Weft measure my coding agents' time?</summary><div class="answer">It reads the logs Claude Code and Codex keep on your Mac (<code>~/.claude/projects</code> and <code>~/.codex/sessions</code>) and counts each turn, from your prompt to the agent's reply, minus the time it spent waiting for your permission or answers. The hours a session sits idle between prompts don't count. Today shows the time at least one agent was working and the total across sessions, and each session on the timeline shows its own working time. With HAPI 0.33 or later, agents on your other machines are included.</div></details>
+          <details><summary>Do I need Apple Intelligence?</summary><div class="answer">No, though it's recommended. Without it, Weft still sorts the apps and sites it knows and anything you've set yourself, and guesses the rest from each app's App Store category or each site's name. You can also connect any OpenAI-compatible API, including a local Ollama or LM Studio.</div></details>
+          <details><summary>What exactly can Weft see?</summary><div class="answer">The app in front, its window title and, in supported browsers, the current tab's address. Never screenshots, keystrokes or the contents of your screen. You can turn off window titles, keep only domains, and leave out apps and sites entirely.</div></details>
+          <details><summary>Will it slow down my Mac or drain the battery?</summary><div class="answer">It's built not to. Weft is a native app with no polling loop: it reacts when macOS reports that the app, window or title changed, and otherwise checks in once a minute.</div></details>
+          <details><summary>How is Weft different from Rize?</summary><div class="answer">Weft takes after Rize but starts from a different idea: people rarely do one thing at a time, so instead of a log of app switches it shows the threads of work you kept coming back to. It's also free, open source, and works entirely on your Mac.</div></details>
+          <details><summary>Where is my data, and how do I delete it?</summary><div class="answer">In <code>~/Library/Application Support/Weft/</code>. Export it to CSV from <b>Settings → Data</b>. To erase it, quit Weft and delete that folder.</div></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap reveal">
+        <img src="assets/icon.svg" alt="" width="88" height="88">
+        <h2>Find out where today went.</h2>
+        <p>Free, open source, and private from the first minute.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/tiann/weft/releases/latest"><svg class="i"><use href="assets/icons.svg#download"/></svg>Download for Mac</a>
+          <a class="btn btn-ghost" href="https://github.com/tiann/weft"><svg class="i"><use href="assets/icons.svg#github"/></svg>Star on GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    <div class="wrap">
+      <div class="footer-inner">
+        <a class="brand" href="./"><img src="assets/icon.svg" alt="" width="30" height="30">Weft</a>
+        <nav class="footer-links" aria-label="Links">
+          <a href="https://github.com/tiann/weft">GitHub</a>
+          <a href="https://github.com/tiann/weft/releases">Releases</a>
+          <a href="https://github.com/tiann/weft/issues">Report an issue</a>
+          <a href="https://github.com/tiann/weft/blob/main/LICENSE">MIT License</a>
+          <a href="zh/" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+        </nav>
+      </div>
+      <p class="footer-note">Made by <a href="https://github.com/tiann">weishu</a>. Like the app, this site has no cookies, analytics or trackers.</p>
+    </div>
+  </footer>
+
+  <script src="assets/site.js" defer></script>
+</body>
+</html>

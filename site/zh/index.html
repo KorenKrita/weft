@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weft：看清你的一天，究竟去了哪儿</title>
+  <meta name="description" content="Weft 是一款免费、开源的 Mac 菜单栏时间追踪工具。它把你用过的应用、窗口和网站编织成一条条工作主线，统计编码 Agent 为你工作的时长，所有数据都只留在你的 Mac 上。">
+  <meta name="theme-color" content="#05061a">
+  <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../assets/icon-180.png">
+  <link rel="alternate" hreflang="en" href="https://weftapp.org/">
+  <link rel="alternate" hreflang="zh-Hans" href="https://weftapp.org/zh/">
+  <link rel="alternate" hreflang="x-default" href="https://weftapp.org/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Weft：看清你的一天，究竟去了哪儿">
+  <meta property="og:description" content="免费开源的 macOS 时间追踪工具。用工作主线代替应用切换日志，编码 Agent 的工作时长也在同一条时间线上，数据从不离开你的 Mac。">
+  <meta property="og:url" content="https://weftapp.org/zh/">
+  <meta property="og:image" content="https://weftapp.org/assets/og.png">
+  <meta property="og:locale" content="zh_CN">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>document.documentElement.classList.add('js')</script>
+</head>
+<body>
+  <a class="skip" href="#main">跳到正文</a>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="./"><img src="../assets/icon.svg" alt="" width="30" height="30">Weft</a>
+      <nav class="nav-links" aria-label="页面导航">
+        <a href="#threads">核心理念</a>
+        <a href="#agents">Agent 时长</a>
+        <a href="#privacy">隐私</a>
+        <a href="#features">功能</a>
+        <a href="#faq">常见问题</a>
+      </nav>
+      <div class="nav-right">
+        <a class="nav-lang" href="../" hreflang="en" lang="en">English</a>
+        <a class="nav-gh" href="https://github.com/tiann/weft" aria-label="Weft 的 GitHub 仓库"><svg class="i"><use href="../assets/icons.svg#github"/></svg></a>
+        <a class="btn btn-primary btn-small" href="https://github.com/tiann/weft/releases/latest"><svg class="i"><use href="../assets/icons.svg#download"/></svg>下载</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <svg class="hero-threads" data-hero-threads viewBox="0 0 1600 420" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="wrap hero-copy">
+        <a class="eyebrow news" href="#agents"><span class="tag">新</span>现在可以统计 Claude Code 与 Codex 为你工作了多久<svg class="i"><use href="../assets/icons.svg#arrow"/></svg></a>
+        <h1>看清你的一天，<br><span class="woven">究竟去了哪儿。</span></h1>
+        <p class="lede">Weft 安静地待在菜单栏里，把你用过的应用、窗口和网站，编织成一天里反复回到的几条工作主线；编码 Agent 替你干活的时长，也记在同一条时间线上。所有分类都由 Apple Intelligence 在你的 Mac 上完成，数据从不外传。</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/tiann/weft/releases/latest"><svg class="i"><use href="../assets/icons.svg#download"/></svg>下载 Mac 版</a>
+          <a class="btn btn-ghost" href="https://github.com/tiann/weft"><svg class="i"><use href="../assets/icons.svg#github"/></svg>在 GitHub 上查看</a>
+        </div>
+        <p class="fine"><span>免费开源</span><span>macOS 26 及以上</span><span>经 Apple 签名与公证</span></p>
+      </div>
+      <div class="wrap hero-stage">
+        <div data-mock="hero" role="img" aria-label="Weft 的 Today 页面：专注分数 84，已记录 6 小时 24 分钟，时间线上是相互重叠的工作流和编码 Agent 会话；旁边是菜单栏弹出面板。"></div>
+      </div>
+      <div class="wrap">
+        <div class="pillars reveal">
+          <div class="pillar"><b>7 MB</b><span>原生 SwiftUI 应用，没有 Electron，也不内置浏览器。</span></div>
+          <div class="pillar"><b>0 服务器</b><span>无需账号，没有云端，也没有任何统计。</span></div>
+          <div class="pillar"><b>本机 AI</b><span>分类和摘要都来自设备端的 Apple Intelligence。</span></div>
+          <div class="pillar"><b>免费 · MIT</b><span>开源，没有订阅，也没有付费版。</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="threads">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">核心理念</div>
+          <h2>人很少一次只做一件事，<wbr>时间追踪<wbr>也不该假装如此。</h2>
+          <p>写代码、查文档、回条消息，再回到代码，大多数时间追踪工具会把这些记成一长串应用切换。Weft 看到的是贯穿其中的那条线：30 分钟内的同类工作合成一条工作流，短暂的岔路折叠进去，相互重叠的工作流像日历里的日程一样并排摆放。</p>
+        </div>
+
+        <div class="card weave reveal" data-weave>
+          <div class="weave-grid">
+            <div class="weave-label"><strong>实际发生的</strong><b data-switches>70</b>次应用切换</div>
+            <div class="weave-lane"><span class="weave-name"></span><div class="weave-track weave-barcode" data-barcode></div></div>
+            <div class="weave-arrow"><svg class="i"><use href="../assets/icons.svg#arrow-down"/></svg>编织成</div>
+            <div class="weave-label"><strong>Weft 呈现的</strong><b>5</b>条工作主线</div>
+            <div class="weave-threads" data-threads></div>
+            <div class="weave-lane weave-axis-lane"><span></span><div class="weave-axis"><span style="left:0">09:00</span><span style="left:33.33%">10:00</span><span style="left:66.67%">11:00</span><span style="left:100%">12:00</span></div></div>
+          </div>
+        </div>
+
+        <div class="points">
+          <div class="card point reveal"><div class="swatch"><i style="--c:var(--code);width:46px"></i><i style="--c:var(--code);width:14px;opacity:.5"></i></div><h3>每条工作流，一句话说清</h3><p>设备端模型会为每条工作流写一句摘要，告诉你那段时间到底做了什么，全程在本机完成。</p></div>
+          <div class="card point reveal"><div class="swatch"><i style="--c:var(--writing);width:30px"></i><i style="--c:var(--design);width:30px"></i></div><h3>重叠的工作，并排呈现</h3><p>写代码时插进来一个会议？两者分栏并排显示，就像日历那样。</p></div>
+          <div class="card point reveal"><div class="swatch"><i style="--c:var(--productivity);width:60px"></i><i style="--c:var(--entertainment);width:6px"></i></div><h3>噪音自动收起</h3><p>不足 10 分钟的工作流移到日志里，空闲时段折叠成一条细线，一天看下来始终清爽。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="agents">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">编码 Agent</div>
+          <h2>Agent 到底<wbr>干了多久，<wbr>一目了然。</h2>
+          <p>Weft 读取 Claude Code 和 Codex 本就保存在你 Mac 上的日志，统计每个会话真正在工作的时长：今天有 Agent 在为你干活的时间、所有会话加起来的总时长，以及最多有几个在同时运行。每个会话都会出现在时间线上，就在你自己的工作旁边。</p>
+        </div>
+
+        <div class="agent-stats">
+          <div class="card stat reveal"><b>2h 50m</b><h3>今日 Agent 时长</h3><p>至少有一个 Agent 在为你工作的时间。</p><div class="bar"><i style="--c:var(--claude);flex:5"></i><i style="--c:var(--codex);flex:3"></i><i style="--c:rgba(255,255,255,.1);flex:2"></i></div></div>
+          <div class="card stat reveal"><b>4h 5m</b><h3>所有会话合计</h3><p>两个 Agent 并行工作一小时，就记为两小时。</p><div class="bar"><i style="--c:var(--claude);flex:1"></i><i style="--c:var(--codex);flex:1"></i></div></div>
+          <div class="card stat reveal"><b>2<small>个同时</small></b><h3>并行运行</h3><p>今天 3 个会话中，同一时刻最多有几个在工作。</p><div class="bar"><i style="--c:var(--claude);flex:1"></i><i style="--c:var(--codex);flex:1"></i><i style="--c:rgba(255,255,255,.1);flex:1"></i></div></div>
+          <div class="card stat reveal"><b>24m</b><h3>等待 Agent</h3><p>Agent 干活时你离开电脑的时间，也算进你的一天。</p><div class="bar"><i style="--c:var(--waiting);flex:1"></i><i style="--c:rgba(255,255,255,.1);flex:6"></i></div></div>
+        </div>
+
+        <div class="card agent-visual agents-card reveal">
+          <div data-mock="agents" role="img" aria-label="时间线上，一个 Claude Code 会话和另一台 Mac 上的 Codex 会话，与用户自己的 Code、Messaging 工作流并排运行；一个虚线框标出离开的 24 分钟，计为等待 Agent。"></div>
+          <div class="agent-detail">
+            <div class="agent-detail-caption"><h3>点开任意会话</h3><p>它工作了多久、处理了几条提示词、等了你多久，以及这段时间里你在做什么，都清清楚楚。</p></div>
+            <div data-mock="agentDetail" role="img" aria-label="会话详情：Claude Code 在 5 条提示词中工作了 1 小时 25 分钟，等待用户回复 6 分钟。同一时段用户在 Code 上用了 48 分钟、Messaging 20 分钟，离开 24 分钟。"></div>
+          </div>
+        </div>
+
+        <ol class="agent-points">
+          <li class="card reveal"><span class="n">1</span><h3>按真实工作时间计，挂着不算</h3><p>一轮从你发出提示词开始，到 Agent 给出回复结束。会话空等你下一条指令的那几个小时不算，等你授权或回答问题的停顿也会被剔除。时间线上，左侧色条实心处是 Agent 在工作，浅色处是在等你。</p></li>
+          <li class="card reveal"><span class="n">2</span><h3>等 Agent 也是在工作</h3><p>Agent 干活时你起身离开，这段时间照样计入每日目标，上限由你设定。专注分数则只衡量你自己。</p></li>
+          <li class="card reveal"><span class="n">3</span><h3>多台机器，一并统计</h3><p>借助 <a href="https://github.com/tiann/hapi">HAPI</a>，你在其他机器上运行的 Agent 也会出现在这里；本机已经能读到的会话不会重复计算。</p></li>
+        </ol>
+
+        <div class="agent-foot reveal">
+          <div class="agent-logos">
+            <span style="--c:var(--claude)"><i></i>Claude Code</span>
+            <span style="--c:var(--codex)"><i></i>Codex</span>
+            <span style="--c:#8fa8ff"><i></i>更多 Agent（通过 HAPI）</span>
+          </div>
+          <p class="note"><svg class="i"><use href="../assets/icons.svg#info"/></svg><span>Weft 只保存每个会话的标题、项目文件夹和工作时段，从不保存你的提示词或 Agent 的回复。</span></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="privacy">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">隐私为本</div>
+          <h2>你的一天，<wbr>完完整整<wbr>留在你的 Mac 上。</h2>
+          <p>不用注册账号，没有要同步的服务器，也没有需要手动关闭的数据统计。Weft 用 Apple 的设备端模型完成分类、摘要和回顾，历史记录就存在一个你能在访达里打开的文件夹中。</p>
+        </div>
+
+        <div class="card privacy-flow reveal">
+          <div class="mac">
+            <div class="mac-label"><svg class="i"><use href="../assets/icons.svg#laptop"/></svg>你的 Mac</div>
+            <div class="flow">
+              <div class="flow-node"><svg class="i"><use href="../assets/icons.svg#window"/></svg><b>你在用什么</b><span>应用、窗口标题、标签页地址</span></div>
+              <div class="flow-link"></div>
+              <div class="flow-node"><svg class="i"><use href="../assets/icons.svg#chip"/></svg><b>Apple Intelligence</b><span>在设备端完成分类与摘要</span></div>
+              <div class="flow-link"></div>
+              <div class="flow-node"><svg class="i"><use href="../assets/icons.svg#database"/></svg><b>你的历史记录</b><span>存放在 <code>~/Library</code> 中的一个文件夹，随时打开、导出或删除</span></div>
+            </div>
+          </div>
+          <div class="cloud"><svg class="i"><use href="../assets/icons.svg#cloud-off"/></svg><span>没有账号、没有服务器、没有统计。无需同步，也就无从泄露。</span></div>
+        </div>
+
+        <div class="lists">
+          <div class="card list yes reveal"><h3>Weft 会记录</h3><ul>
+            <li><svg class="i"><use href="../assets/icons.svg#check"/></svg>最前方的应用</li>
+            <li><svg class="i"><use href="../assets/icons.svg#check"/></svg>它的窗口标题</li>
+            <li><svg class="i"><use href="../assets/icons.svg#check"/></svg>受支持浏览器中当前标签页的地址</li>
+            <li><svg class="i"><use href="../assets/icons.svg#check"/></svg>编码 Agent 的工作时段</li>
+          </ul></div>
+          <div class="card list no reveal"><h3>Weft 从不记录</h3><ul>
+            <li><svg class="i"><use href="../assets/icons.svg#x"/></svg>屏幕截图</li>
+            <li><svg class="i"><use href="../assets/icons.svg#x"/></svg>键盘输入</li>
+            <li><svg class="i"><use href="../assets/icons.svg#x"/></svg>屏幕上显示的内容</li>
+            <li><svg class="i"><use href="../assets/icons.svg#x"/></svg>你的提示词和 Agent 的回复</li>
+          </ul></div>
+          <div class="card list you reveal"><h3>由你掌控</h3><ul>
+            <li><svg class="i"><use href="../assets/icons.svg#sliders"/></svg>不记录窗口标题</li>
+            <li><svg class="i"><use href="../assets/icons.svg#sliders"/></svg>网址只保留域名</li>
+            <li><svg class="i"><use href="../assets/icons.svg#sliders"/></svg>完全排除指定的应用和网站</li>
+            <li><svg class="i"><use href="../assets/icons.svg#sliders"/></svg>随时暂停，一键导出 CSV</li>
+          </ul></div>
+        </div>
+        <p class="aside reveal">想换个模型？可以在 <b>Settings → Model</b> 中接入任意兼容 OpenAI 的 API，比如 DeepSeek、OpenRouter 或 OpenAI。远程模型只会收到需要它分类的应用、网站和窗口标题，以及用于生成回顾的每日汇总；接入 Ollama 或 LM Studio 的话，连这些也不会离开你的 Mac。</p>
+      </div>
+    </section>
+
+    <section class="section" id="native">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">地道原生</div>
+          <h2>用起来就是 macOS，<wbr>几乎不耗电。</h2>
+          <p>Weft 用 Swift 和 SwiftUI 编写，外观、滚动和交互都与 Mac 上的其他应用一致。它不会每秒轮询好几次窗口，而是等 macOS 通知有变化时看上一眼，然后继续休眠。</p>
+        </div>
+        <div class="tiles">
+          <div class="card tile reveal"><div class="big">7<small>MB</small></div><h3>整个应用的大小</h3><p>没有 Electron，也不内置浏览器。安装包只有 4 MB 左右。</p></div>
+          <div class="card tile reveal">
+            <div class="pulse" aria-hidden="true"><i></i><i></i><i class="hit"></i><i></i><i></i><i></i><i></i><i class="beat"></i><i></i><i></i><i class="hit"></i><i></i><i></i><i></i><i></i><i></i><i class="beat"></i><i></i><i></i><i class="hit"></i><i></i><i></i></div>
+            <h3>事件驱动</h3><p>没有轮询循环。只在应用、窗口或标题变化时醒来，外加每分钟一次的轻量心跳。</p></div>
+          <div class="card tile reveal">
+            <div class="idle" aria-hidden="true"><span></span></div>
+            <h3>知道你何时离开</h3><p>空闲 5 分钟、合上屏幕或锁屏时就停止计时。开会时例外。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">不止于此</div>
+          <h2>小巧，<wbr>却出乎意料<wbr>地完整。</h2>
+        </div>
+        <div class="features">
+          <div class="card feature reveal" style="--c:#30d158"><div class="ico"><svg class="i"><use href="../assets/icons.svg#gauge"/></svg></div><h3>专注分数</h3><p>每天一个 0–100 的分数，衡量深度工作与分心程度。点开就能看到完整的计算方式。</p></div>
+          <div class="card feature reveal" style="--c:#4f7cff"><div class="ico"><svg class="i"><use href="../assets/icons.svg#tag"/></svg></div><h3>自动分类</h3><p>内置约 360 个常见应用和网站，其余交给 Apple Intelligence，任何结果都可以手动修正。</p></div>
+          <div class="card feature reveal" style="--c:#f44336"><div class="ico"><svg class="i"><use href="../assets/icons.svg#target"/></svg></div><h3>专注时段与拦截</h3><p>从菜单栏开始专注、会议或休息时段。一旦跑去容易分心的地方，Weft 会把你轻轻拉回来。</p></div>
+          <div class="card feature reveal" style="--c:#2bb8a4"><div class="ico"><svg class="i"><use href="../assets/icons.svg#cup"/></svg></div><h3>健康作息</h3><p>按时提醒你休息，每日目标会告诉你：今天已经够了。</p></div>
+          <div class="card feature reveal" style="--c:#e2b93b"><div class="ico"><svg class="i"><use href="../assets/icons.svg#calendar"/></svg></div><h3>每日与每周回顾</h3><p>一段简短的当日回顾和明日建议，以及本周与上周的对比。</p></div>
+          <div class="card feature reveal" style="--c:#c356f0"><div class="ico"><svg class="i"><use href="../assets/icons.svg#chart"/></svg></div><h3>报告</h3><p>按类别和应用查看每天、每周的时间分布，并与近期对比。</p></div>
+          <div class="card feature reveal" style="--c:#9a8c7a"><div class="ico"><svg class="i"><use href="../assets/icons.svg#sliders"/></svg></div><h3>自定义规则</h3><p>按应用、网站或窗口标题设定规则，Weft 会照你的意思归类，连过去的记录也一并更新。</p></div>
+          <div class="card feature reveal" style="--c:#10a37f"><div class="ico"><svg class="i"><use href="../assets/icons.svg#chip"/></svg></div><h3>自选模型</h3><p>所在地区用不了 Apple Intelligence？可以接入 DeepSeek 等兼容 OpenAI 的 API，或本地的 Ollama、LM Studio。</p></div>
+          <div class="card feature reveal" style="--c:#36a3d9"><div class="ico"><svg class="i"><use href="../assets/icons.svg#export"/></svg></div><h3>数据归你</h3><p>随时把全部数据导出为 CSV。想清除历史记录，删掉一个文件夹就行。</p></div>
+          <div class="card feature reveal" style="--c:#e58a2e"><div class="ico"><svg class="i"><use href="../assets/icons.svg#globe"/></svg></div><h3>读懂你的浏览器</h3><p>支持读取 Safari、Chrome、Arc、Edge、Brave、Vivaldi、Opera、Dia 和 Comet 的当前标签页。</p></div>
+          <div class="card feature wide reveal" style="--c:#8fa8ff">
+            <div><div class="ico"><svg class="i"><use href="../assets/icons.svg#terminal"/></svg></div><h3>自动化</h3><p>通过 <code>weft://</code> 链接，从 Raycast、Alfred、快捷指令或任意脚本控制 Weft：开始时段、暂停记录、打开今日页面。</p></div>
+            <div class="terminal">
+              <div class="terminal-bar"><i></i><i></i><i></i><button class="copy" type="button" data-copy='open "weft://focus?minutes=25"'><span class="idle-label">复制</span><span class="done">已复制</span></button></div>
+              <pre><span class="p">$ </span>open <span class="s">"weft://focus?minutes=25"</span>
+<span class="p">$ </span>open <span class="s">"weft://meeting"</span>
+<span class="p">$ </span>open <span class="s">"weft://pause"</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="compare">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">有何不同</div>
+          <h2>与常见的<wbr>时间追踪工具<wbr>相比</h2>
+        </div>
+        <div class="card compare reveal">
+          <table>
+            <thead><tr><th scope="col"><span class="sr">项目</span></th><th scope="col" class="weft"><span><img src="../assets/icon.svg" alt="">Weft</span></th><th scope="col">常见的云端追踪工具</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">价格</th><td class="weft"><svg class="i"><use href="../assets/icons.svg#check"/></svg>免费，MIT 许可</td><td class="them">按月订阅</td></tr>
+              <tr><th scope="row">账号</th><td class="weft"><svg class="i"><use href="../assets/icons.svg#check"/></svg>不需要</td><td class="them">必须注册</td></tr>
+              <tr><th scope="row">历史数据存放在</th><td class="weft"><svg class="i"><use href="../assets/icons.svg#check"/></svg>你的 Mac</td><td class="them">对方的服务器</td></tr>
+              <tr><th scope="row">分类方式</th><td class="weft"><svg class="i"><use href="../assets/icons.svg#check"/></svg>设备端 AI</td><td class="them">云端</td></tr>
+              <tr><th scope="row">一天的呈现方式</th><td class="weft"><svg class="i"><use href="../assets/icons.svg#check"/></svg>工作主线</td><td class="them">应用切换日志</td></tr>
+              <tr><th scope="row">编码 Agent 时长</th><td class="weft"><svg class="i"><use href="../assets/icons.svg#check"/></svg>按会话精确统计</td><td class="them">—</td></tr>
+              <tr><th scope="row">应用本身</th><td class="weft"><svg class="i"><use href="../assets/icons.svg#check"/></svg>原生，7 MB</td><td class="them">常为 Electron</td></tr>
+              <tr><th scope="row">源代码</th><td class="weft"><svg class="i"><use href="../assets/icons.svg#check"/></svg>开源</td><td class="them">闭源</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="download">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">开始使用</div>
+          <h2>一分钟即可上手。</h2>
+        </div>
+        <div class="start">
+          <div class="card reveal">
+            <h3>安装</h3>
+            <ol class="steps">
+              <li><span class="n">1</span><div><h3>下载</h3><p>从 <a href="https://github.com/tiann/weft/releases/latest">GitHub Releases</a> 获取最新的 <code>Weft-&lt;版本号&gt;.dmg</code>。</p></div></li>
+              <li><span class="n">2</span><div><h3>拖入「应用程序」</h3><p>已经过 Apple 签名和公证，打开时不会弹出安全警告。</p></div></li>
+              <li><span class="n">3</span><div><h3>授予辅助功能权限</h3><p>这样时间线才能显示你在哪个文档或项目里，而不只是哪个应用。</p></div></li>
+            </ol>
+            <p class="note"><svg class="i"><use href="../assets/icons.svg#info"/></svg><span>需要 macOS 26 或更高版本。推荐开启 Apple Intelligence，但并非必需：没有它，Weft 依然认识数百个应用和网站，其余的会先给出猜测，等你之后确认。如果所在地区暂不支持 Apple Intelligence，也可以在 <b>Settings → Model</b> 中接入 DeepSeek 等兼容 OpenAI 的服务，或本地的 Ollama。</span></p>
+          </div>
+          <div class="card build reveal">
+            <h3>或者自己编译</h3>
+            <p>需要先安装 Xcode 和 <a href="https://brew.sh">Homebrew</a>。</p>
+            <div class="terminal" style="margin-top:18px">
+              <div class="terminal-bar"><i></i><i></i><i></i><button class="copy" type="button" data-copy="brew install xcodegen
+git clone https://github.com/tiann/weft.git
+cd weft
+xcodegen generate
+xcodebuild -project Weft.xcodeproj -scheme Weft -derivedDataPath build/DerivedData build
+open build/DerivedData/Build/Products/Debug/Weft.app"><span class="idle-label">复制</span><span class="done">已复制</span></button></div>
+              <pre><span class="p">$ </span>brew install xcodegen
+<span class="p">$ </span>git clone https://github.com/tiann/weft.git
+<span class="p">$ </span>cd weft &amp;&amp; xcodegen generate
+<span class="p">$ </span>xcodebuild -project Weft.xcodeproj \
+    -scheme Weft -derivedDataPath build/DerivedData build</pre>
+            </div>
+            <p style="margin-top:18px">欢迎提交问题和 Pull Request。架构和测试方法请看 <a href="https://github.com/tiann/weft/blob/main/AGENTS.md">AGENTS.md</a>。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">常见问题</div>
+          <h2>你可能想知道</h2>
+        </div>
+        <div class="faq">
+          <details><summary>Weft 真的免费吗？</summary><div class="answer">是的。Weft 采用 MIT 许可证，没有订阅、没有付费版，也不需要账号。你可以阅读、修改并自行编译源代码。</div></details>
+          <details><summary>Weft 是怎么统计编码 Agent 时长的？</summary><div class="answer">它读取 Claude Code 和 Codex 保存在你 Mac 上的日志（<code>~/.claude/projects</code> 和 <code>~/.codex/sessions</code>），按轮次计时：从你发出提示词到 Agent 给出回复，再减去它等你授权或回答的时间。会话在两次提示词之间空闲的时间不算。Today 页面会显示至少有一个 Agent 在工作的时长和所有会话的合计时长，时间线上的每个会话也会标出自己的工作时长。配合 HAPI 0.33 或更高版本，其他机器上的 Agent 也会一并统计。</div></details>
+          <details><summary>必须开启 Apple Intelligence 吗？</summary><div class="answer">不必，但推荐开启。没有它，Weft 依然能识别内置的应用和网站以及你自己设定的规则，其余的会根据应用的 App Store 分类或网站名称来猜测。你也可以接入任何兼容 OpenAI 的 API，比如 DeepSeek，或本地运行的 Ollama、LM Studio。</div></details>
+          <details><summary>Weft 到底能看到什么？</summary><div class="answer">最前方的应用、它的窗口标题，以及受支持浏览器中当前标签页的地址。它从不截屏、不记录键盘输入，也不读取屏幕内容。你可以关闭窗口标题记录、网址只保留域名，或完全排除某些应用和网站。</div></details>
+          <details><summary>会拖慢 Mac 或耗电吗？</summary><div class="answer">它就是为此而设计的。Weft 是原生应用，没有轮询循环：只在 macOS 报告应用、窗口或标题变化时做出反应，其余时间每分钟才看一眼。</div></details>
+          <details><summary>Weft 和 Rize 有什么不同？</summary><div class="answer">Weft 借鉴了 Rize，但出发点不同：人很少一次只做一件事，所以 Weft 不展示应用切换日志，而是展示你反复回到的那几条工作主线。此外，它免费、开源，并且完全在你的 Mac 上运行。</div></details>
+          <details><summary>数据存在哪里？怎么删除？</summary><div class="answer">存放在 <code>~/Library/Application Support/Weft/</code>。可以在 <b>Settings → Data</b> 中导出为 CSV；想清除的话，退出 Weft 并删除这个文件夹即可。</div></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap reveal">
+        <img src="../assets/icon.svg" alt="" width="88" height="88">
+        <h2>看看今天的时间<wbr>都去了哪儿。</h2>
+        <p>免费、开源，从第一分钟起就是私密的。</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/tiann/weft/releases/latest"><svg class="i"><use href="../assets/icons.svg#download"/></svg>下载 Mac 版</a>
+          <a class="btn btn-ghost" href="https://github.com/tiann/weft"><svg class="i"><use href="../assets/icons.svg#github"/></svg>在 GitHub 上点 Star</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    <div class="wrap">
+      <div class="footer-inner">
+        <a class="brand" href="./"><img src="../assets/icon.svg" alt="" width="30" height="30">Weft</a>
+        <nav class="footer-links" aria-label="链接">
+          <a href="https://github.com/tiann/weft">GitHub</a>
+          <a href="https://github.com/tiann/weft/releases">版本发布</a>
+          <a href="https://github.com/tiann/weft/issues">反馈问题</a>
+          <a href="https://github.com/tiann/weft/blob/main/LICENSE">MIT 许可证</a>
+          <a href="../" hreflang="en" lang="en">English</a>
+        </nav>
+      </div>
+      <p class="footer-note">由 <a href="https://github.com/tiann">weishu</a> 制作。和应用一样，本网站也没有 Cookie、统计或追踪器。</p>
+    </div>
+  </footer>
+
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>
