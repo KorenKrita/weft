@@ -2,6 +2,8 @@
 
 **See where your day actually went, without sending it anywhere.**
 
+[weftapp.org](https://weftapp.org) · [中文](https://weftapp.org/zh/)
+
 Weft is a free, open-source time tracker that lives in your Mac's menu bar. It notices which app, window and website you're using, sorts the time into categories like Code, Meetings or Social Media, and draws your day as a few parallel streams of work.
 
 Weft takes after [Rize](https://rize.io) but works from a different idea: people rarely do one thing at a time. You write code, check a doc, answer a message and go back to the code. So instead of a log of app switches, Weft shows the threads of work you kept coming back to.
