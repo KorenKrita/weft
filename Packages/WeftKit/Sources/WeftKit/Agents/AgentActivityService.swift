@@ -13,8 +13,6 @@ public final class AgentActivityService {
     public private(set) var lastScan: Date?
     /// Sessions working right now; their open spans run up to the present.
     public private(set) var liveSessions: Set<String> = []
-    /// Called after native spans and turn coverage have been saved, including reimports.
-    @ObservationIgnored public var onScan: (() -> Void)?
 
     @ObservationIgnored private let modelContext: ModelContext
     @ObservationIgnored private let preferences: Preferences
@@ -31,12 +29,13 @@ public final class AgentActivityService {
     @ObservationIgnored private var remoteLive: Set<String> = []
     /// Working now according to the logs on this Mac.
     @ObservationIgnored private var localLive: Set<String> = []
+    /// Sessions with persisted HAPI history; native logs never supplement these sessions.
+    @ObservationIgnored private var hapiSessions: Set<String> = []
 
     /// How long after its last activity an open turn without a status file still counts as working.
     private let recentActivity: TimeInterval = 5 * 60
     /// FSEvents batches changes this long; an agent writes its log many times a second.
     private let watchLatency: TimeInterval = 15
-    private let coverageVersion = 1
 
     public init(modelContext: ModelContext, preferences: Preferences, roots: AgentLogRoots = .standard) {
         self.modelContext = modelContext
@@ -93,6 +92,20 @@ public final class AgentActivityService {
         let live = localLive.union(remoteLive)
         guard live != liveSessions else { return }
         liveSessions = live
+        waitingCache = nil
+    }
+
+    /// Switch whole sessions to HAPI. No interval subtraction or mixing of sources.
+    /// Keep native metadata/cursors for identity, but remove their derived work records.
+    func preferHAPIHistory(for sessionKeys: Set<String>) throws {
+        let added = Array(sessionKeys.subtracting(hapiSessions))
+        if !added.isEmpty {
+            try modelContext.delete(model: AgentSpan.self, where: #Predicate { added.contains($0.sessionKey) })
+            try modelContext.save()
+            hapiSessions.formUnion(added)
+        }
+        localLive.subtract(sessionKeys)
+        publishLive()
         waitingCache = nil
     }
 
@@ -153,7 +166,9 @@ public final class AgentActivityService {
             requestScan()
         } else {
             stop()
-            liveSessions = []
+            localLive = []
+            if !preferences.agentTrackingEnabled { remoteLive = [] }
+            publishLive()
         }
     }
 
@@ -194,7 +209,6 @@ public final class AgentActivityService {
                 queuedReset = false
                 try? modelContext.delete(model: AgentSpan.self, where: #Predicate { $0.fileKey.starts(with: "/") })
                 try? modelContext.delete(model: AgentLogCursor.self)
-                try? modelContext.delete(model: AgentTurnCoverage.self)
                 try? modelContext.save()
                 waitingCache = nil
             }
@@ -228,9 +242,9 @@ public final class AgentActivityService {
                     return file.modified >= since ? AgentLogScanner.Job(file: file, offset: 0, sessionKey: nil) : nil
                 }
                 let replaced = cursor.fileID != file.fileID || file.size < cursor.resumeOffset
-                let needsCoverage = cursor.coverageVersion != coverageVersion
-                if !replaced, !needsCoverage, cursor.size == file.size || cursor.skipped { return nil }
-                return AgentLogScanner.Job(file: file, offset: replaced || needsCoverage ? 0 : cursor.resumeOffset,
+                if !replaced, let key = cursor.sessionKey, hapiSessions.contains(key) { return nil }
+                if !replaced, cursor.size == file.size || cursor.skipped { return nil }
+                return AgentLogScanner.Job(file: file, offset: replaced ? 0 : cursor.resumeOffset,
                                            sessionKey: replaced ? nil : cursor.sessionKey)
             }
             // Newest first, so today fills in before last month.
@@ -243,7 +257,10 @@ public final class AgentActivityService {
             var start = 0
             while start < jobs.count {
                 let batch = Array(jobs[start..<min(start + 16, jobs.count)])
-                let results = await Task.detached(priority: .utility) { batch.compactMap(scanner.scan) }.value
+                let excluded = hapiSessions
+                let results = await Task.detached(priority: .utility) {
+                    batch.compactMap { scanner.scan($0, excluding: excluded) }
+                }.value
                 for result in results {
                     apply(result, cursor: cursors[result.file.path], config: scanner.config)
                     if result.file.kind == .codex, !result.meta.skip { touchedCodex.insert(result.sessionKey) }
@@ -256,7 +273,6 @@ public final class AgentActivityService {
             try? modelContext.save()
             waitingCache = nil
             isScanning = false
-            onScan?()
         }
         lastScan = .now
         refreshLive()
@@ -270,7 +286,9 @@ public final class AgentActivityService {
     }
 
     /// Replaces what was read before from the same part of the file with `result`.
-    private func apply(_ result: AgentLogScanner.Result, cursor: AgentLogCursor?, config: AgentTurnConfig) {
+    func apply(_ result: AgentLogScanner.Result, cursor: AgentLogCursor?, config: AgentTurnConfig) {
+        // A HAPI report can arrive while the detached scanner is reading this batch.
+        guard !hapiSessions.contains(result.sessionKey) else { return }
         let path = result.file.path
         let cursor = cursor ?? {
             let cursor = AgentLogCursor(path: path, kind: result.file.kind)
@@ -284,7 +302,6 @@ public final class AgentActivityService {
             cursor.sessionKey = result.sessionKey
             cursor.skipped = result.meta.skip
             cursor.scannedAt = .now
-            cursor.coverageVersion = coverageVersion
         }
 
         // From the start, everything this file gave before is replaced; otherwise only the
@@ -299,7 +316,6 @@ public final class AgentActivityService {
         }
         var stale = Dictionary(existing.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
 
-        storeCoverage(result)
         let turns = result.turns.filter(\.hasActivity)
         for turn in turns {
             let pieces = AgentTurnBuilder.pieces(turn, config: config)
@@ -353,30 +369,6 @@ public final class AgentActivityService {
            !result.meta.titleFromPrefix || record.title == nil { record.update(\.title, to: title) }
     }
 
-    /// Replace the re-read part of the log, including turns with no surviving work pieces.
-    /// Subagents contribute only their working spans, never coverage of a parent's waits.
-    private func storeCoverage(_ result: AgentLogScanner.Result) {
-        let path = result.file.path
-        let offset = result.offset
-        let existing = (try? modelContext.fetch(FetchDescriptor<AgentTurnCoverage>(
-            predicate: #Predicate { $0.fileKey == path && $0.offset >= offset }))) ?? []
-        var stale = Dictionary(existing.map { ($0.turnID, $0) }, uniquingKeysWith: { first, _ in first })
-        if !result.meta.isSubagent {
-            for turn in result.turns where turn.hasActivity {
-                if let coverage = stale.removeValue(forKey: turn.id) {
-                    coverage.update(\.sessionKey, to: result.sessionKey)
-                    coverage.update(\.offset, to: turn.offset)
-                    coverage.update(\.start, to: turn.start)
-                    coverage.update(\.end, to: turn.end)
-                } else {
-                    modelContext.insert(AgentTurnCoverage(sessionKey: result.sessionKey, fileKey: path,
-                        turnID: turn.id, offset: turn.offset, start: turn.start, end: turn.end))
-                }
-            }
-        }
-        for coverage in stale.values { modelContext.delete(coverage) }
-    }
-
     private func nameCodexSessions(_ keys: Set<String>) {
         let names = CodexThreadNames.read(roots.codexIndex)
         guard !names.isEmpty else { return }
@@ -394,7 +386,7 @@ public final class AgentActivityService {
     private func refreshLive() {
         let (claude, codex, pi) = sources
         let statuses = claude ? ClaudeLiveRegistry.read(roots.claudeSessions) : [:]
-        var live = Set(statuses.filter { $0.value == "busy" }.map { "claude:" + $0.key })
+        var live = Set(statuses.filter { $0.value == "busy" }.map { "claude:" + $0.key }).subtracting(hapiSessions)
 
         let now = Date.now
         let recent = now.addingTimeInterval(-recentActivity)
@@ -402,8 +394,8 @@ public final class AgentActivityService {
         var nextCheck: Date?
         for span in open {
             let isClaude = span.sessionKey.hasPrefix("claude:")
-            let enabled = isClaude ? claude : (span.sessionKey.hasPrefix("pi:") ? pi : codex)
-            guard enabled else { continue }
+            let enabled = isClaude ? claude : (span.sessionKey.hasPrefix("pi:") ? pi : (span.sessionKey.hasPrefix("codex:") && codex))
+            guard enabled, !hapiSessions.contains(span.sessionKey) else { continue }
             // A status file is better evidence than the clock.
             if isClaude, statuses[String(span.sessionKey.dropFirst("claude:".count))] != nil { continue }
             live.insert(span.sessionKey)

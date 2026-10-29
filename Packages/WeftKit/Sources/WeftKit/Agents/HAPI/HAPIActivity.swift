@@ -77,6 +77,8 @@ public enum HAPIImporter {
     public struct Session: Sendable, Equatable {
         public var key: String
         public var hapiID: String
+        /// The native session to stop reading once this HAPI history is stored.
+        public var localKey: String?
         public var flavor: String
         public var agentSessionID: String
         public var title: String?
@@ -88,48 +90,24 @@ public enum HAPIImporter {
         public var isWorking: Bool
     }
 
-    public enum Decision: Sendable, Equatable {
-        /// Weft reads this session's own log on this Mac, which says more than HAPI can;
-        /// only remember that HAPI knows it.
-        case link(localKey: String, hapiID: String)
-        case record(Session)
-    }
-
-    /// Prefixes of the session keys of agents whose logs Weft reads itself.
+    /// Prefixes of the session keys of agents whose logs Weft can read itself.
     static let localPrefixes = ["claude": "claude", "codex": "codex", "pi": "pi"]
 
-    /// - Parameters:
-    ///   - localFlavors: agents whose logs Weft reads on this Mac.
-    ///   - localHosts: this Mac's host names, for reports that don't know its machine id.
-    public static func plan(_ report: HAPIActivityReport, localFlavors: Set<String>, localHosts: Set<String>,
-                            now: Date, config: AgentTurnConfig = AgentTurnConfig()) -> [Decision] {
+    /// HAPI is authoritative whenever it has turns, including turns made entirely of waits.
+    /// Merely mentioning a session without any history must not disable native fallback.
+    public static func plan(_ report: HAPIActivityReport, localHosts: Set<String>,
+                            now: Date, config: AgentTurnConfig = AgentTurnConfig()) -> [Session] {
         report.sessions.compactMap { session in
-            let flavor = session.flavor ?? "agent"
-            let isLocal = (report.localMachineId != nil && session.machineId == report.localMachineId)
-                || session.host.map { localHosts.contains($0.lowercased()) } == true
-            if isLocal, localFlavors.contains(flavor), let prefix = localPrefixes[flavor], let id = session.agentSessionId {
-                return .link(localKey: "\(prefix):\(id)", hapiID: session.id)
-            }
             guard !session.turns.isEmpty else { return nil }
-            return .record(record(session, flavor: flavor, isLocal: isLocal, now: now, config: config))
-        }
-    }
-
-    /// Keeps imported work outside the turns already read locally. A span crossing a
-    /// coverage boundary is split, not discarded; an open end belongs only to its last fragment.
-    static func excluding(_ coverage: [DateInterval], from pieces: [Piece]) -> [Piece] {
-        let covered = AgentMetrics.union(coverage)
-        return pieces.flatMap { piece in
-            let interval = DateInterval(start: piece.start, end: max(piece.start, piece.end))
-            return AgentMetrics.subtract(covered, from: interval).enumerated().map { index, interval in
-                var retained = piece
-                retained.start = interval.start
-                retained.end = interval.end
-                retained.isOpen = piece.isOpen && interval.end == piece.end
-                // The stored wait total has no timestamps; retain it once, never per fragment.
-                retained.waitedOnUser = index == 0 ? piece.waitedOnUser : 0
-                return retained
+            let flavor = session.flavor ?? "agent"
+            let isLocal: Bool
+            if let localMachine = report.localMachineId, let machine = session.machineId {
+                // A different machine with the same hostname is still remote.
+                isLocal = machine == localMachine
+            } else {
+                isLocal = session.host.map { localHosts.contains($0.lowercased()) } == true
             }
+            return record(session, flavor: flavor, isLocal: isLocal, now: now, config: config)
         }
     }
 
@@ -156,7 +134,10 @@ public enum HAPIImporter {
                                     waitedOnUser: index == 0 ? agentTurn.waitedOnUser : 0))
             }
         }
-        return Session(key: "hapi:\(session.id)", hapiID: session.id, flavor: flavor,
+        let localKey = isLocal ? session.agentSessionId?.nonEmpty.flatMap { id in
+            localPrefixes[flavor].map { "\($0):\(id)" }
+        } : nil
+        return Session(key: "hapi:\(session.id)", hapiID: session.id, localKey: localKey, flavor: flavor,
                        agentSessionID: session.agentSessionId ?? session.id, title: session.title, projectPath: session.path,
                        host: isLocal ? nil : (session.machineName ?? session.host), turnIDs: turnIDs, pieces: pieces,
                        isWorking: session.turns.contains { $0.end == nil })

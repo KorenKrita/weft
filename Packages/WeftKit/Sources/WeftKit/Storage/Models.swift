@@ -265,33 +265,8 @@ public final class AgentSpan {
     public var trigger: AgentTrigger { AgentTrigger(rawValue: triggerRaw) ?? .user }
 }
 
-/// A native main turn's bounded coverage, including waits and silences. Kept separately
-/// from working spans because a turn can end with (or consist entirely of) removed time.
-@Model
-public final class AgentTurnCoverage {
-    #Index<AgentTurnCoverage>([\.sessionKey], [\.fileKey])
-
-    @Attribute(.unique) public var key: String
-    public var sessionKey: String
-    public var fileKey: String
-    public var turnID: String
-    public var offset: Int64
-    public var start: Date
-    public var end: Date
-
-    public init(sessionKey: String, fileKey: String, turnID: String, offset: Int64, start: Date, end: Date) {
-        key = fileKey + "\n" + turnID
-        self.sessionKey = sessionKey
-        self.fileKey = fileKey
-        self.turnID = turnID
-        self.offset = offset
-        self.start = start
-        self.end = end
-    }
-}
-
-/// An association confirmed by HAPI's machine identity, even before its native log is read.
-/// Persist it independently of both sessions and the report's sliding time window.
+/// A local/HAPI identity confirmed by the hub. When the HAPI session has imported history,
+/// that history is authoritative, even outside the report's sliding time window.
 @Model
 public final class HAPISessionLink {
     @Attribute(.unique) public var hapiID: String
@@ -319,8 +294,6 @@ public final class AgentLogCursor {
     /// Nothing in the file counts (an automated review, an old format).
     public var skipped: Bool
     public var scannedAt: Date
-    /// Nil in older stores: re-read once to recover complete turn boundaries.
-    public var coverageVersion: Int?
 
     public init(path: String, kind: AgentLogKind) {
         self.path = path
@@ -337,7 +310,7 @@ public enum WeftSchema {
     public static let models: [any PersistentModel.Type] = [
         ActivitySegment.self, CategoryRecord.self, UserRule.self, AIClassificationRecord.self, SessionRecord.self,
         TimeEntrySummary.self, AgentSession.self, AgentSpan.self, AgentLogCursor.self,
-        AgentTurnCoverage.self, HAPISessionLink.self,
+        HAPISessionLink.self,
     ]
 
     public static let folderName = "Weft"

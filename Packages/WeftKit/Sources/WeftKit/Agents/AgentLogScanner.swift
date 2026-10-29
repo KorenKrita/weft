@@ -164,8 +164,41 @@ public struct AgentLogScanner: Sendable {
 
     // MARK: Reading
 
-    /// Reads `job.file` from `job.offset` to its end.
-    public func scan(_ job: Job) -> Result? {
+    /// Reads only the identity header, never messages, before deciding whether HAPI owns a log.
+    /// Codex subagents identify their root session here, not in the filename.
+    private func headerMetadata(for file: AgentLogFile) -> AgentLogMeta? {
+        guard let handle = FileHandle(forReadingAtPath: file.path) else { return nil }
+        defer { try? handle.close() }
+        var data = Data()
+        while let chunk = try? handle.read(upToCount: 16 * 1024), !chunk.isEmpty {
+            data.append(chunk)
+            guard let newline = data.firstIndex(of: 10) else { continue }
+            return data.prefix(upTo: newline).withUnsafeBytes { line in
+                switch file.kind {
+                case .codex:
+                    var parser = CodexLogParser(startsAtBeginning: true)
+                    parser.consume(line, offset: 0)
+                    return parser.meta
+                case .pi:
+                    var parser = PiLogParser()
+                    parser.consume(line, offset: 0)
+                    return parser.meta
+                default: return nil
+                }
+            }
+        }
+        return nil
+    }
+
+    /// Reads `job.file` from `job.offset` to its end, unless HAPI owns the session.
+    public func scan(_ job: Job, excluding sessionKeys: Set<String> = []) -> Result? {
+        if sessionKeys.contains(job.sessionKey ?? sessionKey(for: job.file)) { return nil }
+        let header = job.file.kind == .codex || (job.file.kind == .pi && !sessionKeys.isEmpty)
+            ? headerMetadata(for: job.file) : nil
+        if let id = header?.sessionID {
+            let prefix = job.file.kind == .codex ? "codex:" : "pi:"
+            if sessionKeys.contains(prefix + id) { return nil }
+        }
         guard let handle = FileHandle(forReadingAtPath: job.file.path) else { return nil }
         defer { try? handle.close() }
         do {
@@ -183,7 +216,7 @@ public struct AgentLogScanner: Sendable {
             consumedTo = read(handle, from: job.offset, into: &parser)
             (events, meta) = (parser.events, parser.meta)
         case .codex:
-            var parser = CodexLogParser(startsAtBeginning: job.offset == 0)
+            var parser = CodexLogParser(startsAtBeginning: job.offset == 0, meta: header ?? AgentLogMeta())
             consumedTo = read(handle, from: job.offset, into: &parser)
             (events, meta) = (parser.events, parser.meta)
         case .pi:

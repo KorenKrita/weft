@@ -83,8 +83,10 @@ final class AppModel {
             await refreshNotificationPermission()
         }
         tracker.start()
-        agents.start()
-        hapi.start()
+        Task {
+            await hapi.start()
+            agents.start()
+        }
         reaskBrowsingSitesOnce()
         classifier.retryPending()
         describeTimeEntriesPeriodically()
@@ -111,7 +113,6 @@ final class AppModel {
     }
 
     private func wire() {
-        agents.onScan = { [weak self] in self?.hapi.reconcileLocalHistory() }
         workHours.waitingIdleToday = { [weak self] in
             guard let self, preferences.agentTrackingEnabled, preferences.countAgentWaiting else { return 0 }
             return agents.waitingIdleToday(categories: classifier.categoryLookup)

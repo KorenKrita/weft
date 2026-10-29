@@ -248,67 +248,23 @@ extension AgentActivityServiceTests {
     }
 }
 
+
 extension AgentActivityServiceTests {
-    private var coverage: [AgentTurnCoverage] {
-        (try? container.mainContext.fetch(FetchDescriptor<AgentTurnCoverage>(sortBy: [SortDescriptor(\.start)]))) ?? []
-    }
-
-    @Test func completeTurnCoverageSurvivesIncrementalReadsAndReimports() async throws {
-        try write([Claude.prompt(at: 0, uuid: "p"), Claude.assistant(at: 10, toolUse: "tool")])
-        await service.refresh()
-        #expect(coverage.map(\.end) == [Fixture.date(10)])
-        try append([Claude.toolResult(at: 600, id: "tool", source: "user_temporary"), Claude.turnDuration(at: 600)])
-        await service.refresh()
-        #expect(spans.map(\.end) == [Fixture.date(10)])
-        #expect(coverage.map(\.start) == [Fixture.date(0)])
-        #expect(coverage.map(\.end) == [Fixture.date(600)])
-        try append([Claude.prompt(at: 900, uuid: "q"), Claude.assistant(at: 910), Claude.turnDuration(at: 911)])
-        await service.refresh()
-        let keys = coverage.map(\.key)
-        service.reimport()
-        await service.refresh()
-        #expect(coverage.map(\.key) == keys)
-        #expect(coverage.map(\.end) == [Fixture.date(600), Fixture.date(911)])
+    @Test func disablingAllNativeSourcesDoesNotHideHAPILiveSessions() {
+        preferences.agentClaudeEnabled = false
+        preferences.agentCodexEnabled = false
+        preferences.agentPiEnabled = false
+        service.setRemoteLive(["hapi:working"])
+        service.start()
+        #expect(service.liveSessions == ["hapi:working"])
         service.stop()
     }
 
-    @Test func anUnchangedLegacyCursorBackfillsCoverageOnce() async throws {
-        try write([Claude.prompt(at: 0, uuid: "p"), Claude.assistant(at: 10), Claude.turnDuration(at: 11)])
-        await service.refresh()
-        let cursor = try #require(container.mainContext.fetch(FetchDescriptor<AgentLogCursor>()).first)
-        cursor.coverageVersion = nil
-        try container.mainContext.delete(model: AgentTurnCoverage.self)
-        try container.mainContext.save()
-        await service.refresh()
-        #expect(coverage.map(\.end) == [Fixture.date(11)])
-        #expect(cursor.coverageVersion == 1)
-        let scanned = cursor.scannedAt
-        await service.refresh()
-        #expect(cursor.scannedAt == scanned)
-        #expect(spans.count == 1)
-        service.stop()
-    }
-
-    @Test func replacingALogRemovesItsStaleCoverage() async throws {
-        try write([Claude.prompt(at: 0, uuid: "p"), Claude.assistant(at: 10), Claude.turnDuration(at: 11)])
-        await service.refresh()
-        try FileManager.default.removeItem(at: log)
-        try write([Claude.prompt(at: 100, uuid: "q"), Claude.assistant(at: 110), Claude.turnDuration(at: 111)])
-        await service.refresh()
-        #expect(coverage.map(\.turnID) == ["q"])
-        #expect(coverage.map(\.start) == [Fixture.date(100)])
-        #expect(coverage.map(\.end) == [Fixture.date(111)])
-        service.stop()
-    }
-
-    @Test func subagentsDoNotPersistMainTurnCoverage() async throws {
-        let child = log.deletingPathExtension().appending(path: "subagents/agent-child.jsonl")
-        try FileManager.default.createDirectory(at: child.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Fixture.lines([Claude.prompt(at: 0, uuid: "child"), Claude.assistant(at: 10, toolUse: "t"),
-                           Claude.toolResult(at: 600, id: "t", source: "user_temporary"), Claude.turnDuration(at: 600)]).write(to: child)
-        await service.refresh()
-        #expect(!spans.isEmpty && spans.allSatisfy(\.isSubagent))
-        #expect(coverage.isEmpty)
+    @Test func disablingAllAgentTrackingClearsBothLiveSources() {
+        preferences.agentTrackingEnabled = false
+        service.setRemoteLive(["hapi:working"])
+        service.start()
+        #expect(!service.isWorking)
         service.stop()
     }
 }
