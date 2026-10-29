@@ -214,8 +214,8 @@ public struct AgentBlock: Sendable, Hashable, Identifiable {
 
 public enum AgentBlocks {
     /// Each session's pieces, joined into one block while the pauses between them are
-    /// shorter than `mergeGap`.
-    public static func build(_ samples: [AgentSample], mergeGap: TimeInterval = 10 * 60) -> [AgentBlock] {
+    /// shorter than `mergeGap`, like a work stream.
+    public static func build(_ samples: [AgentSample], mergeGap: TimeInterval = TimeEntryConfig().mergeGap) -> [AgentBlock] {
         var blocks: [AgentBlock] = []
         for (key, group) in Dictionary(grouping: samples, by: \.sessionKey) {
             let sorted = group.sorted { $0.start < $1.start }
@@ -234,6 +234,11 @@ public enum AgentBlocks {
         }
         return blocks.sorted { $0.start != $1.start ? $0.start < $1.start : $0.sessionKey < $1.sessionKey }
     }
+
+    /// Blocks with enough work to show on the timeline, by the same measure as streams.
+    public static func significant(_ blocks: [AgentBlock], config: TimeEntryConfig = TimeEntryConfig()) -> [AgentBlock] {
+        blocks.filter { $0.activeTime >= config.minActiveTime }
+    }
 }
 
 // MARK: - Layout
@@ -244,27 +249,47 @@ public enum ColumnLayout {
         public var column: Int
         /// Columns in this cluster of overlapping items.
         public var columns: Int
+        /// Columns the item covers, from `column` rightwards: the ones nothing else
+        /// needs while it lasts.
+        public var span: Int
 
-        public init(column: Int, columns: Int) {
+        public init(column: Int, columns: Int, span: Int = 1) {
             self.column = column
             self.columns = columns
+            self.span = span
         }
     }
 
     /// Placements for `extents` (the drawn extent of each item, in time), in the same order.
+    /// Earlier and then longer items go further left; each then widens into the columns to
+    /// its right that stay free for as long as it lasts.
     public static func place(_ extents: [DateInterval]) -> [Placement] {
         var result = [Placement](repeating: Placement(column: 0, columns: 1), count: extents.count)
         var cluster: [Int] = []
         var columnEnds: [Date] = []
         var clusterEnd = Date.distantPast
 
+        func overlap(_ a: DateInterval, _ b: DateInterval) -> Bool { a.start < b.end && b.start < a.end }
+
         func flush() {
-            for index in cluster { result[index].columns = max(1, columnEnds.count) }
+            let columns = max(1, columnEnds.count)
+            for index in cluster {
+                result[index].columns = columns
+                var span = 1
+                while result[index].column + span < columns, !cluster.contains(where: {
+                    result[$0].column == result[index].column + span && overlap(extents[$0], extents[index])
+                }) {
+                    span += 1
+                }
+                result[index].span = span
+            }
             cluster = []
             columnEnds = []
         }
 
-        let order = extents.indices.sorted { extents[$0].start < extents[$1].start }
+        let order = extents.indices.sorted {
+            extents[$0].start != extents[$1].start ? extents[$0].start < extents[$1].start : extents[$0].end > extents[$1].end
+        }
         for index in order {
             let extent = extents[index]
             if extent.start >= clusterEnd { flush() }

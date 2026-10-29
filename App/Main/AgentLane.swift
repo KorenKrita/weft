@@ -44,8 +44,8 @@ enum AgentStyle {
     }
 }
 
-/// One session's work on the timeline. The bar on the left is solid where the agent was
-/// working and faint where it waited for its next prompt.
+/// One session's work on the timeline, drawn like a work stream. The bar on the left is
+/// solid where the agent was working and faint where it waited for its next prompt.
 struct AgentBlockView: View {
     let block: AgentBlock
     let session: AgentSession?
@@ -67,28 +67,62 @@ struct AgentBlockView: View {
                     Rectangle().fill(color.opacity(0.3))
                     ForEach(Array(pieces.enumerated()), id: \.offset) { _, piece in
                         Rectangle().fill(color)
-                            .frame(width: 3, height: max(2, min(height, piece.upperBound) - max(0, piece.lowerBound)))
+                            .frame(width: 4, height: max(2, min(height, piece.upperBound) - max(0, piece.lowerBound)))
                             .offset(y: max(0, piece.lowerBound))
                     }
-                }
-                .frame(width: 3, height: height, alignment: .topLeading)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Image(systemName: AgentStyle.symbol(flavor)).foregroundStyle(color)
-                        Text(title).fontWeight(.medium).lineLimit(height >= 56 ? 2 : 1)
-                    }
-                    .font(.caption)
-                    if height >= 40 {
-                        Text(timeLabel).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    if isLive {
+                        Rectangle().fill(color)
+                            .frame(width: 4, height: max(0, height - (pieces.last?.upperBound ?? height)))
+                            .offset(y: pieces.last?.upperBound ?? 0)
                     }
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
+                .frame(width: 4, height: height, alignment: .topLeading)
+                Group {
+                    if height < 44 {
+                        // One line: the icon says which agent, so the title gets the room.
+                        HStack(spacing: 6) {
+                            Image(systemName: AgentStyle.symbol(flavor)).foregroundStyle(color)
+                            Text(title).fontWeight(.medium)
+                            Spacer(minLength: 4)
+                            Text(timeLabel).foregroundStyle(.secondary).layoutPriority(1)
+                        }
+                        .font(.caption)
+                        .lineLimit(1)
+                    } else {
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 6) {
+                                name(flavor, color: color)
+                                Text(timeLabel).foregroundStyle(.secondary)
+                            }
+                            .font(.caption)
+                            .lineLimit(1)
+                            Text(title)
+                                .font(.callout)
+                                .lineLimit(height >= 80 ? 2 : 1)
+                            // Fill tall blocks with what identifies the session.
+                            let rows = Int((height - (height >= 80 ? 74 : 56)) / 18)
+                            if rows > 0 {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    ForEach(details.prefix(rows), id: \.text) { detail in
+                                        Label(detail.text, systemImage: detail.symbol)
+                                            .lineLimit(1)
+                                            .frame(height: 16)
+                                    }
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 4)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
                 Spacer(minLength: 0)
             }
             .frame(width: proxy.size.width, height: height, alignment: .topLeading)
-            .background(color.opacity(isHovering ? 0.22 : 0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 5))
+            .background(color.opacity(isHovering ? 0.24 : 0.14))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
@@ -99,9 +133,27 @@ struct AgentBlockView: View {
         }
     }
 
+    private func name(_ flavor: String, color: Color) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: AgentStyle.symbol(flavor))
+            Text(AgentStyle.name(flavor)).fontWeight(.semibold)
+        }
+        .foregroundStyle(color)
+    }
+
     private var timeLabel: String {
         let end = isLive ? "now" : block.end.formatted(date: .omitted, time: .shortened)
         return "\(block.start.formatted(date: .omitted, time: .shortened))–\(end) · \(Format.duration(block.activeTime))"
+    }
+
+    private var details: [(symbol: String, text: String)] {
+        var rows: [(String, String)] = []
+        if let path = session?.projectPath { rows.append(("folder", (path as NSString).abbreviatingWithTildeInPath)) }
+        if let host = session?.host { rows.append(("desktopcomputer", host)) }
+        let turns = block.turnCount
+        if turns > 0 { rows.append(("text.bubble", "\(turns) prompt\(turns == 1 ? "" : "s")")) }
+        if block.waitedOnUser >= 60 { rows.append(("hand.raised", "Waited \(Format.duration(block.waitedOnUser)) for you")) }
+        return rows
     }
 }
 

@@ -141,4 +141,27 @@ struct AgentMetricsTests {
         #expect(placements[3] == ColumnLayout.Placement(column: 2, columns: 3))
         #expect(placements[2] == ColumnLayout.Placement(column: 0, columns: 1))
     }
+
+    @Test func itemsWidenIntoColumnsNothingElseNeeds() {
+        // A long stream, a long agent run beside it, and two short runs that each need a
+        // third column for a while.
+        let placements = ColumnLayout.place([interval(0, 120), interval(10, 100), interval(20, 10), interval(60, 10)])
+        #expect(placements.map(\.columns) == [3, 3, 3, 3])
+        #expect(placements[0] == ColumnLayout.Placement(column: 0, columns: 3, span: 1))
+        #expect(placements[1] == ColumnLayout.Placement(column: 1, columns: 3, span: 1))
+        #expect(placements[2] == ColumnLayout.Placement(column: 2, columns: 3, span: 1))
+        #expect(placements[3] == ColumnLayout.Placement(column: 2, columns: 3, span: 1))
+
+        let staggered = ColumnLayout.place([interval(0, 60), interval(0, 20), interval(10, 10), interval(30, 20)])
+        // The second column is free after minute 20, so the run from minute 30 takes it and
+        // the third column too.
+        #expect(staggered[3] == ColumnLayout.Placement(column: 1, columns: 3, span: 2))
+        #expect(staggered[1].span == 1)
+    }
+
+    @Test func longerItemsGoLeftWhenTheyStartTogether() {
+        let placements = ColumnLayout.place([interval(0, 10), interval(0, 60)])
+        #expect(placements[1].column == 0)
+        #expect(placements[0].column == 1)
+    }
 }
