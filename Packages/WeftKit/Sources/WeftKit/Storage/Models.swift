@@ -56,6 +56,23 @@ public final class ActivitySegment {
     }
 }
 
+public extension PersistentModel {
+    /// Sets the property only if the value is new. SwiftData reports every assignment as a
+    /// change, and every view showing the model redraws for it.
+    func update<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<Self, Value>, to value: Value) {
+        if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
+    }
+}
+
+public extension Sequence<ActivitySegment> {
+    /// In time order, reading each start once. Sorting a query by `start` instead compares
+    /// through the property on every step, and with a day's worth of segments that costs
+    /// more than drawing the day.
+    func sortedByStart() -> [ActivitySegment] {
+        map { (segment: $0, start: $0.start) }.sorted { $0.start < $1.start }.map(\.segment)
+    }
+}
+
 @Model
 public final class CategoryRecord {
     @Attribute(.unique) public var key: String

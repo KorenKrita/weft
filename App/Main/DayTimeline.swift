@@ -6,8 +6,10 @@ import SwiftUI
 /// get a lane of their own.
 struct DayTimeline: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.liveness) private var liveness
     let day: Date
-    let segments: [ActivitySegment]
+    /// All of the day's streams, short ones too.
+    let streams: [TimeEntry]
     let sessions: [SessionRecord]
     var agents: [AgentBlock] = []
     var agentSessions: [String: AgentSession] = [:]
@@ -28,28 +30,44 @@ struct DayTimeline: View {
     private let spacing: CGFloat = 12
     /// Between streams side by side.
     private let gutter: CGFloat = 6
+    /// Shown unchanged while not live (see `Liveness`), now line included.
+    @State private var shown = Memo<Arrangement>()
 
     var body: some View {
         if Calendar.current.isDateInToday(day) {
             // Keeps the now line and the live stream moving between store changes.
-            TimelineView(.periodic(from: .now, by: 60)) { context in content(now: context.date) }
+            TimelineView(.periodic(from: .now, by: 60)) { context in content(at: context.date) }
         } else {
-            content(now: .now)
+            content(at: .now)
         }
     }
 
-    private func content(now: Date) -> some View {
-        let all = TimeEntries.build(segments)
-        let entries = TimeEntries.significant(all)
+    /// Where everything goes, as of `now`.
+    private struct Arrangement {
+        var now: Date
+        var items: [Item]
+        var scale: Scale
+        var placed: [Placed]
+        var hidden: Int
+        var hiddenAgents: Int
+    }
+
+    private func arrange(now: Date) -> Arrangement {
+        let entries = TimeEntries.significant(streams)
         let shownAgents = AgentBlocks.significant(agents)
-        let hidden = all.count - entries.count
-        let hiddenAgents = agents.count - shownAgents.count
         let live = liveEntry(entries, now: now)
         let items = entries.map { Item.stream($0, isLive: $0.id == live?.id) }
             + shownAgents.map { Item.agent($0, isLive: isLive($0, now: now)) }
         let scale = makeScale(items, now: now)
+        return Arrangement(now: now, items: items, scale: scale, placed: layout(items, scale: scale, now: now),
+                           hidden: streams.count - entries.count, hiddenAgents: agents.count - shownAgents.count)
+    }
+
+    private func content(at date: Date) -> some View {
+        let arrangement = shown.value(liveness) { arrange(now: date) }
+        let (now, items, scale, placed) = (arrangement.now, arrangement.items, arrangement.scale, arrangement.placed)
+        let (hidden, hiddenAgents) = (arrangement.hidden, arrangement.hiddenAgents)
         let height = scale.height
-        let placed = layout(items, scale: scale, now: now)
 
         return VStack(alignment: .leading, spacing: 10) {
             if items.isEmpty {
@@ -66,7 +84,7 @@ struct DayTimeline: View {
                                 ForEach(placed, id: \.item.id) { placed in
                                     let column = (proxy.size.width - CGFloat(placed.columns - 1) * gutter) / CGFloat(placed.columns)
                                     let top = scale.y(placed.item.start)
-                                    itemView(placed.item, scale: scale, top: top)
+                                    itemView(placed)
                                         .frame(width: column * CGFloat(placed.span) + gutter * CGFloat(placed.span - 1),
                                                height: max(minimumHeight, scale.y(placed.item.drawnEnd(now: now)) - top - 3))
                                         .offset(x: CGFloat(placed.column) * (column + gutter), y: top)
@@ -219,6 +237,8 @@ struct DayTimeline: View {
         var column: Int
         var columns: Int
         var span: Int
+        /// An agent's spans, relative to the top of its block.
+        var pieces: [ClosedRange<CGFloat>] = []
     }
 
     /// Calendar-style layout: overlapping streams share the width in columns, and each
@@ -227,18 +247,24 @@ struct DayTimeline: View {
         // Use the drawn extent, including the minimum height, so text never overlaps.
         let minimumSpan = TimeInterval(minimumHeight / scale.pointsPerHour * 3600)
         let extents = items.map { DateInterval(start: $0.start, end: max($0.drawnEnd(now: now), $0.start.addingTimeInterval(minimumSpan))) }
-        return zip(items, ColumnLayout.place(extents)).map { Placed(item: $0, column: $1.column, columns: $1.columns, span: $1.span) }
+        return zip(items, ColumnLayout.place(extents)).map { item, place in
+            var placed = Placed(item: item, column: place.column, columns: place.columns, span: place.span)
+            if case .agent(let block, _) = item {
+                let top = scale.y(block.start)
+                placed.pieces = block.pieces.map { (scale.y($0.start) - top)...(scale.y($0.end) - top) }
+            }
+            return placed
+        }
     }
 
     @ViewBuilder
-    private func itemView(_ item: Item, scale: Scale, top: CGFloat) -> some View {
-        switch item {
+    private func itemView(_ placed: Placed) -> some View {
+        switch placed.item {
         case .stream(let entry, let isLive):
             StreamView(entry: entry, isLive: isLive)
         case .agent(let block, let isLive):
             AgentBlockView(block: block, session: agentSessions[block.sessionKey], isLive: isLive,
-                           pieces: block.pieces.map { (scale.y($0.start) - top)...(scale.y($0.end) - top) },
-                           userSamples: userSamples)
+                           pieces: placed.pieces, userSamples: userSamples)
         }
     }
 
@@ -320,14 +346,19 @@ struct DayTimeline: View {
 
 private struct StreamView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.liveness) private var liveness
     let entry: TimeEntry
     let isLive: Bool
     @State private var isHovering = false
     @State private var showDetail = false
+    /// Read from the segments, which keep changing while the stream is live; held still while
+    /// not live.
+    @State private var read = Memo<(usage: [(name: String, bundleID: String, time: TimeInterval)], fallback: String)>()
 
     var body: some View {
         let category = model.classifier.category(entry.categoryKey)
-        let text = description
+        let (usage, fallback) = read.value(liveness) { (entry.usage, entry.fallbackDescription) }
+        let text = description(fallback: fallback)
         GeometryReader { proxy in
             let height = proxy.size.height
             HStack(alignment: .top, spacing: 0) {
@@ -359,7 +390,7 @@ private struct StreamView: View {
                             let rows = Int((height - (height >= 80 ? 74 : 56)) / 18)
                             if rows > 0 {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    ForEach(entry.usage.prefix(min(rows, 5)), id: \.name) { item in
+                                    ForEach(usage.prefix(min(rows, 5)), id: \.name) { item in
                                         HStack(spacing: 5) {
                                             Image(nsImage: AppIcons.icon(for: item.bundleID)).resizable().frame(width: 12, height: 12)
                                             Text(item.name).lineLimit(1)
@@ -396,9 +427,9 @@ private struct StreamView: View {
         return "\(entry.start.formatted(date: .omitted, time: .shortened))–\(end) · \(Format.duration(entry.activeTime))"
     }
 
-    private var description: (body: String, isPlaceholder: Bool) {
+    private func description(fallback: String) -> (body: String, isPlaceholder: Bool) {
         if let text = model.timeEntries.description(for: entry) { return (text, false) }
-        return (entry.fallbackDescription, model.classifier.aiAvailability == .available)
+        return (fallback, model.classifier.aiAvailability == .available)
     }
 }
 

@@ -47,6 +47,7 @@ enum AgentStyle {
 /// One session's work on the timeline, drawn like a work stream. The bar on the left is
 /// solid where the agent was working and faint where it waited for its next prompt.
 struct AgentBlockView: View {
+    @Environment(\.liveness) private var liveness
     let block: AgentBlock
     let session: AgentSession?
     let isLive: Bool
@@ -55,11 +56,16 @@ struct AgentBlockView: View {
     let userSamples: [SegmentSample]
     @State private var isHovering = false
     @State private var showDetail = false
+    /// Read from the session, which changes as long as its agent works; held still while not
+    /// live.
+    @State private var read = Memo<(flavor: String, title: String, details: [(symbol: String, text: String)])>()
 
     var body: some View {
-        let flavor = AgentStyle.flavor(session, key: block.sessionKey)
+        let (flavor, title, details) = read.value(liveness) {
+            let flavor = AgentStyle.flavor(session, key: block.sessionKey)
+            return (flavor, AgentStyle.title(session, flavor: flavor), self.details)
+        }
         let color = AgentStyle.color(flavor)
-        let title = AgentStyle.title(session, flavor: flavor)
         GeometryReader { proxy in
             let height = proxy.size.height
             HStack(alignment: .top, spacing: 0) {

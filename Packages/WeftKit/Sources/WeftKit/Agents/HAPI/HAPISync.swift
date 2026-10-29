@@ -246,10 +246,10 @@ public final class HAPISync {
             indexByTurn[piece.turnID] = index + 1
             let key = "\(piece.turnID)#\(index)"
             if let span = stale.removeValue(forKey: key) {
-                span.start = piece.start
-                span.end = piece.end
-                span.isOpen = piece.isOpen
-                span.waitedOnUser = piece.waitedOnUser
+                span.update(\.start, to: piece.start)
+                span.update(\.end, to: piece.end)
+                span.update(\.isOpen, to: piece.isOpen)
+                span.update(\.waitedOnUser, to: piece.waitedOnUser)
             } else {
                 modelContext.insert(AgentSpan(key: key, sessionKey: imported.key, turnID: piece.turnID, fileKey: fileKey,
                                               turnStart: piece.turnStart, start: piece.start, end: piece.end, isOpen: piece.isOpen,
@@ -266,11 +266,11 @@ public final class HAPISync {
             modelContext.insert(session)
             return session
         }()
-        session.flavor = imported.flavor
-        session.hapiSessionID = imported.hapiID
-        session.title = imported.title ?? session.title
-        session.projectPath = imported.projectPath ?? session.projectPath
-        session.host = imported.host
-        if let last { session.lastActivity = max(session.lastActivity, last) }
+        session.update(\.flavor, to: imported.flavor)
+        session.update(\.hapiSessionID, to: imported.hapiID)
+        session.update(\.title, to: imported.title ?? session.title)
+        session.update(\.projectPath, to: imported.projectPath ?? session.projectPath)
+        session.update(\.host, to: imported.host)
+        if let last { session.update(\.lastActivity, to: max(session.lastActivity, last)) }
     }
 }

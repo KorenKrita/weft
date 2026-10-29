@@ -181,19 +181,140 @@ enum SystemSettings {
     }
 }
 
-/// Renders its content only while on screen. A closed SwiftUI window keeps its view tree
-/// alive, and a `@Query` inside keeps re-evaluating on every store change; dropping the
-/// tree when hidden stops that work entirely.
-struct OnlyWhileVisible<Content: View>: View {
+/// Renders its content only while its window is open, and tells it how closely to follow
+/// the store (`liveness`). A SwiftUI window keeps its view tree alive while closed, and a
+/// `@Query` inside keeps re-evaluating on every store change, so a closed window's tree is
+/// dropped. An open window keeps its tree, so it looks the same whenever it's looked at.
+struct PausedWhileHidden<Content: View>: View {
     @ViewBuilder let content: () -> Content
-    @State private var isVisible = false
+    @State private var isOpen = false
+    @State private var isOnScreen = true
+    @State private var isActive = NSApplication.shared.isActive
+    @State private var catchUp = 0
+    /// How often a window left visible behind another app catches up. Rarely: it catches up
+    /// anyway as soon as it's used.
+    private let backgroundInterval: Duration = .seconds(10 * 60)
 
     var body: some View {
         ZStack {
             Color.clear
-            if isVisible { content() }
+            if isOpen {
+                content().environment(\.liveness, Liveness(isLive: isOnScreen && isActive, catchUp: catchUp))
+            }
         }
-        .onAppear { isVisible = true }
-        .onDisappear { isVisible = false }
+        .background(VisibilityReader { isOnScreen = $0 })
+        .onAppear {
+            isOpen = true
+            isOnScreen = true
+        }
+        .onDisappear { isOpen = false }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            isActive = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            isActive = false
+        }
+        .task(id: isOnScreen && !isActive) {
+            guard isOnScreen && !isActive else { return }
+            while true {
+                try? await Task.sleep(for: backgroundInterval)
+                guard !Task.isCancelled else { return }
+                catchUp += 1
+            }
+        }
+    }
+}
+
+/// How closely views follow the store: live while the window is in use, now and then while
+/// it's visible behind another app, and not at all while it's out of sight. Views that work
+/// things out from the store show what they last worked out in between
+/// (`Memo.value(_:_:)`).
+struct Liveness: Equatable {
+    var isLive = true
+    /// Bumped to have views that aren't live catch up once.
+    var catchUp = 0
+}
+
+extension EnvironmentValues {
+    @Entry var liveness = Liveness()
+}
+
+/// A value kept between renders. Not state, so keeping a new one doesn't re-render.
+@MainActor
+final class Memo<Value> {
+    private var value: Value?
+    private var made = Date.distantPast
+    private var catchUp = 0
+
+    /// What `make` last returned, made again once it's `maxAge` old.
+    func value(maxAge: TimeInterval, _ make: () -> Value) -> Value {
+        if let value, Date.now.timeIntervalSince(made) < maxAge { return value }
+        return keep(make())
+    }
+
+    /// `make()` while live, otherwise what it last returned until asked to catch up. A view
+    /// that reads nothing from the store or the model meanwhile isn't asked to update.
+    func value(_ liveness: Liveness, _ make: () -> Value) -> Value {
+        if !liveness.isLive, liveness.catchUp == catchUp, let value { return value }
+        catchUp = liveness.catchUp
+        return keep(make())
+    }
+
+    private func keep(_ fresh: Value) -> Value {
+        value = fresh
+        made = .now
+        return fresh
+    }
+}
+
+/// Reports whether its window can be seen at all: not minimized, on another Space or covered
+/// entirely by other windows.
+private struct VisibilityReader: NSViewRepresentable {
+    let onChange: (Bool) -> Void
+
+    func makeNSView(context: Context) -> ReaderView { ReaderView() }
+
+    func updateNSView(_ view: ReaderView, context: Context) {
+        view.onChange = onChange
+    }
+
+    final class ReaderView: NSView {
+        var onChange: ((Bool) -> Void)?
+        private var tokens: [NSObjectProtocol] = []
+        private var recheck: Task<Void, Never>?
+
+        private var isWindowVisible: Bool {
+            guard let window else { return false }
+            return !window.isMiniaturized && window.occlusionState.contains(.visible)
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            tokens.forEach(NotificationCenter.default.removeObserver)
+            tokens = []
+            recheck?.cancel()
+            guard let window else { return }
+            // Minimizing doesn't always change the occlusion state, so it's watched as well.
+            let names = [NSWindow.didChangeOcclusionStateNotification, NSWindow.didMiniaturizeNotification,
+                         NSWindow.didDeminiaturizeNotification]
+            tokens = names.map { name in
+                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.windowChanged() }
+                }
+            }
+        }
+
+        private func windowChanged() {
+            recheck?.cancel()
+            let isVisible = isWindowVisible
+            onChange?(isVisible)
+            guard !isVisible else { return }
+            // The state can lag behind the notifications, e.g. coming back from the Dock.
+            recheck = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let self, self.isWindowVisible else { return }
+                self.onChange?(true)
+            }
+        }
     }
 }
