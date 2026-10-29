@@ -41,6 +41,7 @@ final class AppModel {
     let sessions: SessionEngine
     let distractionGuard: DistractionGuard
     let timeEntries: TimeEntryService
+    let agents: AgentActivityService
 
     var page: Page = .today
     /// The day the Today page shows; Reports sets it to drill into a day.
@@ -70,6 +71,7 @@ final class AppModel {
         sessions = SessionEngine(modelContext: context, classifier: classifier)
         distractionGuard = DistractionGuard(preferences: preferences, sessions: sessions, notifier: notifier)
         timeEntries = TimeEntryService(modelContext: context, ai: ai)
+        agents = AgentActivityService(modelContext: context, preferences: preferences)
         breakReminder = BreakReminder(preferences: preferences, sessions: sessions, notifier: notifier, modelContext: context)
         workHours = WorkHoursMonitor(preferences: preferences, notifier: notifier, modelContext: context)
 
@@ -79,6 +81,7 @@ final class AppModel {
             await refreshNotificationPermission()
         }
         tracker.start()
+        agents.start()
         reaskBrowsingSitesOnce()
         classifier.retryPending()
         describeTimeEntriesPeriodically()
@@ -105,6 +108,11 @@ final class AppModel {
     }
 
     private func wire() {
+        workHours.waitingIdleToday = { [weak self] in
+            guard let self, preferences.agentTrackingEnabled, preferences.countAgentWaiting else { return 0 }
+            return agents.waitingIdleToday(categories: classifier.categoryLookup)
+        }
+
         tracker.addListener { [weak self] sample in
             guard let self else { return }
             breakReminder.handle(sample)
@@ -213,6 +221,24 @@ final class AppModel {
             await notifier.requestAuthorization()
             await refreshNotificationPermission()
         }
+    }
+}
+
+extension AppModel {
+    /// How far before a period to look for activity, so waiting that began before it is seen.
+    static let waitingLookback: TimeInterval = 3 * 3600
+
+    /// `spans` as samples, with open turns of working agents running to `now`; none when
+    /// agents are turned off.
+    func agentSamples(_ spans: [AgentSpan], now: Date = .now) -> [AgentSample] {
+        preferences.agentTrackingEnabled ? agents.samples(spans, now: now) : []
+    }
+
+    /// When the user waited on agents, or nothing if that isn't counted.
+    func waiting(user: [SegmentSample], agents samples: [AgentSample]) -> [WaitingInterval] {
+        guard preferences.countAgentWaiting, !samples.isEmpty else { return [] }
+        return AgentMetrics.waiting(user: user, agents: samples, categories: classifier.categoryLookup,
+                                    config: AgentWaitingConfig(idleCap: TimeInterval(preferences.agentWaitingCapMinutes * 60)))
     }
 }
 

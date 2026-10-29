@@ -65,6 +65,10 @@ private struct DayContent: View {
     @Query private var sessions: [SessionRecord]
     /// The week before, to say how this day compares with a usual one.
     @Query private var previous: [ActivitySegment]
+    @Query private var agentSpans: [AgentSpan]
+    @Query private var previousAgentSpans: [AgentSpan]
+    /// Sessions with spans on this day have worked since it began.
+    @Query private var agentSessions: [AgentSession]
     @AppStorage("todayTab") private var tab: DayTab = .timeline
     private let day: Date
     private let dayEnd: Date
@@ -77,6 +81,9 @@ private struct DayContent: View {
         _sessions = Query(filter: #Predicate<SessionRecord> { $0.end > day && $0.start < end }, sort: \.start)
         let weekBefore = Calendar.current.date(byAdding: .day, value: -7, to: day) ?? day
         _previous = Query(filter: #Predicate<ActivitySegment> { $0.end > weekBefore && $0.start < day })
+        _agentSpans = Query(filter: #Predicate<AgentSpan> { $0.end > day && $0.start < end }, sort: \.start)
+        _previousAgentSpans = Query(filter: #Predicate<AgentSpan> { $0.end > weekBefore && $0.start < day })
+        _agentSessions = Query(filter: #Predicate<AgentSession> { $0.lastActivity > day })
     }
 
     /// The seven days before, each cut off at the current time of day while the day being
@@ -89,7 +96,9 @@ private struct DayContent: View {
                   let end = calendar.date(byAdding: .day, value: 1, to: start) else { return nil }
             return DateInterval(start: start, end: elapsed.map { min(end, start.addingTimeInterval($0)) } ?? end)
         }
-        return PeriodSummary(DayMetrics.daily(previous.map(SegmentSample.init), days: days,
+        let samples = previous.map(SegmentSample.init)
+        let waiting = model.waiting(user: samples, agents: model.agentSamples(previousAgentSpans))
+        return PeriodSummary(DayMetrics.daily(samples, waiting: waiting, days: days,
                                               categories: model.classifier.categoryLookup))
     }
 
@@ -100,19 +109,27 @@ private struct DayContent: View {
             sample.end = min(sample.end, dayEnd)
             return sample
         }
-        let metrics = DayMetrics.compute(samples, categories: model.classifier.categoryLookup)
+        let span = DateInterval(start: day, end: dayEnd)
+        let agents = model.agentSamples(agentSpans)
+        // Activity just before midnight still makes the first minutes of the day waiting.
+        let present = previous.filter { $0.end > day.addingTimeInterval(-AppModel.waitingLookback) }.map(SegmentSample.init)
+            + segments.map(SegmentSample.init)
+        let waiting = model.waiting(user: present, agents: agents).compactMap { $0.clipped(to: span) }
+        let metrics = DayMetrics.compute(samples, waiting: waiting, categories: model.classifier.categoryLookup)
         let entries = TimeEntries.significant(TimeEntries.build(segments))
+        let agentWork = agents.compactMap { $0.clipped(to: span) }
+        let agentSummary = AgentDaySummary(agentWork)
 
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if segments.isEmpty {
+                if segments.isEmpty && agentWork.isEmpty {
                     ContentUnavailableView("No activity", systemImage: "clock",
                                            description: Text("Nothing was tracked on this day."))
                         .frame(maxWidth: .infinity, minHeight: 300)
                 } else {
-                    Overview(metrics: metrics, target: model.preferences.workHoursTarget * 3600,
+                    Overview(metrics: metrics, agents: agentSummary, target: model.preferences.workHoursTarget * 3600,
                              baseline: baseline(), isToday: Calendar.current.isDateInToday(day))
-                    DailyReview(day: day, metrics: metrics)
+                    DailyReview(day: day, metrics: metrics, agents: agentSummary)
                     VStack(alignment: .leading, spacing: 14) {
                         Picker("View", selection: $tab) {
                             ForEach(DayTab.allCases) { Text($0.title).tag($0) }
@@ -122,7 +139,10 @@ private struct DayContent: View {
                         .fixedSize()
                         switch tab {
                         case .timeline:
-                            DayTimeline(day: day, segments: segments, sessions: sessions) { tab = .log }
+                            DayTimeline(day: day, segments: segments, sessions: sessions,
+                                        agents: AgentBlocks.build(agentWork),
+                                        agentSessions: Dictionary(agentSessions.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first }),
+                                        userSamples: samples) { tab = .log }
                         case .breakdown:
                             HStack(alignment: .top, spacing: 16) {
                                 Card("Categories") { CategoryBreakdown(metrics: metrics) }
@@ -172,6 +192,7 @@ struct Card<Content: View>: View {
 private struct Overview: View {
     @Environment(AppModel.self) private var model
     let metrics: DayMetrics
+    let agents: AgentDaySummary
     let target: TimeInterval
     let baseline: PeriodSummary
     let isToday: Bool
@@ -195,21 +216,24 @@ private struct Overview: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(Format.duration(metrics.activeTime))
+                    Text(Format.duration(metrics.trackedTime))
                         .font(.system(size: 40, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                     Text("tracked of \(Format.duration(target))").foregroundStyle(.secondary)
-                    if let change = change(\.activeTime) {
+                    if let change = change(\.trackedTime) {
                         ChangeLabel(change: change, suffix: comparison).padding(.leading, 4)
                     }
                 }
-                .help("Time at your Mac. Time away (\(model.preferences.idleThresholdMinutes) minutes without input), asleep or locked isn't counted.")
+                .help(trackedHelp)
                 GoalBar(metrics: metrics, target: target)
                 HStack(spacing: 14) {
                     legend(GoalBar.focusColor, "Focus", metrics.focusTime)
                     legend(GoalBar.meetingColor, "Meetings", metrics.meetingTime)
                     legend(GoalBar.otherColor, "Other", max(0, metrics.activeTime - metrics.focusTime - metrics.meetingTime - metrics.distractingTime))
-                    legend(GoalBar.distractedColor, "Distracted", metrics.distractingTime)
+                    if metrics.agentWaitingTime > 0 {
+                        legend(GoalBar.waitingColor, "Waiting on agents", metrics.agentWaitingTime)
+                    }
+                    legend(GoalBar.distractedColor, "Distracted", max(0, metrics.distractingTime - metrics.distractingWhileWaiting))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -224,11 +248,23 @@ private struct Overview: View {
                      value: Format.duration(metrics.longestFocusStretch), detail: "without a real break")
                 Fact(symbol: "arrow.left.arrow.right", title: "Switching",
                      value: switching.0, detail: switching.1)
+                if agents.wallTime > 0 {
+                    Fact(symbol: "sparkles", title: "Agents", value: Format.duration(agents.wallTime), detail: agents.detail)
+                        .help("Time at least one coding agent was working for you. \(Format.duration(agents.agentHours)) across all sessions.")
+                }
             }
             .frame(width: 230, alignment: .leading)
         }
         .padding(20)
         .background(RoundedRectangle(cornerRadius: 12).fill(.background.secondary))
+    }
+
+    private var trackedHelp: String {
+        var text = "Time at your Mac. Time away (\(model.preferences.idleThresholdMinutes) minutes without input), asleep or locked isn't counted"
+        if metrics.agentWaitingIdle > 0 {
+            text += ", except up to \(model.preferences.agentWaitingCapMinutes) minutes away while agents worked for you (\(Format.duration(metrics.agentWaitingIdle)) today)"
+        }
+        return text + "."
     }
 
     private var switching: (String, String) {
@@ -247,6 +283,26 @@ private struct Overview: View {
         .font(.callout)
         .lineLimit(1)
         .fixedSize()
+    }
+}
+
+/// A day's agent work at a glance.
+struct AgentDaySummary {
+    var wallTime: TimeInterval
+    var agentHours: TimeInterval
+    var sessions: Int
+    var concurrency: Int
+
+    init(_ samples: [AgentSample]) {
+        wallTime = AgentMetrics.wallTime(samples)
+        agentHours = AgentMetrics.agentHours(samples)
+        sessions = Set(samples.map(\.sessionKey)).count
+        concurrency = AgentMetrics.maxConcurrency(samples)
+    }
+
+    var detail: String {
+        let count = "\(sessions) session\(sessions == 1 ? "" : "s")"
+        return concurrency > 1 ? "\(count), up to \(concurrency) at once" : count
     }
 }
 
@@ -310,6 +366,7 @@ private struct DailyReview: View {
     @Environment(AppModel.self) private var model
     let day: Date
     let metrics: DayMetrics
+    let agents: AgentDaySummary
     @State private var text: String?
     @State private var error: String?
     @State private var isGenerating = false
@@ -378,7 +435,7 @@ private struct DailyReview: View {
         return """
             Respond in \(language).
             Day: \(day.formatted(date: .complete, time: .omitted))
-            Tracked time: \(Format.duration(metrics.activeTime)) (target \(Format.duration(model.preferences.workHoursTarget * 3600)))
+            Tracked time: \(Format.duration(metrics.trackedTime)) (target \(Format.duration(model.preferences.workHoursTarget * 3600)))
             Focus time: \(Format.duration(metrics.focusTime)); deep work (25+ minute stretches): \(Format.duration(metrics.deepWorkTime)); longest focus stretch: \(Format.duration(metrics.longestFocusStretch))
             Meetings: \(Format.duration(metrics.meetingTime)); distracting: \(Format.duration(metrics.distractingTime))
             Context switches: \(metrics.contextSwitches) (\(String(format: "%.0f", metrics.switchesPerHour)) per hour)
@@ -387,7 +444,10 @@ private struct DailyReview: View {
             Top apps: \(apps.joined(separator: ", "))
             Top sites: \(sites.joined(separator: ", "))
             Busiest hours: \(busiest.joined(separator: ", "))
-            """
+            """ + (agents.wallTime > 0 ? """
+
+            Coding agents worked: \(Format.duration(agents.wallTime)) (\(agents.sessions) session\(agents.sessions == 1 ? "" : "s"), up to \(agents.concurrency) at once); waiting on agents: \(Format.duration(metrics.agentWaitingTime)), of which \(Format.duration(metrics.distractingWhileWaiting)) distracted
+            """ : "")
     }
 }
 

@@ -1,0 +1,178 @@
+import WeftKit
+import SwiftUI
+
+/// How each kind of agent looks.
+enum AgentStyle {
+    static func name(_ flavor: String) -> String {
+        switch flavor {
+        case "claude": "Claude Code"
+        case "codex": "Codex"
+        case "opencode": "OpenCode"
+        case "copilot": "Copilot"
+        default: flavor.prefix(1).uppercased() + flavor.dropFirst()
+        }
+    }
+
+    static func color(_ flavor: String) -> Color {
+        switch flavor {
+        case "claude": Color(hex: "#D97757")
+        case "codex": Color(hex: "#10A37F")
+        case "cursor": Color(hex: "#6E7BF2")
+        case "gemini": Color(hex: "#4C8DF6")
+        default: .gray
+        }
+    }
+
+    static func symbol(_ flavor: String) -> String {
+        switch flavor {
+        case "claude": "sparkle"
+        case "codex": "chevron.left.forwardslash.chevron.right"
+        default: "cpu"
+        }
+    }
+
+    /// `claude:<id>` → `claude`, for sessions not in the store yet.
+    static func flavor(_ session: AgentSession?, key: String) -> String {
+        session?.flavor ?? String(key.prefix { $0 != ":" })
+    }
+
+    /// The session's title, or else its project folder, or else the agent.
+    static func title(_ session: AgentSession?, flavor: String) -> String {
+        if let title = session?.title { return title }
+        if let path = session?.projectPath { return (path as NSString).lastPathComponent }
+        return name(flavor)
+    }
+}
+
+/// One session's work on the timeline. The bar on the left is solid where the agent was
+/// working and faint where it waited for its next prompt.
+struct AgentBlockView: View {
+    let block: AgentBlock
+    let session: AgentSession?
+    let isLive: Bool
+    /// Each piece of work, in points from the block's top.
+    let pieces: [ClosedRange<CGFloat>]
+    let userSamples: [SegmentSample]
+    @State private var isHovering = false
+    @State private var showDetail = false
+
+    var body: some View {
+        let flavor = AgentStyle.flavor(session, key: block.sessionKey)
+        let color = AgentStyle.color(flavor)
+        let title = AgentStyle.title(session, flavor: flavor)
+        GeometryReader { proxy in
+            let height = proxy.size.height
+            HStack(alignment: .top, spacing: 0) {
+                ZStack(alignment: .topLeading) {
+                    Rectangle().fill(color.opacity(0.3))
+                    ForEach(Array(pieces.enumerated()), id: \.offset) { _, piece in
+                        Rectangle().fill(color)
+                            .frame(width: 3, height: max(2, min(height, piece.upperBound) - max(0, piece.lowerBound)))
+                            .offset(y: max(0, piece.lowerBound))
+                    }
+                }
+                .frame(width: 3, height: height, alignment: .topLeading)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Image(systemName: AgentStyle.symbol(flavor)).foregroundStyle(color)
+                        Text(title).fontWeight(.medium).lineLimit(height >= 56 ? 2 : 1)
+                    }
+                    .font(.caption)
+                    if height >= 40 {
+                        Text(timeLabel).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                Spacer(minLength: 0)
+            }
+            .frame(width: proxy.size.width, height: height, alignment: .topLeading)
+            .background(color.opacity(isHovering ? 0.22 : 0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 5))
+        }
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
+        .onTapGesture { showDetail = true }
+        .help("\(AgentStyle.name(flavor)): \(title) · \(Format.duration(block.activeTime)) working")
+        .popover(isPresented: $showDetail) {
+            AgentBlockDetail(block: block, session: session, isLive: isLive, userSamples: userSamples)
+        }
+    }
+
+    private var timeLabel: String {
+        let end = isLive ? "now" : block.end.formatted(date: .omitted, time: .shortened)
+        return "\(block.start.formatted(date: .omitted, time: .shortened))–\(end) · \(Format.duration(block.activeTime))"
+    }
+}
+
+private struct AgentBlockDetail: View {
+    @Environment(AppModel.self) private var model
+    let block: AgentBlock
+    let session: AgentSession?
+    let isLive: Bool
+    let userSamples: [SegmentSample]
+
+    var body: some View {
+        let flavor = AgentStyle.flavor(session, key: block.sessionKey)
+        let overlap = AgentMetrics.overlap(user: userSamples, with: block.pieces)
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(AgentStyle.title(session, flavor: flavor)).font(.headline).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    Label(AgentStyle.name(flavor), systemImage: AgentStyle.symbol(flavor)).foregroundStyle(AgentStyle.color(flavor))
+                    Text("·").foregroundStyle(.tertiary)
+                    Text(session?.host ?? "This Mac").foregroundStyle(.secondary)
+                    if isLive {
+                        Text("·").foregroundStyle(.tertiary)
+                        Label("Working now", systemImage: "circle.fill").labelStyle(.titleAndIcon).foregroundStyle(.green)
+                    }
+                }
+                .font(.callout)
+                if let path = session?.projectPath {
+                    Text((path as NSString).abbreviatingWithTildeInPath)
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+            }
+            Divider()
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(block.start.formatted(date: .omitted, time: .shortened)) – \(isLive ? "now" : block.end.formatted(date: .omitted, time: .shortened))")
+                Text(worked).foregroundStyle(.secondary)
+            }
+            .font(.callout)
+            if !overlap.byCategory.isEmpty || overlap.away > 0 {
+                Divider()
+                Text("Meanwhile you").font(.caption).foregroundStyle(.secondary)
+                ForEach(overlap.byCategory.sorted { $0.value > $1.value }.prefix(5), id: \.key) { key, time in
+                    let category = model.classifier.category(key)
+                    HStack {
+                        Circle().fill(category.color).frame(width: 7, height: 7)
+                        Text(category.name)
+                        Spacer()
+                        Text(Format.duration(time)).monospacedDigit().foregroundStyle(.secondary)
+                    }
+                    .font(.callout)
+                }
+                if overlap.away >= 60 {
+                    HStack {
+                        Circle().strokeBorder(.secondary).frame(width: 7, height: 7)
+                        Text("Away from the Mac")
+                        Spacer()
+                        Text(Format.duration(overlap.away)).monospacedDigit().foregroundStyle(.secondary)
+                    }
+                    .font(.callout)
+                }
+            }
+        }
+        .padding(16)
+        .frame(width: 320)
+    }
+
+    private var worked: String {
+        let turns = block.turnCount
+        var text = "Worked \(Format.duration(block.activeTime))"
+        if turns > 0 { text += " over \(turns) prompt\(turns == 1 ? "" : "s")" }
+        if block.waitedOnUser >= 60 { text += ", waited \(Format.duration(block.waitedOnUser)) for your answers" }
+        return text
+    }
+}

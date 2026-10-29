@@ -60,6 +60,7 @@ private struct DayCategory: Identifiable {
 private struct WeekReport: View {
     @Environment(AppModel.self) private var model
     @Query private var segments: [ActivitySegment]
+    @Query private var agentSpans: [AgentSpan]
     private let days: [Date]
 
     @State private var hoveredDay: Date?
@@ -67,6 +68,7 @@ private struct WeekReport: View {
     /// Categories beyond this many share one grey "Other" in the chart.
     private let chartCategories = 5
     private static let otherKey = "__other"
+    private static let waitingKey = "__waiting"
 
     /// Includes the week before, to compare against.
     init(start: Date) {
@@ -75,6 +77,7 @@ private struct WeekReport: View {
         let from = calendar.date(byAdding: .day, value: -7, to: start) ?? start
         let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
         _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > from && $0.start < end }, sort: \.start)
+        _agentSpans = Query(filter: #Predicate<AgentSpan> { $0.end > from && $0.start < end })
     }
 
     var body: some View {
@@ -85,6 +88,9 @@ private struct WeekReport: View {
         let average = summary.averageScore
         // Matches the score ring: short days aren't graded yet.
         let isEarly = stats.allSatisfy { $0.metrics.score == nil || $0.metrics.activeTime < 2 * 3600 }
+        let trackedDetail = total.agentWaitingIdle > 0
+            ? "incl. \(Format.duration(total.agentWaitingIdle)) away while agents worked"
+            : "\(Format.duration(total.activeTime / Double(max(summary.activeDays, 1)))) a day over \(summary.activeDays) day\(summary.activeDays == 1 ? "" : "s")"
         // Only compare with a week that was tracked at all.
         let change = { (value: KeyPath<DayMetrics, TimeInterval>) -> Change? in
             last.activeDays > 0 ? Change(total[keyPath: value], baseline: last.total[keyPath: value]) : nil
@@ -98,8 +104,7 @@ private struct WeekReport: View {
             } else {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack(spacing: 12) {
-                        summaryTile("Tracked", total.activeTime, change: change(\.activeTime),
-                                    "\(Format.duration(total.activeTime / Double(max(summary.activeDays, 1)))) a day over \(summary.activeDays) day\(summary.activeDays == 1 ? "" : "s")")
+                        summaryTile("Tracked", total.trackedTime, change: change(\.trackedTime), trackedDetail)
                         summaryTile("Focus", total.focusTime, change: change(\.focusTime), "\(Format.duration(total.deepWorkTime)) deep work")
                         summaryTile("Meetings", total.meetingTime, change: change(\.meetingTime), higherIsBetter: false,
                                     share(total.meetingTime, of: total.activeTime))
@@ -121,7 +126,9 @@ private struct WeekReport: View {
     private func dailyStats(_ days: [Date]) -> [DayStat] {
         let calendar = Calendar.current
         let intervals = days.map { DateInterval(start: $0, end: calendar.date(byAdding: .day, value: 1, to: $0) ?? $0) }
-        let metrics = DayMetrics.daily(segments.map(SegmentSample.init), days: intervals,
+        let samples = segments.map(SegmentSample.init)
+        let waiting = model.waiting(user: samples, agents: model.agentSamples(agentSpans))
+        let metrics = DayMetrics.daily(samples, waiting: waiting, days: intervals,
                                        categories: model.classifier.categoryLookup)
         return zip(days, metrics).map { DayStat(day: $0, metrics: $1) }
     }
@@ -130,12 +137,15 @@ private struct WeekReport: View {
         // Biggest first, so the bars stack the same way every day and the legend reads in order.
         let ranked = total.byCategory.sorted { $0.value > $1.value }.map(\.key)
         let shown = Array(ranked.prefix(ranked.count > chartCategories + 1 ? chartCategories : ranked.count))
-        let keys = shown + (ranked.count > shown.count ? [Self.otherKey] : [])
+        let hasWaiting = stats.contains { $0.metrics.agentWaitingIdle > 0 }
+        let keys = shown + (ranked.count > shown.count ? [Self.otherKey] : []) + (hasWaiting ? [Self.waitingKey] : [])
         let rows = stats.flatMap { stat in
             var hours: [String: Double] = [:]
             for (key, value) in stat.metrics.byCategory {
                 hours[shown.contains(key) ? key : Self.otherKey, default: 0] += value / 3600
             }
+            // Distracted waiting is already in its category; only time away is added.
+            if stat.metrics.agentWaitingIdle > 0 { hours[Self.waitingKey] = stat.metrics.agentWaitingIdle / 3600 }
             return keys.compactMap { key in hours[key].map { DayCategory(day: stat.day, category: key, hours: $0) } }
         }
         let target = model.preferences.workHoursTarget
@@ -149,7 +159,7 @@ private struct WeekReport: View {
                     .foregroundStyle(Color.primary.opacity(0.06))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                         VStack(spacing: 1) {
-                            Text(Format.duration(stat.metrics.activeTime)).fontWeight(.semibold).monospacedDigit()
+                            Text(Format.duration(stat.metrics.trackedTime)).fontWeight(.semibold).monospacedDigit()
                             Text(stat.metrics.activeTime > 0 ? "Click to open" : "No activity").foregroundStyle(.secondary)
                         }
                         .font(.caption2)
@@ -195,11 +205,19 @@ private struct WeekReport: View {
     }
 
     private func name(_ key: String) -> String {
-        key == Self.otherKey ? "Other" : model.classifier.category(key).name
+        switch key {
+        case Self.otherKey: "Other"
+        case Self.waitingKey: "Away, waiting on agents"
+        default: model.classifier.category(key).name
+        }
     }
 
     private func color(_ key: String) -> Color {
-        key == Self.otherKey ? .gray.opacity(0.5) : model.classifier.category(key).color
+        switch key {
+        case Self.otherKey: .gray.opacity(0.5)
+        case Self.waitingKey: GoalBar.waitingColor.opacity(0.6)
+        default: model.classifier.category(key).color
+        }
     }
 
     private func scoreChart(_ stats: [DayStat]) -> some View {

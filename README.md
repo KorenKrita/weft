@@ -27,6 +27,8 @@ The **Review** page collects the AI's guesses so you can confirm them in one go.
 
 **A Focus Score.** A 0–100 score for each day. It goes up with long stretches of focused work (25 minutes or more counts as deep work, and a detour of up to 3 minutes doesn't end a stretch) and down when you keep leaving focused work for other things, and with time spent on distractions. Going back and forth between focus apps, like a terminal and the docs in your browser, doesn't count against you. Meetings don't count either way. Click the score to see how it was calculated.
 
+**Your coding agents' work, too.** If you use Claude Code or Codex, the timeline shows when each agent was working for you, next to your own activity, with the session's title and what you did meanwhile. Only the time from your prompt to the agent's answer counts, minus any time it spent waiting for your permission, so a session left open for days doesn't look like days of work. While an agent works, time you spend away or on something distracting counts as waiting on it, which adds to your tracked time (the Focus Score still only looks at you). Turn this off or adjust it in **Settings → Agents**.
+
 **Focus, meeting and break sessions.** Start a timed session from the menu bar. Breaks can take over the screen, so you actually step away. When a focus session ends, Weft shows how focused you were and asks how it felt to you.
 
 **A gentle distraction blocker.** During a focus session, if you stay on something distracting for 10 seconds (by default Social Media, Entertainment, Gaming, Shopping and Personal), Weft asks whether you meant to. You can go back to work, mark the app or site as *not a distraction*, or switch the blocker off for the rest of the session. You choose which categories count as distracting, and whether you get a full-screen prompt or just a notification.
@@ -39,6 +41,7 @@ The **Review** page collects the AI's guesses so you can confirm them in one go.
 
 - **What Weft records:** the app in front, its window title and, in supported browsers, the address of the current tab.
 - **What it never records:** screenshots, keystrokes or the contents of your screen.
+- **Coding agents:** Weft reads the logs Claude Code and Codex keep on your Mac (`~/.claude/projects`, `~/.codex/sessions`) and keeps only each session's title, project folder and the times its agent worked. Prompts and replies are never stored.
 - **Where it goes:** nowhere. Categories, summaries and reviews are all produced on your Mac. Your data lives in `~/Library/Application Support/Weft/`. The one exception is a remote model you set up yourself in **Settings → Model**: it receives the apps and sites Weft doesn't know with their window titles, the apps, sites and window titles behind each work stream, and your daily totals. A local server such as Ollama or LM Studio keeps even that on your Mac.
 - **What you control:** In **Settings → Tracking**, you can stop recording window titles, keep only the domain of URLs, and exclude specific apps and websites completely. Pause tracking any time from the menu bar or Settings.
 - **Your data is yours:** You can export everything to CSV from **Settings → Data**. To erase your history, quit Weft and delete the folder above.

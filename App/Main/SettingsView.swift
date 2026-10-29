@@ -13,6 +13,7 @@ struct SettingsView: View {
             Tab("Model", systemImage: "sparkles") { ModelSettings() }
             Tab("Tracking", systemImage: "record.circle") { TrackingSettings() }
             Tab("Sessions", systemImage: "timer") { SessionSettings() }
+            Tab("Agents", systemImage: "cpu") { AgentSettings() }
             Tab("Blocker", systemImage: "hand.raised") { BlockerSettings() }
             Tab("Data", systemImage: "externaldrive") { DataSettings() }
         }
@@ -414,6 +415,98 @@ private struct SessionSettings: View {
                 Text(Format.minutesLabel(minutes)).tag(minutes)
             }
         }
+    }
+}
+
+// MARK: - Agents
+
+private struct AgentSettings: View {
+    @Environment(AppModel.self) private var model
+    @Query private var sessions: [AgentSession]
+
+    var body: some View {
+        @Bindable var prefs = model.preferences
+        Form {
+            Section {
+                Toggle("Show when coding agents work for me", isOn: $prefs.agentTrackingEnabled)
+            } footer: {
+                Text("Weft reads the session logs Claude Code and Codex keep on this Mac to see when each agent was working. It keeps only session titles, project folders and times; prompts and replies are never stored or sent anywhere.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            Section("Agents") {
+                source("Claude Code", flavor: "claude", folder: AgentLogRoots.standard.claudeProjects, isOn: $prefs.agentClaudeEnabled)
+                source("Codex", flavor: "codex", folder: AgentLogRoots.standard.codexSessions, isOn: $prefs.agentCodexEnabled)
+            }
+            .disabled(!prefs.agentTrackingEnabled)
+            Section {
+                Toggle("Count time waiting on agents as work", isOn: $prefs.countAgentWaiting)
+                Picker("Count time away for up to", selection: $prefs.agentWaitingCapMinutes) {
+                    ForEach(Array(Set([15, 30, 60, 90, 120, prefs.agentWaitingCapMinutes])).sorted(), id: \.self) {
+                        Text(Format.minutesLabel($0)).tag($0)
+                    }
+                }
+                .disabled(!prefs.countAgentWaiting)
+            } header: {
+                Text("Waiting")
+            } footer: {
+                Text("While an agent works for you, time away from the Mac adds to tracked time, up to this long after you leave, and time in distracting categories shows as waiting instead of distracted. The Focus Score only ever looks at your own activity.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            .disabled(!prefs.agentTrackingEnabled)
+            Section {
+                Picker("Leave out silences longer than", selection: $prefs.agentSilentGapMinutes) {
+                    ForEach(Array(Set([10, 15, 30, 60, 120, prefs.agentSilentGapMinutes])).sorted(), id: \.self) {
+                        Text(Format.minutesLabel($0)).tag($0)
+                    }
+                }
+                .onChange(of: prefs.agentSilentGapMinutes) { model.agents.reimport() }
+                Picker("Read history from the last", selection: $prefs.agentBackfillDays) {
+                    ForEach(Array(Set([7, 30, 90, 365, prefs.agentBackfillDays])).sorted(), id: \.self) {
+                        Text("\($0) days").tag($0)
+                    }
+                }
+                .onChange(of: prefs.agentBackfillDays) { model.agents.requestScan() }
+                LabeledContent {
+                    if model.agents.isScanning {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("Read Again") { model.agents.reimport() }
+                    }
+                } label: {
+                    Text("Agent history")
+                    Text(status)
+                }
+            } header: {
+                Text("History")
+            } footer: {
+                Text("An agent works from your prompt until it answers. Time it spends waiting for your permission or your answer to a question is left out, and so is any longer stretch with nothing in its log.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            .disabled(!prefs.agentTrackingEnabled)
+        }
+        .formStyle(.grouped)
+    }
+
+    private func source(_ name: String, flavor: String, folder: URL, isOn: Binding<Bool>) -> some View {
+        let path = folder.path(percentEncoded: false)
+        let found = FileManager.default.fileExists(atPath: path)
+        let count = sessions.filter { $0.flavor == flavor }.count
+        return Toggle(isOn: isOn) {
+            Label {
+                Text(name)
+                Text(found ? "\((path as NSString).abbreviatingWithTildeInPath) · \(count) session\(count == 1 ? "" : "s")" : "Not found on this Mac")
+            } icon: {
+                Image(systemName: AgentStyle.symbol(flavor)).foregroundStyle(AgentStyle.color(flavor))
+            }
+        }
+        .disabled(!found && !isOn.wrappedValue)
+    }
+
+    private var status: String {
+        let agents = model.agents
+        if agents.isScanning { return "Reading logs… \(agents.progress.done) of \(agents.progress.total)" }
+        guard let last = agents.lastScan else { return "Not read yet" }
+        return "\(sessions.count) session\(sessions.count == 1 ? "" : "s"), last read \(last.formatted(.relative(presentation: .named)))"
     }
 }
 

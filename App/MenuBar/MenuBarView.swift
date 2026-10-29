@@ -67,21 +67,29 @@ struct MenuBarView: View {
 
 private struct TodayCard: View {
     @Environment(AppModel.self) private var model
+    /// Includes a little of yesterday evening, so waiting on agents just after midnight counts.
     @Query private var segments: [ActivitySegment]
+    @Query private var agentSpans: [AgentSpan]
     private let day: Date
 
     init(day: Date) {
         self.day = day
-        _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > day }, sort: \.start)
+        let lookback = day.addingTimeInterval(-AppModel.waitingLookback)
+        _segments = Query(filter: #Predicate<ActivitySegment> { $0.end > lookback }, sort: \.start)
+        _agentSpans = Query(filter: #Predicate<AgentSpan> { $0.end > day })
     }
 
     var body: some View {
-        let samples = segments.map { segment -> SegmentSample in
+        let today = segments.filter { $0.end > day }
+        let samples = today.map { segment -> SegmentSample in
             var sample = SegmentSample(segment)
             sample.start = max(sample.start, day)
             return sample
         }
-        let metrics = DayMetrics.compute(samples, categories: model.classifier.categoryLookup)
+        let span = DateInterval(start: day, end: max(day, .now))
+        let waiting = model.waiting(user: segments.map(SegmentSample.init), agents: model.agentSamples(agentSpans))
+            .compactMap { $0.clipped(to: span) }
+        let metrics = DayMetrics.compute(samples, waiting: waiting, categories: model.classifier.categoryLookup)
         let target = model.preferences.workHoursTarget * 3600
 
         VStack(alignment: .leading, spacing: 10) {
@@ -89,10 +97,10 @@ private struct TodayCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(day.formatted(.dateTime.weekday(.wide)))
                         .font(.caption).foregroundStyle(.secondary)
-                    Text(Format.duration(metrics.activeTime))
+                    Text(Format.duration(metrics.trackedTime))
                         .font(.system(size: 30, weight: .semibold, design: .rounded))
                         .monospacedDigit()
-                    Text("of \(Format.duration(target)) · \(Format.percent(metrics.activeTime / max(target, 1)))")
+                    Text("of \(Format.duration(target)) · \(Format.percent(metrics.trackedTime / max(target, 1)))")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -102,7 +110,10 @@ private struct TodayCard: View {
             HStack(spacing: 14) {
                 LegendItem(color: GoalBar.focusColor, title: "Focus", value: metrics.focusTime)
                 LegendItem(color: GoalBar.meetingColor, title: "Meetings", value: metrics.meetingTime)
-                LegendItem(color: GoalBar.distractedColor, title: "Distracted", value: metrics.distractingTime)
+                if metrics.agentWaitingTime > 0 {
+                    LegendItem(color: GoalBar.waitingColor, title: "Waiting", value: metrics.agentWaitingTime)
+                }
+                LegendItem(color: GoalBar.distractedColor, title: "Distracted", value: max(0, metrics.distractingTime - metrics.distractingWhileWaiting))
             }
         }
     }
@@ -150,7 +161,7 @@ struct ScoreRing: View {
 }
 
 /// One bar for the day: its full width is the work-hours target and the filled part is
-/// tracked time, split into focus, meetings, other and distracted.
+/// tracked time, split into focus, meetings, other, waiting on agents and distracted.
 struct GoalBar: View {
     let metrics: DayMetrics
     let target: TimeInterval
@@ -158,16 +169,19 @@ struct GoalBar: View {
     static let focusColor = Color.blue
     static let meetingColor = Color.teal
     static let otherColor = Color.gray
+    static let waitingColor = Color.purple
     static let distractedColor = Color.red
 
     var body: some View {
-        let scale = max(target, metrics.activeTime, 1)
+        let scale = max(target, metrics.trackedTime, 1)
         let other = max(0, metrics.activeTime - metrics.focusTime - metrics.meetingTime - metrics.distractingTime)
+        // Distraction while agents worked shows as waiting, so nothing is counted twice.
         let parts: [(String, TimeInterval, Color)] = [
             ("Focus", metrics.focusTime, Self.focusColor),
             ("Meetings", metrics.meetingTime, Self.meetingColor),
             ("Other", other, Self.otherColor),
-            ("Distracted", metrics.distractingTime, Self.distractedColor),
+            ("Waiting on agents", metrics.agentWaitingTime, Self.waitingColor),
+            ("Distracted", max(0, metrics.distractingTime - metrics.distractingWhileWaiting), Self.distractedColor),
         ].filter { $0.1 > 0 }
         GeometryReader { proxy in
             HStack(spacing: 1) {

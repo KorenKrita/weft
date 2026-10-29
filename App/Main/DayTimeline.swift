@@ -2,12 +2,17 @@ import WeftKit
 import SwiftUI
 
 /// A calendar-style day of work streams. Streams in different categories can overlap, so
-/// they're laid out side by side like concurrent calendar events; sessions get their own lane.
+/// they're laid out side by side like concurrent calendar events; coding agents and sessions
+/// get lanes of their own.
 struct DayTimeline: View {
     @Environment(AppModel.self) private var model
     let day: Date
     let segments: [ActivitySegment]
     let sessions: [SessionRecord]
+    var agents: [AgentBlock] = []
+    var agentSessions: [String: AgentSession] = [:]
+    /// The user's own time, to say what they did while an agent worked.
+    var userSamples: [SegmentSample] = []
     /// Switches to the log, where the short streams are.
     var showLog: () -> Void = {}
 
@@ -20,6 +25,8 @@ struct DayTimeline: View {
     private let minimumHeight: CGFloat = 30
     private let timeColumn: CGFloat = 44
     private let sessionColumn: CGFloat = 104
+    /// Per agent working at the same time; the lane stops growing at three.
+    private let agentColumn: CGFloat = 112
     private let spacing: CGFloat = 12
 
     var body: some View {
@@ -39,9 +46,11 @@ struct DayTimeline: View {
         let scale = makeScale(entries, now: now)
         let height = scale.height
         let placed = layout(entries, scale: scale)
+        let placedAgents = layout(agents, scale: scale)
+        let agentLane = agentColumn * CGFloat(min(3, placedAgents.map(\.columns).max() ?? 1))
 
         return VStack(alignment: .leading, spacing: 10) {
-            if entries.isEmpty {
+            if entries.isEmpty && agents.isEmpty {
                 ContentUnavailableView("No work streams yet", systemImage: "calendar.day.timeline.left",
                                        description: Text("Streams appear once you've spent 10 minutes or more on something."))
                     .frame(maxWidth: .infinity, minHeight: 200)
@@ -63,6 +72,21 @@ struct DayTimeline: View {
                             }
                         }
                         .frame(height: height)
+                        if !agents.isEmpty {
+                            ZStack(alignment: .topLeading) {
+                                ForEach(placedAgents, id: \.block.id) { item in
+                                    let width = (agentLane - CGFloat(item.columns - 1) * 4) / CGFloat(item.columns)
+                                    let isLive = isLive(item.block, now: now)
+                                    let top = scale.y(item.block.start)
+                                    AgentBlockView(block: item.block, session: agentSessions[item.block.sessionKey], isLive: isLive,
+                                                   pieces: item.block.pieces.map { (scale.y($0.start) - top)...(scale.y($0.end) - top) },
+                                                   userSamples: userSamples)
+                                        .frame(width: width, height: max(agentMinimumHeight, scale.y(isLive ? now : item.block.end) - top - 2))
+                                        .offset(x: CGFloat(item.column) * (width + 4), y: top)
+                                }
+                            }
+                            .frame(width: agentLane, height: height, alignment: .topLeading)
+                        }
                         if !sessions.isEmpty {
                             ZStack(alignment: .topLeading) {
                                 ForEach(sessions) { session in
@@ -149,6 +173,7 @@ struct DayTimeline: View {
             // Short streams are drawn taller than their time; cover that so they can't run
             // into a gap.
             var intervals = entries.map { DateInterval(start: $0.start, end: max($0.end, $0.start.addingTimeInterval(minimumSpan))) }
+            intervals += agents.map { DateInterval(start: $0.start, end: max($0.end, $0.start.addingTimeInterval(minimumSpan))) }
             intervals += sessions.map { DateInterval(start: $0.start, end: max($0.start, $0.end)) }
             if isToday { intervals.append(DateInterval(start: now, duration: 0)) }
             let axis = TimelineAxis(covering: intervals, within: DateInterval(start: dayStart, end: dayEnd))
@@ -183,29 +208,31 @@ struct DayTimeline: View {
     private func layout(_ entries: [TimeEntry], scale: Scale) -> [Placed] {
         // Use the drawn extent, including the minimum height, so text never overlaps.
         let minimumSpan = TimeInterval(minimumHeight / scale.pointsPerHour * 3600)
-        func visualEnd(_ entry: TimeEntry) -> Date { max(entry.end, entry.start.addingTimeInterval(minimumSpan)) }
+        let extents = entries.map { DateInterval(start: $0.start, end: max($0.end, $0.start.addingTimeInterval(minimumSpan))) }
+        return zip(entries, ColumnLayout.place(extents)).map { Placed(entry: $0, column: $1.column, columns: $1.columns) }
+    }
 
-        var result: [Placed] = []
-        var cluster: [Placed] = []
-        var columnEnds: [Date] = []
-        var clusterEnd = Date.distantPast
+    /// Agent blocks are short more often than streams, so they get by with one line of text.
+    private let agentMinimumHeight: CGFloat = 22
 
-        func flush() {
-            let count = max(1, columnEnds.count)
-            result += cluster.map { Placed(entry: $0.entry, column: $0.column, columns: count) }
-            cluster = []
-            columnEnds = []
-        }
+    private struct PlacedAgent {
+        var block: AgentBlock
+        var column: Int
+        var columns: Int
+    }
 
-        for entry in entries.sorted(by: { $0.start < $1.start }) {
-            if entry.start >= clusterEnd { flush() }
-            let column = columnEnds.firstIndex { $0 <= entry.start } ?? columnEnds.count
-            if column == columnEnds.count { columnEnds.append(visualEnd(entry)) } else { columnEnds[column] = visualEnd(entry) }
-            cluster.append(Placed(entry: entry, column: column, columns: 1))
-            clusterEnd = max(clusterEnd, visualEnd(entry))
-        }
-        flush()
-        return result
+    /// Agents working at the same time sit side by side, like streams.
+    private func layout(_ blocks: [AgentBlock], scale: Scale) -> [PlacedAgent] {
+        let minimumSpan = TimeInterval(agentMinimumHeight / scale.pointsPerHour * 3600)
+        let extents = blocks.map { DateInterval(start: $0.start, end: max($0.end, $0.start.addingTimeInterval(minimumSpan))) }
+        return zip(blocks, ColumnLayout.place(extents)).map { PlacedAgent(block: $0, column: $1.column, columns: $1.columns) }
+    }
+
+    /// The agent is working now, so its block runs up to the present. Like streams, a block
+    /// ends where its log last moved until the store catches up.
+    private func isLive(_ block: AgentBlock, now: Date) -> Bool {
+        Calendar.current.isDateInToday(day) && model.agents.liveSessions.contains(block.sessionKey)
+            && now.timeIntervalSince(block.end) < 3 * 60
     }
 
     private func grid(_ scale: Scale) -> some View {

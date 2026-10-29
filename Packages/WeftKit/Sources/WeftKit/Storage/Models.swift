@@ -180,10 +180,106 @@ public final class TimeEntrySummary {
     }
 }
 
+/// A coding agent's session: Claude Code, Codex, or one HAPI manages. Only what identifies
+/// it is kept; prompts and replies never are.
+@Model
+public final class AgentSession {
+    /// `claude:<session id>`, `codex:<root thread id>` or `hapi:<session id>`.
+    @Attribute(.unique) public var key: String
+    public var sourceRaw: String
+    /// `claude`, `codex`, or whichever agent HAPI reports.
+    public var flavor: String
+    public var agentSessionID: String
+    public var hapiSessionID: String?
+    public var title: String?
+    public var projectPath: String?
+    /// The machine it ran on; nil for this Mac.
+    public var host: String?
+    public var lastActivity: Date
+
+    public init(key: String, source: AgentSource, flavor: String, agentSessionID: String, lastActivity: Date) {
+        self.key = key
+        sourceRaw = source.rawValue
+        self.flavor = flavor
+        self.agentSessionID = agentSessionID
+        self.lastActivity = lastActivity
+    }
+
+    public var source: AgentSource { AgentSource(rawValue: sourceRaw) ?? .claudeCode }
+}
+
+/// A stretch of time an agent was working: a turn, minus the user's answers and long
+/// silences. Separate from `ActivitySegment`, which is only ever the user's own time.
+@Model
+public final class AgentSpan {
+    #Index<AgentSpan>([\.start], [\.end], [\.sessionKey])
+
+    /// `<turn id>#<piece>`.
+    @Attribute(.unique) public var key: String
+    public var sessionKey: String
+    public var turnID: String
+    /// The log (or HAPI session) this came from, so it can be replaced when that's read again.
+    public var fileKey: String
+    public var turnStart: Date
+    public var start: Date
+    public var end: Date
+    /// The last piece of a turn that hasn't ended; while the agent works it runs up to now.
+    public var isOpen: Bool
+    public var triggerRaw: String
+    public var isSubagent: Bool
+    /// Time the turn waited for the user; on its first piece only, so sums stay right.
+    public var waitedOnUser: TimeInterval
+
+    public init(key: String, sessionKey: String, turnID: String, fileKey: String, turnStart: Date,
+                start: Date, end: Date, isOpen: Bool, trigger: AgentTrigger, isSubagent: Bool, waitedOnUser: TimeInterval) {
+        self.key = key
+        self.sessionKey = sessionKey
+        self.turnID = turnID
+        self.fileKey = fileKey
+        self.turnStart = turnStart
+        self.start = start
+        self.end = end
+        self.isOpen = isOpen
+        triggerRaw = trigger.rawValue
+        self.isSubagent = isSubagent
+        self.waitedOnUser = waitedOnUser
+    }
+
+    public var trigger: AgentTrigger { AgentTrigger(rawValue: triggerRaw) ?? .user }
+}
+
+/// How far an agent log has been read.
+@Model
+public final class AgentLogCursor {
+    @Attribute(.unique) public var path: String
+    public var kindRaw: String
+    /// The file's inode; a new one means the file was replaced and is read again from the start.
+    public var fileID: Int64
+    /// The size when last read; an unchanged size means nothing new.
+    public var size: Int64
+    /// Always the start of a line: the first turn not finished yet, or the end of the file.
+    public var resumeOffset: Int64
+    /// Codex says which session a thread belongs to only on its first line.
+    public var sessionKey: String?
+    /// Nothing in the file counts (an automated review, an old format).
+    public var skipped: Bool
+    public var scannedAt: Date
+
+    public init(path: String, kind: AgentLogKind) {
+        self.path = path
+        kindRaw = kind.rawValue
+        fileID = 0
+        size = 0
+        resumeOffset = 0
+        skipped = false
+        scannedAt = .now
+    }
+}
+
 public enum WeftSchema {
     public static let models: [any PersistentModel.Type] = [
         ActivitySegment.self, CategoryRecord.self, UserRule.self, AIClassificationRecord.self, SessionRecord.self,
-        TimeEntrySummary.self,
+        TimeEntrySummary.self, AgentSession.self, AgentSpan.self, AgentLogCursor.self,
     ]
 
     public static let folderName = "Weft"

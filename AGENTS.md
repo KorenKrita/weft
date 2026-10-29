@@ -22,7 +22,11 @@ swift test                                                   # all unit tests
 swift test --filter SessionEngineTests                       # one suite
 swift test --filter "SessionEngineTests/startAndExtend"      # one test
 WEFT_AI_TESTS=1 swift test --filter FoundationModelsHarness  # real on-device model (needs Apple Intelligence)
+WEFT_AGENT_LOG_TESTS=1 swift test --filter AgentLogHarness   # parse this Mac's real Claude Code and Codex logs
+WEFT_STORE_COPY=/tmp/copy/Weft.store swift test --filter AgentStoreHarness  # migrate a store copy and fill it from real logs
 ```
+
+The Debug build uses the real store in `~/Library/Application Support/Weft/`. Before trying a schema change there, back it up; `AgentStoreHarness` shows how to test against a copy made with `sqlite3 -readonly … ".backup …"` instead.
 
 Signing: `Config/Base.xcconfig` signs ad hoc by default, and optionally includes the git-ignored `Config/Local.xcconfig` (copy it from `Local.xcconfig.example`). With ad hoc signing, macOS drops the Accessibility grant after every rebuild, so window titles stop showing up until you grant it again.
 
@@ -51,10 +55,20 @@ There are two layers:
 3. **Metrics** (`Metrics/`): pure functions over segments. `ActivityBlocks` builds the activity log rows and folds short detours into them. `TimeEntries` builds the overlapping per-category "work streams" on the Today timeline: same category within 30 min forms one stream, and only streams of 10 min or more count as significant. `DayMetrics` computes the Focus Score.
 4. **Descriptions**: `TimeEntryService` queues finished streams for a one-sentence description from the model, cached in `TimeEntrySummary` by `TimeEntry.key` (category + start). `AppModel` runs it every ~5 min.
 5. **Sessions** (`Sessions/`): `SessionEngine` handles Focus, Meeting and Break sessions. `DistractionGuard` triggers the blocker overlay when the user stays in a category marked `blockInFocus` during a focus session. `Reminders` holds the break and work-hours monitors, and `Notifier` wraps `UNUserNotificationCenter`.
+6. **Agents** (`Agents/`): records when coding agents worked, from the logs they keep (`~/.claude/projects`, `~/.codex/sessions`). It's a pipeline:
+   1. `AgentLogScanner` (off the main actor) reads each log from a saved byte offset.
+   2. `ClaudeCodeLogParser` / `CodexLogParser` turn lines into `AgentLogEvent`s. They pick lines by prefix and decode only the few that matter, since the logs run to tens of megabytes.
+   3. The pure `AgentTurnBuilder` assembles turns from them.
+
+   A turn runs from a prompt to the agent's end marker, so the hours a session sits waiting for the user between turns never count. Inside a turn, waits for the user's permission or answer are cut out, and so is silence longer than `agentSilentGapMinutes`. What's left is stored as `AgentSpan`s.
+
+   While a turn is open, its cursor stays at the turn's first line, so the whole turn is read again once it ends and no parser state is persisted. `AgentActivityService` re-reads logs when FSEvents reports a change (no polling). It treats a session as working right now when Claude Code's `~/.claude/sessions/<pid>.json` says `busy`, or, for other agents, when an open turn had activity in the last 5 min.
+
+   `AgentMetrics.waiting` finds time the user spent waiting on agents: away (up to `agentWaitingCapMinutes` after their last activity) or in a distracting category while an agent worked. `DayMetrics.trackedTime` adds the away part to `activeTime`, and the work-hours target counts it. The Focus Score never sees agent time.
 
 ### Storage
 
-SwiftData models live in `Storage/Models.swift`, and the schema list is `WeftSchema.models`; add every new `@Model` there. The store is at `~/Library/Application Support/Weft/Weft.store`. Enums are stored as raw strings (for example `classificationSourceRaw`) so that `#Predicate` can filter on them. Keep that pattern when adding filterable enum fields. Categories are seeded from `CategoryDefinition.defaults` and referenced everywhere by string `key`.
+SwiftData models live in `Storage/Models.swift`, and the schema list is `WeftSchema.models`; add every new `@Model` there. `ActivitySegment` is only ever the user's own foreground time, and everything that reads it assumes so. Agent work lives in `AgentSession`, `AgentSpan` and `AgentLogCursor`, which store titles, project folders and times but never prompts or replies. The store is at `~/Library/Application Support/Weft/Weft.store`. Enums are stored as raw strings (for example `classificationSourceRaw`) so that `#Predicate` can filter on them. Keep that pattern when adding filterable enum fields. Categories are seeded from `CategoryDefinition.defaults` and referenced everywhere by string `key`.
 
 ### Testing patterns
 

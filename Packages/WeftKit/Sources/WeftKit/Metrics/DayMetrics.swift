@@ -64,6 +64,10 @@ public struct DayMetrics: Sendable {
     /// Active seconds per hour of the day (0–23).
     public var byHour: [Int: TimeInterval] = [:]
     public var score: FocusScore?
+    /// Away from the Mac while agents worked (see `AgentMetrics.waiting`).
+    public var agentWaitingIdle: TimeInterval = 0
+    /// The part of `distractingTime` spent while agents worked.
+    public var distractingWhileWaiting: TimeInterval = 0
 
     public init() {}
 
@@ -71,8 +75,18 @@ public struct DayMetrics: Sendable {
         activeTime > 0 ? Double(contextSwitches) / (activeTime / 3600) : 0
     }
 
+    /// All time spent waiting on agents, away or distracted.
+    public var agentWaitingTime: TimeInterval { agentWaitingIdle + distractingWhileWaiting }
+
+    /// Time towards the work-hours target: activity on the Mac, plus time away while agents
+    /// worked. Distracted waiting is already part of `activeTime`.
+    public var trackedTime: TimeInterval { activeTime + agentWaitingIdle }
+
+    /// - Parameter waiting: when the user waited on agents, already cut to the same period
+    ///   as `samples`. Only adds to the waiting totals; the Focus Score is about the user alone.
     public static func compute(
         _ samples: [SegmentSample],
+        waiting: [WaitingInterval] = [],
         categories: [String: CategoryDefinition],
         config: FocusScoreConfig = FocusScoreConfig(),
         calendar: Calendar = .current
@@ -97,6 +111,12 @@ public struct DayMetrics: Sendable {
         metrics.contextSwitches = countSwitches(samples, isFocus: isFocus, noiseFloor: config.switchNoiseFloor)
         (metrics.deepWorkTime, metrics.longestFocusStretch) = focusStretches(samples, isFocus: isFocus, config: config)
         metrics.score = FocusScore.compute(metrics, config: config)
+        for interval in waiting {
+            switch interval.kind {
+            case .idle: metrics.agentWaitingIdle += interval.interval.duration
+            case .distracting: metrics.distractingWhileWaiting += interval.interval.duration
+            }
+        }
         return metrics
     }
 

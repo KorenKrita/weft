@@ -119,4 +119,21 @@ struct RemindersTests {
         relaunched.handle(active(3))
         #expect(notifier.posted.count == 1)
     }
+
+    @Test func timeWaitingOnAgentsCountsTowardsTheTarget() {
+        preferences.workHoursTarget = 1
+        let segment = ActivitySegment(context: ActivityContext(bundleID: "com.apple.dt.Xcode", appName: "Xcode"),
+                                      start: at(-40), categoryKey: "code", source: .builtin)
+        segment.end = at(0)
+        context.insert(segment)
+
+        let monitor = WorkHoursMonitor(preferences: preferences, notifier: notifier, modelContext: context, now: at(0))
+        monitor.handle(active(0))
+        monitor.handle(active(1))
+        #expect(notifier.posted.isEmpty)
+
+        monitor.waitingIdleToday = { 25 * 60 }
+        monitor.handle(active(2))
+        #expect(notifier.posted.map(\.kind) == [.workHours])
+    }
 }

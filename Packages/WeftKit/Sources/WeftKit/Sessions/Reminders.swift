@@ -90,6 +90,8 @@ public final class WorkHoursMonitor {
     private var lastSample: Date?
     private var notifiedTarget = false
     private var notifiedOvertime = false
+    /// Today's time away while agents worked, which counts towards the target too.
+    public var waitingIdleToday: () -> TimeInterval = { 0 }
 
     public init(preferences: Preferences, notifier: any NotificationPosting, modelContext: ModelContext, now: Date = .now) {
         self.preferences = preferences
@@ -118,6 +120,7 @@ public final class WorkHoursMonitor {
 
         guard preferences.workHoursNotifications else { return }
         let target = preferences.workHoursTarget * 3600
+        let worked = worked + waitingIdleToday()
         if !notifiedTarget, worked >= target {
             notifiedTarget = true
             preferences.workHoursTargetNotifiedAt = sample.date

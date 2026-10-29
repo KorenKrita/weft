@@ -60,6 +60,20 @@ public final class Preferences {
     public var remoteBaseURL: String { didSet { save(remoteBaseURL, "remoteBaseURL") } }
     public var remoteModel: String { didSet { save(remoteModel, "remoteModel") } }
 
+    // Agents
+    /// Read Claude Code and Codex logs to show when agents worked.
+    public var agentTrackingEnabled: Bool { didSet { save(agentTrackingEnabled, "agentTrackingEnabled") } }
+    public var agentClaudeEnabled: Bool { didSet { save(agentClaudeEnabled, "agentClaudeEnabled") } }
+    public var agentCodexEnabled: Bool { didSet { save(agentCodexEnabled, "agentCodexEnabled") } }
+    /// How far back logs are read the first time.
+    public var agentBackfillDays: Int { didSet { save(agentBackfillDays, "agentBackfillDays") } }
+    /// Silence in a log longer than this inside a turn doesn't count as work.
+    public var agentSilentGapMinutes: Int { didSet { save(agentSilentGapMinutes, "agentSilentGapMinutes") } }
+    /// Time away or distracted while agents work counts towards tracked time.
+    public var countAgentWaiting: Bool { didSet { save(countAgentWaiting, "countAgentWaiting") } }
+    /// Being away counts as waiting only this long after the last activity.
+    public var agentWaitingCapMinutes: Int { didSet { save(agentWaitingCapMinutes, "agentWaitingCapMinutes") } }
+
     public var hasCompletedOnboarding: Bool { didSet { save(hasCompletedOnboarding, "hasCompletedOnboarding") } }
 
     public init(defaults: UserDefaults = .standard) {
@@ -80,6 +94,13 @@ public final class Preferences {
             "refocusThresholdSeconds": 10,
             "modelProvider": ModelProvider.appleIntelligence.rawValue,
             "remoteBaseURL": RemoteModelConfig.defaultBaseURL,
+            "agentTrackingEnabled": true,
+            "agentClaudeEnabled": true,
+            "agentCodexEnabled": true,
+            "agentBackfillDays": 30,
+            "agentSilentGapMinutes": 30,
+            "countAgentWaiting": true,
+            "agentWaitingCapMinutes": 60,
         ])
         trackingPaused = defaults.bool(forKey: "trackingPaused")
         idleThresholdMinutes = defaults.integer(forKey: "idleThresholdMinutes")
@@ -105,6 +126,13 @@ public final class Preferences {
         modelProvider = ModelProvider(rawValue: defaults.string(forKey: "modelProvider") ?? "") ?? .appleIntelligence
         remoteBaseURL = defaults.string(forKey: "remoteBaseURL") ?? RemoteModelConfig.defaultBaseURL
         remoteModel = defaults.string(forKey: "remoteModel") ?? ""
+        agentTrackingEnabled = defaults.bool(forKey: "agentTrackingEnabled")
+        agentClaudeEnabled = defaults.bool(forKey: "agentClaudeEnabled")
+        agentCodexEnabled = defaults.bool(forKey: "agentCodexEnabled")
+        agentBackfillDays = defaults.integer(forKey: "agentBackfillDays")
+        agentSilentGapMinutes = defaults.integer(forKey: "agentSilentGapMinutes")
+        countAgentWaiting = defaults.bool(forKey: "countAgentWaiting")
+        agentWaitingCapMinutes = defaults.integer(forKey: "agentWaitingCapMinutes")
         hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
     }
 

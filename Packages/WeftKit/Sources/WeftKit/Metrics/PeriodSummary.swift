@@ -14,12 +14,14 @@ public extension DayMetrics {
     /// Metrics for each of `days`, with samples cut at the day boundaries.
     static func daily(
         _ samples: [SegmentSample],
+        waiting: [WaitingInterval] = [],
         days: [DateInterval],
         categories: [String: CategoryDefinition],
         config: FocusScoreConfig = FocusScoreConfig()
     ) -> [DayMetrics] {
         days.map { day in
-            compute(samples.compactMap { $0.clipped(to: day) }, categories: categories, config: config)
+            compute(samples.compactMap { $0.clipped(to: day) }, waiting: waiting.compactMap { $0.clipped(to: day) },
+                    categories: categories, config: config)
         }
     }
 }
@@ -42,6 +44,8 @@ public struct PeriodSummary: Sendable {
             total.deepWorkTime += day.deepWorkTime
             total.meetingTime += day.meetingTime
             total.distractingTime += day.distractingTime
+            total.agentWaitingIdle += day.agentWaitingIdle
+            total.distractingWhileWaiting += day.distractingWhileWaiting
             total.contextSwitches += day.contextSwitches
             total.longestFocusStretch = max(total.longestFocusStretch, day.longestFocusStretch)
             for (key, value) in day.byCategory { total.byCategory[key, default: 0] += value }
